@@ -212,17 +212,14 @@
     const now = new Date();
     const isToday = daysBetween(now, evDate(e)) === 0;
     const nowMin = now.getHours() * 60 + now.getMinutes();
-    return `<section class="ev-card ev-span" aria-labelledby="tl-h">
-      <h2 id="tl-h">יום התחרות</h2>
-      <div class="tl">
+    return `<div class="tl" role="group" aria-label="לוח הזמנים של יום התחרות">
         <div class="tl-track" aria-hidden="true">
           ${t !== null ? `<div class="tl-window" style="inset-inline-start:${pos(s)};width:calc(${pos(t)} - ${pos(s)})"></div>` : ''}
           ${c !== null ? `<div class="tl-run" style="inset-inline-start:${pos(t ?? s)};width:calc(${pos(c)} - ${pos(t ?? s)})"></div>` : ''}
           ${isToday && nowMin > lo && nowMin < hi ? `<div class="tl-now" style="inset-inline-start:${pos(nowMin)}"><span>עכשיו</span></div>` : ''}
         </div>
         <ol class="tl-points">${points.map((p) => `<li class="${p.cls}" style="--pos:${pos(p.at)}"><time>${fromMin(p.at)}</time><span>${p.label}</span></li>`).join('')}</ol>
-      </div>
-    </section>`;
+      </div>`;
   }
 
   function coursesHtml(courses) {
@@ -270,6 +267,7 @@
     const price = shekel(d.price), priceOut = shekel(d.priceNonMember);
     const loading = !e.details && e.nivutId;
     const threads = relatedThreads(e);
+    const tl = timelineHtml(d, e);
     const hasGeo = d.lat && d.lng;
     const bbox = hasGeo ? [d.lng - 0.03, d.lat - 0.018, d.lng + 0.03, d.lat + 0.018].map((n) => n.toFixed(5)).join(',') : '';
 
@@ -302,10 +300,11 @@
     </header>
 
     <div class="container ev-body">
-      <ul class="ev-facts" aria-label="עיקרי האירוע">
-        <li><span class="ev-ico" aria-hidden="true">🕘</span><span class="k">מתי</span>
+      <ul class="ev-facts${tl ? ' has-tl' : ''}" aria-label="עיקרי האירוע">
+        <li class="fact-when"><span class="ev-ico" aria-hidden="true">🕘</span><span class="k">מתי</span>
           <strong>${d.startFrom ? esc(d.startFrom) : fmtShort(date)}</strong>
-          <span>${d.startFrom ? 'תחילת זינוקים · ' : ''}${DAYS[date.getDay()]} ${date.getDate()}.${date.getMonth() + 1}${left >= 0 ? ` · ${inDays(left)}` : ''}</span></li>
+          <span>${d.startFrom ? 'תחילת זינוקים · ' : ''}${DAYS[date.getDay()]} ${date.getDate()}.${date.getMonth() + 1}${left >= 0 ? ` · ${inDays(left)}` : ''}</span>
+          ${tl}</li>
         <li><span class="ev-ico" aria-hidden="true">📍</span><span class="k">איפה</span>
           <strong>${esc(e.location || d.name || 'יפורסם')}</strong>
           ${canNavigate(e) ? `<a href="${esc(wazeUrl(e))}" target="_blank" rel="noopener">ניווט לכינוס ב-Waze</a>` : '<span>&nbsp;</span>'}</li>
@@ -320,7 +319,6 @@
       <div class="ev-grid">
         <div class="ev-main">
           ${loading ? '<section class="ev-card" role="status"><p class="muted">טוען את פרטי התחרות מאתר האיגוד…</p></section>' : ''}
-          ${timelineHtml(d, e)}
           ${coursesHtml(d.courses)}
           ${d.description?.length || e.summary ? `<section class="ev-card" aria-labelledby="ab-h"><h2 id="ab-h">על האירוע</h2>
             ${(d.description?.length ? d.description : [e.summary]).map((p) => `<p>${linkify(p)}</p>`).join('')}</section>` : ''}

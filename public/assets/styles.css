@@ -310,7 +310,7 @@ main:focus { outline: none; }
 
 .ev-body { position: relative; margin-top: -40px; padding-bottom: 96px; }
 .ev-facts { list-style: none; margin: 0 0 20px; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-.ev-facts li {
+.ev-facts > li {
   background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px;
   box-shadow: var(--shadow); display: grid; gap: 2px; align-content: start; position: relative;
 }
@@ -495,4 +495,22 @@ main:focus { outline: none; }
   .top-card { scroll-snap-align: start; }
   .ev-count { min-width: 0; grid-column: 1 / -1; justify-items: stretch; }
   .ev-count-label { text-align: start; }
+}
+
+/* Race-day diagram inside the "when" tile */
+.ev-facts.has-tl { grid-template-columns: 1.9fr 1fr 1fr 1fr; }
+.fact-when .tl { padding: 22px 2px 0; }
+.fact-when .tl-track { height: 12px; }
+.fact-when .tl-run { top: 3px; bottom: 3px; }
+.fact-when .tl-points { height: 44px; }
+.fact-when .tl-points li { padding-top: 6px; }
+.fact-when .tl-points li::before { top: -19px; height: 22px; width: 2px; }
+.fact-when .tl-points time { font-size: .95rem; color: var(--text); }
+.fact-when .tl-points li.cutoff time { color: #dc2626; }
+:root[data-theme="dark"] .fact-when .tl-points li.cutoff time { color: #f87171; }
+.ev-facts .fact-when .tl-points span { font-size: .72rem; color: var(--muted); }
+.fact-when .tl-now span { top: -18px; }
+@media (max-width: 860px) {
+  .ev-facts.has-tl { grid-template-columns: repeat(2, 1fr); }
+  .ev-facts.has-tl .fact-when { grid-column: 1 / -1; }
 }
