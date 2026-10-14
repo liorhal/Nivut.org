@@ -68,14 +68,22 @@
             <label for="club">מועדון / מארגן</label>
             <select id="club"><option value="">כולם</option></select>
           </div>
-          <fieldset class="chips" id="typeChips">
-            <legend>סוג אירוע</legend>
+          <fieldset class="chips" id="discChips">
+            <legend>סוג ניווט</legend>
+          </fieldset>
+          <fieldset class="chips" id="tagChips">
+            <legend>אופי האירוע</legend>
           </fieldset>
         </form>
 
         <p class="live-status" id="liveStatus" hidden></p>
         <p class="result-count" id="resultCount" aria-live="polite"></p>
-        <ol class="event-list" id="eventList" aria-busy="false"></ol>
+        <ol class="event-list" id="eventList"></ol>
+
+        <section id="newsSection" class="news" aria-labelledby="news-title" hidden>
+          <h2 id="news-title">חדשות האיגוד</h2>
+          <ul class="news-list" id="newsList"></ul>
+        </section>
       </div>
     </section>
 
@@ -99,7 +107,7 @@
           </div>
           <table class="month-table" id="monthTable"></table>
         </div>
-        <p class="muted"><a href="#" id="downloadIcs">הורד את כל העונה ליומן (ICS)</a></p>
+        <p class="muted"><a href="#" id="downloadIcs">הורד את כל העונה ליומן (ICS)</a> · <a id="officialCalendar" href="https://nivut.org.il/calendar.aspx" target="_blank" rel="noopener">לוח האירועים המלא באתר האיגוד ↗</a></p>
       </div>
     </section>
 
@@ -111,7 +119,7 @@
           <a class="btn" id="forumLink" href="#" rel="noopener">לפורום המלא באתר האיגוד ↗</a>
         </div>
         <div class="field forum-search">
-          <label for="forumQ">חיפוש בנושאים</label>
+          <label for="forumQ">חיפוש בפורום</label>
           <input id="forumQ" type="search" autocomplete="off">
         </div>
         <p class="live-status" id="forumStatus"></p>

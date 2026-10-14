@@ -5,7 +5,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { PAGES, getEvents, getForum } = require('./lib/nivut');
+const { PAGES, getEvents, getNews, getForum, getEventPage } = require('./lib/nivut');
 
 const PORT = Number(process.env.PORT || 8080);
 const ROOT = __dirname;
@@ -22,6 +22,13 @@ const server = http.createServer(async (req, res) => {
   try {
     if (url.pathname === '/api/events') return sendJson(res, 200, await getEvents());
     if (url.pathname === '/api/forum') return sendJson(res, 200, await getForum());
+    if (url.pathname === '/api/news') return sendJson(res, 200, await getNews());
+    if (url.pathname === '/api/event') {
+      // Only numeric event ids on the source site: never an open proxy.
+      const id = url.searchParams.get('id') || '';
+      if (!/^\d{1,7}$/.test(id)) return sendJson(res, 400, { error: 'bad id' });
+      return sendJson(res, 200, await getEventPage(new URL(`${id}/Info`, PAGES.home).href));
+    }
     if (url.pathname === '/api/links') return sendJson(res, 200, PAGES);
   } catch (err) {
     console.error(err);
