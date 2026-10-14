@@ -233,8 +233,6 @@
   const isLeague = (e) => (e.tags || []).includes('league');
   const mineBadge = (e) => (isMine(e) ? '<span class="pill mine-pill">⚑ המועדון שלי</span>' : '');
   const leagueBadge = (e) => (isLeague(e) ? '<span class="pill league-pill"><span aria-hidden="true">🏆</span> ליגה</span>' : '');
-  /** Participant's club name matches my club. */
-  const inMyClub = (p) => { const c = clubOf(state.myClub); return !!c && !!p.club && clubByName(p.club)?.id === c.id; };
 
   function updateTrackButtons() {
     const c = clubOf(state.myClub);
@@ -335,11 +333,10 @@
     const box = $('#myPeople');
     const e = state.events.find((x) => x.id === id);
     if (!box || !e) return;
-    const club = clubOf(state.myClub);
-    const title = club ? 'ההגדרות שלי' : 'האנשים שלי';
-    if (!state.people.length && !club) {
-      box.innerHTML = `<h2 id="mypl-h">ההגדרות שלי</h2><p class="muted">בחרו את המועדון שלכם והוסיפו אנשים שמעניינים אתכם, ונראה בכל אירוע מי רשום.</p>
-        <button type="button" class="btn ghost" data-open-people>👥 להגדרות</button>`;
+    const title = 'האנשים שלי';
+    if (!state.people.length) {
+      box.innerHTML = `<h2 id="mypl-h">האנשים שלי</h2><p class="muted">הוסיפו אנשים שמעניינים אתכם, ונראה בכל אירוע מי מהם רשום ומתי הוא מזנק.</p>
+        <button type="button" class="btn ghost" data-open-people>👥 הוספת אנשים</button>`;
       return;
     }
     box.innerHTML = `<h2 id="mypl-h">${title}</h2><p class="muted" role="status">בודק את רשימת המשתתפים…</p>`;
@@ -356,16 +353,9 @@
     }
     const detail = (p) => [p.category, p.course, p.start && `זינוק ${p.start}`].filter(Boolean).map(esc).join(' · ');
     let html = `<h2 id="mypl-h">${title}</h2>`;
-    if (club) {
-      const mates = data.participants.filter(inMyClub);
-      html += `<div class="myclub-row">${logoHtml({ id: club.id, name: club.name }, 'cl-md')}
-        <p><strong>${mates.length ? `${mates.length} מ${esc(club.name)} רשומים` : `עדיין אין רשומים מ${esc(club.name)}`}</strong></p></div>
-        ${mates.length ? `<details class="mates"><summary>הצגת הרשומים מהמועדון</summary><ul class="mypl">${mates.map((p) => `<li class="in"><span class="mark" aria-hidden="true">✓</span><div><strong>${esc(p.name)}</strong><span class="muted small">${detail(p)}</span></div></li>`).join('')}</ul></details>` : ''}`;
-    }
     if (state.people.length) {
       const yes = registeredPeople(data.participants);
-      html += `<h3 class="mypl-sub">האנשים שלי</h3>
-      ${yes.length ? `<ul class="mypl">
+      html += `${yes.length ? `<ul class="mypl">
         ${yes.map((hit) => `<li class="in"><span class="mark" aria-hidden="true">✓</span><div>
           <span class="mypl-line"><strong>${esc(hit.name)}</strong>${hit.start ? `<span class="pstart">זינוק ${esc(hit.start)}</span>` : ''}</span>
           <span class="muted small">${[hit.club, hit.category, hit.course].filter(Boolean).map(esc).join(' · ')}</span></div></li>`).join('')}
@@ -376,10 +366,6 @@
   }
 
   /** "👥 registered: …" line on the top cards. */
-  function peopleChipHtml(hits) {
-    return `<div class="people-chip"><span class="pc-ico" aria-hidden="true">👥</span><span class="sr-only">רשומים מהאנשים שלי: </span>
-      ${hits.map((p) => `<span class="pc-person"><strong>${esc(p.name)}</strong>${p.start ? ` <span class="pstart">${esc(p.start)}</span><span class="sr-only"> זינוק</span>` : ''}</span>`).join('')}</div>`;
-  }
   /** Gold star with the number of my registered people; the tooltip lists them with start times. */
   function peopleStarHtml(hits) {
     const lines = hits.map((p) => `${p.name}${p.start ? ` · זינוק ${p.start}` : ''}`);
@@ -432,9 +418,8 @@
       participantsOf(e).then((data) => {
         const hits = registeredPeople(data?.participants);
         if (!hits.length) return;
-        cards.filter(([c, cid]) => cid === id && c.isConnected && !c.querySelector('.people-chip')).forEach(([c]) => {
+        cards.filter(([c, cid]) => cid === id && c.isConnected && !c.querySelector('.ppl-star')).forEach(([c]) => {
           c.classList.add('has-people');
-          c.querySelector('.top-meta').insertAdjacentHTML('beforeend', peopleChipHtml(hits));
           c.querySelector('.top-bar')?.insertAdjacentHTML('afterbegin', peopleStarHtml(hits));
         });
       });
