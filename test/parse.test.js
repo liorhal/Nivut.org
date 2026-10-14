@@ -49,6 +49,8 @@ test('parseHome reads featured events, closed areas and news', () => {
   assert.deepEqual(odem.tags, ['champ']);
   assert.deepEqual(h.closedAreas.map((a) => [a.date, a.discipline, a.name]), [
     ['2026-10-16', 'mtbo', 'בריכות מעגן מיכאל'], ['2026-10-17', 'foot', 'בית ענבה'], ['2026-11-14', 'foot', 'שער הכרמל']]);
+  assert.deepEqual(h.clubs.map((c) => [c.id, c.name]), [['2', 'הפועל תל אביב'], ['11', 'השרון']]);
+  assert.equal(h.clubs[1].logo, 'https://cdn.nivut.org.il/club-logos/club11.png');
   assert.equal(h.news.length, 1);
   assert.equal(h.news[0].date, '2026-08-07');
   assert.equal(h.news[0].category, 'חדשות');
@@ -69,7 +71,10 @@ test('parseEventPage reads the event details', () => {
   assert.equal(d.price, '25 שח (לחברי איגוד)');
   assert.equal(d.priceNonMember, '50 שח (לחצוניים)');
   assert.equal(d.registrationDeadline, '2026-10-16T18:00');
-  assert.deepEqual(d.club, { name: 'השרון', url: 'https://nivut.org.il/Club/11' });
+  assert.deepEqual(d.club, {
+    name: 'השרון', url: 'https://nivut.org.il/Club/11', id: '11',
+    logo: 'https://cdn.nivut.org.il/club-logos/club11.png', pageLogo: 'https://cdn.nivut.org.il/images/clubs/x.jpg',
+  });
   assert.equal(d.director, 'מנהל לדוגמה');
   assert.equal(d.map.name, 'בית ענבה [ת]');
   assert.equal(d.map.image, 'https://nivut.org.il/maps/map052.gif');
@@ -88,6 +93,7 @@ test('parseForum reads threads, replies and ages', () => {
   assert.equal(t.length, 2);
   assert.equal(t[0].title, 'אליפות ישראל ביער אודם');
   assert.equal(t[0].author, 'משתמש א');
+  assert.equal(t[0].authorClubId, '4');
   assert.equal(t[0].announcement, true);
   assert.deepEqual(t[0].body, ['בוקר טוב,', '• האליפות תתקיים ב-23.10']);
   assert.equal(t[0].replyCount, 1);
@@ -186,4 +192,10 @@ test('start time comes from the start row, never from a midnight datetime', () =
   const dateOnly = base.replace(/<tr><td>זינוקים\n<\/td>[\s\S]*?<\/tr>/, '<tr><td colspan="3"><meta itemprop="startDate" datetime="2026-10-17T00:00"></td></tr>');
   d = L.parseEventPage(dateOnly, 'https://nivut.org.il/3379/Info');
   assert.equal(d.startFrom, '');
+});
+
+test('league: from the title or the category, unless it is only like a league', () => {
+  assert.deepEqual(L.eventTags('ליגה ארצית מקצה 3', null), ['league']);
+  assert.deepEqual(L.eventTags('יער ביריה', { eventType: 'ליגת ניווט רגלי (יער)', note: '' }), ['league']);
+  assert.deepEqual(L.eventTags('ניווט ענבה', { eventType: 'ליגת ניווט רגלי (יער)', note: 'אימון עם מסלולים כמו בליגה' }), ['training']);
 });

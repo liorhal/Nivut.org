@@ -845,3 +845,57 @@ main:focus { outline: none; }
 }
 @media (max-width: 640px) { .hero-head .hero-title { font-size: 2.1rem; white-space: nowrap; } }
 @media (max-width: 370px) { .hero-head .hero-title { font-size: 1.85rem; } .df-btn { min-width: 34px; min-height: 34px; } .df-btn .di { --s: 24px; } }
+
+/* ---------- Club logos ---------- */
+.club-logo {
+  --s: 22px; position: relative; flex: none; display: inline-grid; place-items: center; width: var(--s); height: var(--s);
+  border-radius: 50%; overflow: hidden; background: var(--surface-2); box-shadow: 0 0 0 1px var(--border); vertical-align: middle;
+}
+.club-logo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #fff; }
+.club-logo .mono { font-weight: 900; font-size: calc(var(--s) * .5); color: var(--muted); line-height: 1; }
+.cl-xs { --s: 18px; margin-inline-end: 5px; }
+.cl-sm { --s: 22px; margin-inline-end: 6px; }
+.cl-md { --s: 36px; margin-inline-end: 8px; }
+.cl-lg { --s: 48px; }
+.cl-btn { --s: 22px; box-shadow: 0 0 0 2px rgb(255 255 255 / .6); }
+.club-li, .club-dd, .top-club, .author { display: inline-flex; align-items: center; }
+.top-club { margin: 2px 0 0; font-size: .82rem; color: var(--muted); gap: 0; }
+.club-tag { gap: 0; }
+.ev-head .club-tag .club-logo { box-shadow: 0 0 0 2px rgb(255 255 255 / .5); }
+.track-ico { display: inline-flex; }
+
+/* ---------- League highlight (gold) ---------- */
+:root { --gold: #f2b705; --gold-ink: #3d2c00; --gold-soft: #fff4cc; }
+:root[data-theme="dark"] { --gold-soft: #3a2f0a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --gold-soft: #3a2f0a; } }
+.league-pill { background: var(--gold); color: var(--gold-ink); border-color: var(--gold); font-weight: 900; }
+.event-card.is-league { background: linear-gradient(90deg, transparent 55%, var(--gold-soft)), var(--surface); box-shadow: inset 0 3px 0 var(--gold), var(--shadow); }
+.top-card.is-league { box-shadow: inset 0 4px 0 var(--gold), 0 18px 40px rgb(0 0 0 / .28); }
+.top-card.lead.is-league .lead-band { box-shadow: inset 0 -5px 0 var(--gold); }
+.flags { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0; }
+.league-dot { margin-inline-end: 4px; }
+.ev-hero.is-league .league-pill { font-size: .95rem; padding: 3px 12px; box-shadow: 0 4px 14px rgb(0 0 0 / .25); }
+:root[data-contrast="high"] .league-pill { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+/* ---------- My club ---------- */
+.mine-pill { background: transparent; color: var(--brand); border: 1.5px solid currentColor; font-weight: 900; }
+:root[data-theme="dark"] .mine-pill { color: #4ade80; }
+.ev-head .mine-pill { color: #fff; border-color: #fff; }
+.event-card.is-mine { border-inline-start-width: 10px; }
+.top-card.is-mine { outline: 3px solid color-mix(in srgb, var(--brand) 60%, #fff); outline-offset: -3px; }
+.mine-author { font-weight: 800; color: var(--brand); }
+.mine-author::after { content: " ★"; }
+.pref { border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 12px; }
+.people-dialog h3 { margin: 10px 0 6px; font-size: 1.1rem; }
+.myclub-pick { display: flex; align-items: center; gap: 10px; }
+.myclub-pick select { flex: 1; }
+.myclub-row { display: flex; align-items: center; margin-bottom: 6px; }
+.myclub-row p { margin: 0; }
+.mates summary { cursor: pointer; color: var(--brand); font-weight: 700; margin-bottom: 6px; }
+.mypl-sub { font-size: 1rem; margin: 14px 0 8px; display: flex; gap: 8px; align-items: baseline; }
+.check { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; min-height: 42px; }
+.check input { width: 20px; height: 20px; min-height: 0; accent-color: var(--brand); }
+@media (max-width: 560px) {
+  .top-card .flags { margin: 0; }
+  .top-club { display: none; } /* phones: the "my club" badge stays; logos show on the event page */
+}

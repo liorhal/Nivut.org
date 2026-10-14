@@ -64,7 +64,7 @@
     links: {}, events: [], forum: null, news: null, meta: null,
     filter: { q: '', club: '', disciplines: new Set(), tags: new Set() },
     forumQ: '', annualMode: 'year', monthCursor: null,
-    people: [], participants: new Map(),
+    people: [], participants: new Map(), clubs: [], myClub: '',
   };
 
   /* ---------- Accessibility & display preferences ---------- */
@@ -155,6 +155,62 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  /* ---------- Clubs: logos, "my club", league highlight ---------- */
+  const clubOf = (id) => state.clubs.find((c) => c.id === String(id || ''));
+  /** Club from a free-text name, e.g. a participant's "מועדון השרון". */
+  const clubByName = (text) => {
+    const words = new Set(nameTokens(text));
+    return state.clubs.find((c) => { const t = nameTokens(c.name); return t.length && t.every((w) => words.has(w)); });
+  };
+  /** Logo with a fallback image and, if both fail, the club's initial. Decorative: the name is always in text. */
+  function logoHtml({ id = '', name = '', src = '', fallback = '' }, cls = '') {
+    const club = clubOf(id) || (name ? clubByName(name) : null);
+    const primary = src || club?.logo || fallback;
+    const label = name || club?.name || '';
+    const initial = label.replace(/^(מועדון|אס"?א|הפועל)\s+/, '').trim()[0] || '•';
+    const alt = fallback && fallback !== primary ? ` data-fallback="${esc(fallback)}"` : '';
+    return `<span class="club-logo ${cls}" aria-hidden="true"><span class="mono">${esc(initial)}</span>${primary ? `<img src="${esc(primary)}" alt="" loading="lazy"${alt} onerror="nivutLogoFail(this)">` : ''}</span>`;
+  }
+  window.nivutLogoFail = (img) => {
+    const next = img.dataset.fallback;
+    if (next) { img.removeAttribute('data-fallback'); img.src = next; } else img.remove();
+  };
+  const eventClubId = (e) => e.clubId || e.details?.club?.id || clubByName(e.clubName || '')?.id || '';
+  const eventLogo = (e, cls) => logoHtml({ id: eventClubId(e), name: e.clubName, fallback: e.details?.club?.pageLogo }, cls);
+  const isMine = (e) => !!state.myClub && eventClubId(e) === state.myClub;
+  const isLeague = (e) => (e.tags || []).includes('league');
+  const mineBadge = (e) => (isMine(e) ? '<span class="pill mine-pill">★ המועדון שלי</span>' : '');
+  const leagueBadge = (e) => (isLeague(e) ? '<span class="pill league-pill"><span aria-hidden="true">🏆</span> ליגה</span>' : '');
+  /** Participant's club name matches my club. */
+  const inMyClub = (p) => { const c = clubOf(state.myClub); return !!c && !!p.club && clubByName(p.club)?.id === c.id; };
+
+  function updateTrackButtons() {
+    const c = clubOf(state.myClub);
+    $$('.track-ico').forEach((el) => { el.innerHTML = c ? logoHtml({ id: c.id, name: c.name }, 'cl-btn') : '👥'; });
+    $$('.people-count').forEach((el) => { el.textContent = state.people.length ? `(${state.people.length})` : ''; });
+  }
+  function fillClubSelect() {
+    const sel = $('#myClubSel');
+    sel.innerHTML = `<option value="">ללא</option>${state.clubs.map((c) => `<option value="${esc(c.id)}"${c.id === state.myClub ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}`;
+    sel.disabled = !state.clubs.length;
+    $('#myClubPreview').innerHTML = clubOf(state.myClub) ? logoHtml({ id: state.myClub }, 'cl-lg') : '';
+  }
+  function initMyClub() {
+    state.myClub = cookies.get('nivut_club').replace(/\D/g, '');
+    $('#myClubSel').addEventListener('change', (ev) => {
+      state.myClub = ev.target.value;
+      cookies.set('nivut_club', state.myClub);
+      fillClubSelect();
+      updateTrackButtons();
+      $('#mineField').hidden = !state.myClub;
+      if (!state.myClub) state.filter.mine = false;
+      if (state.events.length) { renderTop4(); renderList(); renderYear(); }
+      if (location.hash.startsWith('#event/')) showEvent(decodeURIComponent(location.hash.slice(7)));
+      if (state.forum) renderForum();
+      toast(state.myClub ? `המועדון שלך: ${clubOf(state.myClub)?.name}` : 'לא נבחר מועדון');
+    });
+  }
+
   /* ---------- My people: who is registered (names stay in this browser) ---------- */
   const FINALS = { 'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ' };
   const nameTokens = (s) => String(s).normalize('NFKD').replace(/[\u0591-\u05C7]/g, '')
@@ -168,7 +224,7 @@
 
   function loadPeople() {
     state.people = store.get('people', []).filter((x) => typeof x === 'string' && x.trim()).slice(0, 100);
-    $$('.people-count').forEach((el) => { el.textContent = state.people.length ? `(${state.people.length})` : ''; });
+    updateTrackButtons();
   }
   function savePeople() {
     store.set('people', state.people);
@@ -222,37 +278,50 @@
     const box = $('#myPeople');
     const e = state.events.find((x) => x.id === id);
     if (!box || !e) return;
-    if (!state.people.length) {
-      box.innerHTML = `<h2 id="mypl-h">האנשים שלי</h2><p class="muted">רוצים לדעת אם חברים שלכם רשומים? הוסיפו אותם, ונבדוק בכל אירוע.</p>
-        <button type="button" class="btn ghost" data-open-people>👥 הוספת אנשים</button>`;
+    const club = clubOf(state.myClub);
+    const title = club ? 'המעקב שלי' : 'האנשים שלי';
+    if (!state.people.length && !club) {
+      box.innerHTML = `<h2 id="mypl-h">המעקב שלי</h2><p class="muted">בחרו את המועדון שלכם והוסיפו אנשים שמעניינים אתכם, ונראה בכל אירוע מי רשום.</p>
+        <button type="button" class="btn ghost" data-open-people>👥 הגדרת המעקב</button>`;
       return;
     }
-    box.innerHTML = '<h2 id="mypl-h">האנשים שלי</h2><p class="muted" role="status">בודק את רשימת המשתתפים…</p>';
+    box.innerHTML = `<h2 id="mypl-h">${title}</h2><p class="muted" role="status">בודק את רשימת המשתתפים…</p>`;
     const data = await participantsOf(e);
     if (!$('#myPeople')) return;
     if (!data || data.error) {
-      box.innerHTML = `<h2 id="mypl-h">האנשים שלי</h2><p class="muted">לא ניתן לקרוא כרגע את רשימת המשתתפים. <a href="${esc(e.url)}" target="_blank" rel="noopener">לרשימה באתר האיגוד ↗</a></p>`;
+      box.innerHTML = `<h2 id="mypl-h">${title}</h2><p class="muted">לא ניתן לקרוא כרגע את רשימת המשתתפים. <a href="${esc(e.url)}" target="_blank" rel="noopener">לרשימה באתר האיגוד ↗</a></p>`;
       return;
     }
     if (!data.participants.length) {
-      box.innerHTML = `<h2 id="mypl-h">האנשים שלי</h2><p class="muted">רשימת המשתתפים ריקה, או שלא הצלחנו לקרוא אותה. <a href="${esc(e.url)}" target="_blank" rel="noopener">לרשימה באתר האיגוד ↗</a></p>
+      box.innerHTML = `<h2 id="mypl-h">${title}</h2><p class="muted">רשימת המשתתפים ריקה, או שלא הצלחנו לקרוא אותה. <a href="${esc(e.url)}" target="_blank" rel="noopener">לרשימה באתר האיגוד ↗</a></p>
         ${data.diag ? `<details class="diag"><summary>פרטים טכניים</summary><pre dir="ltr">${esc(JSON.stringify(data.diag, null, 2))}</pre></details>` : ''}`;
       return;
     }
-    const m = matchesIn(data.participants);
-    const yes = m.filter((x) => x.hit), no = m.filter((x) => !x.hit);
-    box.innerHTML = `<h2 id="mypl-h">האנשים שלי <span class="muted">${yes.length} מתוך ${m.length} רשומים</span></h2>
+    const detail = (p) => [p.category, p.course, p.start && `זינוק ${p.start}`].filter(Boolean).map(esc).join(' · ');
+    let html = `<h2 id="mypl-h">${title}</h2>`;
+    if (club) {
+      const mates = data.participants.filter(inMyClub);
+      html += `<div class="myclub-row">${logoHtml({ id: club.id, name: club.name }, 'cl-md')}
+        <p><strong>${mates.length ? `${mates.length} מ${esc(club.name)} רשומים` : `עדיין אין רשומים מ${esc(club.name)}`}</strong></p></div>
+        ${mates.length ? `<details class="mates"><summary>הצגת הרשומים מהמועדון</summary><ul class="mypl">${mates.map((p) => `<li class="in"><span class="mark" aria-hidden="true">✓</span><div><strong>${esc(p.name)}</strong><span class="muted small">${detail(p)}</span></div></li>`).join('')}</ul></details>` : ''}`;
+    }
+    if (state.people.length) {
+      const m = matchesIn(data.participants);
+      const yes = m.filter((x) => x.hit), no = m.filter((x) => !x.hit);
+      html += `<h3 class="mypl-sub">האנשים שלי <span class="muted">${yes.length} מתוך ${m.length} רשומים</span></h3>
       <ul class="mypl">
-        ${yes.map(({ name, hit }) => `<li class="in"><span class="mark" aria-hidden="true">✓</span><div><strong>${esc(hit.name)}</strong><span class="sr-only"> – רשום/ה</span>
-          <span class="muted small">${[hit.category, hit.course, hit.start && `זינוק ${hit.start}`, hit.club].filter(Boolean).map(esc).join(' · ')}</span></div></li>`).join('')}
+        ${yes.map(({ hit }) => `<li class="in"><span class="mark" aria-hidden="true">✓</span><div><strong>${esc(hit.name)}</strong><span class="sr-only"> – רשום/ה</span>
+          <span class="muted small">${hit.club ? `${logoHtml({ name: hit.club }, 'cl-xs')} ${esc(hit.club)} · ` : ''}${detail(hit)}</span></div></li>`).join('')}
         ${no.map(({ name }) => `<li class="out"><span class="mark" aria-hidden="true">–</span><div><span>${esc(name)}</span><span class="sr-only"> – </span><span class="muted small">לא ברשימה</span></div></li>`).join('')}
-      </ul>
-      <p class="muted small">ברשימה כרגע ${data.count} משתתפים · <button type="button" class="linklike" data-open-people>עריכת האנשים שלי</button></p>`;
+      </ul>`;
+    }
+    html += `<p class="muted small">ברשימה כרגע ${data.count} משתתפים · <button type="button" class="linklike" data-open-people>עריכת המעקב</button></p>`;
+    box.innerHTML = html;
   }
 
   /** "👥 registered: …" line on the top cards. */
   async function decorateTopPeople() {
-    if (!state.people.length) return;
+    if (!state.people.length) return; // the top cards mark people only; club mates show on the event page
     for (const e of topEvents()) {
       if (!e.nivutId) continue;
       participantsOf(e).then((data) => {
@@ -418,7 +487,7 @@
     const bbox = hasGeo ? [d.lng - 0.03, d.lat - 0.018, d.lng + 0.03, d.lat + 0.018].map((n) => n.toFixed(5)).join(',') : '';
 
     return `
-    <header class="ev-hero" style="--c:${dc.color}">
+    <header class="ev-hero${isLeague(e) ? ' is-league' : ''}" style="--c:${dc.color}">
       <div class="container">
         <a class="ev-back" href="#${esc(state.lastView || 'upcoming')}">→ חזרה</a>
         <div class="ev-hero-grid">
@@ -428,7 +497,8 @@
             <span class="mon">${MONTHS[date.getMonth()]} ${date.getFullYear()}</span>
           </div>
           <div class="ev-head">
-            <div class="badges">${discBadges(e)}${tagBadges(e)}</div>
+            <div class="badges">${leagueBadge(e)}${mineBadge(e)}${discBadges(e)}${tagBadges({ ...e, tags: (e.tags || []).filter((t) => t !== 'league') })}
+              ${e.clubName ? `<span class="tag club-tag">${eventLogo(e, 'cl-sm')}${esc(e.clubName)}</span>` : ''}</div>
             <h1 id="evTitle" tabindex="-1">${esc(e.title)}</h1>
             ${d.eventType || d.note ? `<p class="ev-sub">${[d.eventType, d.note].filter(Boolean).map(esc).join(' · ')}</p>` : ''}
             <p class="sr-only">${fmtLong(date)}${e.location ? `, ${esc(e.location)}` : ''}</p>
@@ -496,7 +566,7 @@
           </section>` : ''}
 
           ${d.club || d.planner || d.director || d.contact ? `<section class="ev-card" aria-labelledby="pp-h"><h2 id="pp-h">מי מארגן</h2><dl class="ev-people">
-            ${d.club ? `<dt>מועדון</dt><dd>${d.club.url ? `<a href="${esc(d.club.url)}" target="_blank" rel="noopener">${esc(d.club.name)}</a>` : esc(d.club.name)}</dd>` : ''}
+            ${d.club ? `<dt>מועדון</dt><dd class="club-dd">${eventLogo(e, 'cl-md')}${d.club.url ? `<a href="${esc(d.club.url)}" target="_blank" rel="noopener">${esc(d.club.name)}</a>` : esc(d.club.name)}${isMine(e) ? ' <span class="pill mine-pill">★ המועדון שלי</span>' : ''}</dd>` : ''}
             ${d.director ? `<dt>ניהול</dt><dd>${esc(d.director)}</dd>` : ''}
             ${d.planner ? `<dt>תכנון מסלולים</dt><dd>${esc(d.planner)}</dd>` : ''}
             ${d.contact ? `<dt>יצירת קשר</dt><dd>${phoneLink(d.contact)}</dd>` : ''}
@@ -635,7 +705,7 @@
       const d = evDate(e);
       const left = daysBetween(now, d);
       const lead = i === 0;
-      return `<li class="top-card${lead ? ' lead' : ''}" style="--c:${disc(e).color}">
+      return `<li class="top-card${lead ? ' lead' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}">
         ${lead ? `<div class="lead-band" aria-hidden="true">
           <span class="lb-day">${d.getDate()}</span>
           <span class="lb-mon">${MONTHS[d.getMonth()]}<br>יום ${DAYS[d.getDay()]}</span>
@@ -646,8 +716,10 @@
             <span class="top-di">${(e.disciplines || []).map((k) => discIcon(k, 'di-sm')).join('')}</span></div>
           <div class="top-meta">
             <div class="badges">${discBadges(e)}</div>
+            ${isLeague(e) || isMine(e) ? `<div class="flags">${leagueBadge(e)}${mineBadge(e)}</div>` : ''}
             <h2><a href="#event/${encodeURIComponent(e.id)}">${esc(e.title)}</a></h2>
             <p>${DAYS[d.getDay()]}${e.time ? ` · <strong class="start-time">זינוק ${esc(e.time)}</strong>` : ''}${e.location && e.location !== e.title ? ` · ${esc(e.location)}` : ''}<span class="sr-only">, ${fmtLong(d)}</span></p>
+            ${e.clubName ? `<p class="top-club">${eventLogo(e, 'cl-xs')}<span>${esc(e.clubName)}</span></p>` : ''}
           </div>
         </div>
         ${lead && e.summary ? `<p class="lead-summary">${esc(e.summary)}</p>` : ''}
@@ -699,7 +771,7 @@
       if (ev.key === 'Escape' && !$('#filters').hidden && $('#filters').contains(document.activeElement)) { setOpen(false); toggle.focus(); }
     });
     $('#clearFilters').addEventListener('click', () => {
-      state.filter.q = ''; state.filter.club = '';
+      state.filter.q = ''; state.filter.club = ''; state.filter.mine = false; $('#mineOnly').checked = false;
       state.filter.disciplines.clear(); state.filter.tags.clear();
       $('#q').value = ''; $('#club').value = '';
       $$('#filters .chip').forEach((b) => b.setAttribute('aria-pressed', 'false'));
@@ -707,6 +779,8 @@
       $('#q').focus();
     });
     $('#club').addEventListener('change', (e) => { state.filter.club = e.target.value; renderList(); });
+    $('#mineField').hidden = !state.myClub;
+    $('#mineOnly').addEventListener('change', (e) => { state.filter.mine = e.target.checked; renderList(); });
   }
 
   function eventCard(e, now) {
@@ -716,16 +790,16 @@
     const when = det?.startFrom ? `תחילת זינוקים ${esc(det.startFrom)}` : '';
     const closed = e.source === 'closed-area';
     return `<li>
-      <article class="event-card${closed ? ' compact' : ''}" style="--c:${disc(e).color}" aria-labelledby="t-${esc(e.id)}">
+      <article class="event-card${closed ? ' compact' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}" aria-labelledby="t-${esc(e.id)}">
         <div class="date-badge" aria-hidden="true"><span class="d">${d.getDate()}</span><span class="m">${MONTHS[d.getMonth()]}</span><span class="w">יום ${DAYS_SHORT[d.getDay()]}</span></div>
         <div class="card-main">
-          <div class="badges">${discBadges(e)}${tagBadges(e)}</div>
+          <div class="badges">${leagueBadge(e)}${mineBadge(e)}${discBadges(e)}${tagBadges({ ...e, tags: (e.tags || []).filter((t) => t !== 'league') })}</div>
           <h3 id="t-${esc(e.id)}"><button type="button" data-open="${esc(e.id)}">${esc(e.title)}</button></h3>
           <ul class="meta">
             <li><span class="sr-only">מועד: </span>${fmtLong(d)}</li>
             ${when ? `<li>⏱ ${when}</li>` : ''}
             ${e.location && e.location !== e.title ? `<li>📍 ${esc(e.location)}</li>` : ''}
-            ${e.clubName ? `<li>מועדון ${esc(e.clubName)}</li>` : ''}
+            ${e.clubName ? `<li class="club-li">${eventLogo(e, 'cl-sm')}מועדון ${esc(e.clubName)}</li>` : ''}
             ${closed ? '<li class="muted">שטח סגור לקראת תחרות · פרטים בקרוב</li>' : ''}
           </ul>
           ${e.summary ? `<p class="summary">${esc(e.summary)}</p>` : ''}
@@ -741,12 +815,12 @@
   }
 
   // The saved discipline filter is a preference, not a search: it does not count here.
-  const filtering = () => !!(state.filter.q || state.filter.club || state.filter.tags.size);
+  const filtering = () => !!(state.filter.q || state.filter.club || state.filter.tags.size || state.filter.mine);
 
   function renderList() {
     const { q, club, disciplines, tags } = state.filter;
     const ql = q.toLowerCase();
-    const active = [q, club].filter(Boolean).length + tags.size;
+    const active = [q, club].filter(Boolean).length + tags.size + (state.filter.mine ? 1 : 0);
     $('#filterCount').hidden = !active;
     $('#filterCount').textContent = active ? `(${active})` : '';
     const top = filtering() ? new Set() : new Set(topEvents().map((e) => e.id));
@@ -755,6 +829,7 @@
       (!disciplines.size || (e.disciplines || []).some((k) => disciplines.has(k))) &&
       (!tags.size || (e.tags || []).some((k) => tags.has(k))) &&
       (!club || e.clubName === club) &&
+      (!state.filter.mine || isMine(e)) &&
       (!ql || [e.fullTitle, e.title, e.location, e.clubName, e.eventType, e.summary].join(' ').toLowerCase().includes(ql)));
     $('#resultCount').textContent = filtering() ? `${list.length} אירועים נמצאו` : '';
     const el = $('#eventList');
@@ -808,7 +883,7 @@
       return `<section class="month-card${past ? ' past' : ''}" aria-label="${MONTHS[m.getMonth()]} ${m.getFullYear()}">
         <h2>${MONTHS[m.getMonth()]} <small>${m.getFullYear()} · ${evs.length} אירועים</small></h2>
         ${evs.length ? `<ul>${evs.map((e) => `<li><button type="button" data-open="${esc(e.id)}" style="--c:${disc(e).color}" class="${e.source === 'closed-area' ? 'tentative' : ''}">
-            <strong>${parseDate(e.date).getDate()}</strong>${discIcon(e.disciplines?.[0], 'di-sm')}<span>${esc(e.title)}<span class="sr-only"> (${esc(disc(e).label)})</span></span></button></li>`).join('')}</ul>`
+            <strong>${parseDate(e.date).getDate()}</strong>${discIcon(e.disciplines?.[0], 'di-sm')}<span>${isLeague(e) ? '<span class="league-dot" aria-hidden="true">🏆</span>' : ''}${esc(e.title)}${isLeague(e) ? '<span class="sr-only"> (ליגה)</span>' : ''}<span class="sr-only"> (${esc(disc(e).label)})</span></span></button></li>`).join('')}</ul>`
           : `<p class="none">${past ? 'אין אירועים' : 'טרם פורסמו אירועים'}</p>`}
       </section>`;
     }).join('');
@@ -830,7 +905,7 @@
         const isoD = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const evs = state.events.filter((e) => e.date === isoD && discOk(e));
         const cls = [d.getMonth() !== m && 'out', d.getTime() === today && 'today'].filter(Boolean).join(' ');
-        html += `<td class="${cls}"${d.getTime() === today ? ' aria-current="date"' : ''}><span class="num">${d.getDate()}</span>${evs.map((e) => `<button type="button" data-open="${esc(e.id)}" style="--c:${disc(e).color}" class="${e.source === 'closed-area' ? 'tentative' : ''}" title="${esc(e.title)}">${discIcon(e.disciplines?.[0], 'di-xs')}${esc(e.title)}</button>`).join('')}</td>`;
+        html += `<td class="${cls}"${d.getTime() === today ? ' aria-current="date"' : ''}><span class="num">${d.getDate()}</span>${evs.map((e) => `<button type="button" data-open="${esc(e.id)}" style="--c:${disc(e).color}" class="${e.source === 'closed-area' ? 'tentative' : ''}" title="${esc(e.title)}${isLeague(e) ? ' (ליגה)' : ''}">${discIcon(e.disciplines?.[0], 'di-xs')}${isLeague(e) ? '🏆 ' : ''}${esc(e.title)}</button>`).join('')}</td>`;
       }
       html += '</tr>';
     }
@@ -903,7 +978,7 @@
             <div class="topic-head">
               <div class="badges">${t.announcement ? '<span class="pill strong">הכרזה</span>' : ''}${t.pinned ? '<span class="pill">📌 נעוץ</span>' : ''}</div>
               <h2>${esc(t.title)}</h2>
-              <p class="meta"><span>${esc(t.author)}</span>${t.lastActivity ? `<span>פעילות אחרונה ${relTime(t.lastActivity)}</span>` : ''}</p>
+              <p class="meta"><span class="author${state.myClub && t.authorClubId === state.myClub ? ' mine-author' : ''}">${t.authorLogo || t.authorClubId ? logoHtml({ id: t.authorClubId, fallback: t.authorLogo }, 'cl-xs') : ''}${esc(t.author)}</span>${t.lastActivity ? `<span>פעילות אחרונה ${relTime(t.lastActivity)}</span>` : ''}</p>
             </div>
             <div class="replies" aria-label="${t.replyCount} תגובות"><strong>${t.replyCount}</strong><span>תגובות</span></div>
           </summary>
@@ -911,7 +986,7 @@
             ${msgBody(t) || '<p class="muted">(הודעה ללא תוכן)</p>'}
             ${ev ? `<p class="related">אירוע קשור: <button type="button" class="chip" data-open="${esc(ev.id)}">${esc(ev.title)} · ${fmtShort(evDate(ev))}</button></p>` : ''}
             ${t.replies.length ? `<ol class="reply-list" aria-label="תגובות">${t.replies.map((r) => `<li>
-              <p class="meta"><strong>${esc(r.author)}</strong><span>${relTime(r.postedAt)}</span></p>${msgBody(r) || `<p>${esc(r.title)}</p>`}</li>`).join('')}</ol>` : ''}
+              <p class="meta"><strong class="author${state.myClub && r.authorClubId === state.myClub ? ' mine-author' : ''}">${r.authorLogo || r.authorClubId ? logoHtml({ id: r.authorClubId, fallback: r.authorLogo }, 'cl-xs') : ''}${esc(r.author)}</strong><span>${relTime(r.postedAt)}</span></p>${msgBody(r) || `<p>${esc(r.title)}</p>`}</li>`).join('')}</ol>` : ''}
             <p><a class="btn ghost" href="${esc(t.url)}" target="_blank" rel="noopener">להגיב בפורום ↗</a></p>
           </div>
         </details>
@@ -955,6 +1030,7 @@
 
   async function boot() {
     initPrefs();
+    initMyClub();
     initPeople();
     initDiscFilter();
     window.addEventListener('hashchange', route);
@@ -989,6 +1065,9 @@
       return;
     }
     state.meta = events;
+    state.clubs = events.clubs || [];
+    fillClubSelect();
+    updateTrackButtons();
     state.events = events.events.map((e) => (e.time === '00:00' ? { ...e, time: '' } : e)).sort((a, b) => evDate(a) - evDate(b));
     const status = $('#liveStatus');
     status.textContent = statusText(events);
