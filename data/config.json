@@ -1,0 +1,14 @@
+{
+  "siteName": "ניווט ישראל",
+  "sourceSite": "https://www.nivut.org.il/",
+  "links": {
+    "calendar": "https://nivut.org.il/calendar.aspx",
+    "maps": "https://nivut.org.il/Maps/",
+    "school": "https://nivut.org.il/school/Events.aspx",
+    "contact": "https://www.nivut.org.il/info/Contactform.aspx",
+    "council": "https://nivut.org.il/council/",
+    "english": "https://www.nivut.org.il/english/",
+    "forum": "https://www.nivut.org.il/"
+  },
+  "sampleData": true
+}
