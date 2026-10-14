@@ -480,7 +480,7 @@
   function regBlock(e, size, cta = '') {
     const dl = regDeadline(e);
     if (e.source === 'closed-area') return '<p class="reg-line reg-soon"><span aria-hidden="true">⏳</span> הרשמה טרם נפתחה</p>';
-    if (!dl) return e.details ? '<p class="reg-line">הרשמה באתר האיגוד</p>' : '';
+    if (!dl) return ''; // no early-registration date: the card shows just the register button
     if (dl <= new Date()) return `<p class="reg-line reg-closed"><span aria-hidden="true">🔒</span> ההרשמה המוקדמת נסגרה${e.details.onsite ? ' · <strong>אפשר להירשם במקום</strong>' : ''}</p>`;
     return `<div class="reg-cd${cta ? ' has-cta' : ''}"><div class="reg-cd-main"><p class="reg-cd-label">הרשמה מוקדמת נסגרת בעוד</p>${countdownHtml(dl, size)}</div>${cta}</div>`;
   }
@@ -988,7 +988,7 @@
           const cta = `<a class="top-cta" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד">הרשמה ↗</a>`;
           const counting = regDeadline(e) && regDeadline(e) > new Date();
           return counting ? regBlock(e, 'cd-card', cta)
-            : `${regBlock(e, 'cd-card')}${regOpen(e) ? `<p class="top-foot"><span>${inDays(left)}</span>${cta}</p>` : ''}`;
+            : `${regBlock(e, 'cd-card')}${regOpen(e) ? `<p class="top-foot">${regDeadline(e) ? `<span>${inDays(left)}</span>` : ''}${cta}</p>` : ''}`;
         })()}
       </li>`;
   }

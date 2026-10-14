@@ -1377,3 +1377,5 @@ a.info-btn { text-decoration: none; }
 @media (max-width: 560px) { .top-bar .ppl-star { width: 40px; height: 40px; margin-block: -4px; } .top-bar .ppl-star .n { font-size: 1rem; } }
 /* Star tooltip: "רשומים:" heading */
 .tip-head { font-weight: 800; color: #fbbf24; margin-bottom: 2px; }
+/* Only the register button (no early-registration date): keep it at the end of the row */
+.top-foot:has(> .top-cta:only-child) { justify-content: flex-end; }
