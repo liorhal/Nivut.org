@@ -18,7 +18,7 @@
 | `calendar.aspx` | לוח האירועים המלא | מפענח כללי, **טרם נבדק מול העמוד האמיתי** ⚠️ |
 
 ```
-דפדפן ──► server.js ──► nivut.org.il
+דפדפן ──► api/*.js (Vercel) ──► nivut.org.il
              │  lib/nivut.js: הורדה, פענוח קידוד (UTF-8 / windows-1255), חילוץ ומיזוג
              └► /api/events  /api/event?id=  /api/forum  /api/news  /api/links   (מטמון 10 דק')
 ```
@@ -44,10 +44,19 @@ npm test             # בדיקות יחידה למפענחים
 | `NIVUT_FORUM_URL` | `{NIVUT_BASE}forums/` |
 | `CACHE_SECONDS` | `600` |
 
-## אחסון
+## פריסה ל-Vercel
 
-כל שירות שמריץ Node מתאים (Render, Railway, Fly.io, VPS וכו'): פקודת ההפעלה היא `npm start`.
-אחסון סטטי בלבד (GitHub Pages) **לא** מספיק, כי צריך את השרת המתווך.
+הפרויקט מוכן ל-Vercel, ללא שלב build:
+
+- `public/` – האתר (HTML, CSS ו-JS).
+- `api/*.js` – פונקציות serverless: `/api/events`, `/api/event`, `/api/forum`, `/api/news`, `/api/links`.
+- `vercel.json` – תיקיית הפלט `public` וזמן ריצה מרבי של 30 שניות לפונקציה.
+- תגובות ה-API נשמרות במטמון של ה-CDN ל-10 דקות (`s-maxage=600`), ובמשך יום מוגשת הגרסה הקודמת בזמן הרענון. כך אתר האיגוד לא מקבל עומס.
+
+**חיבור חד-פעמי:** ב-[vercel.com/new](https://vercel.com/new) מייבאים את המאגר `liorhal/nivut.org` מ-GitHub ולוחצים Deploy, בלי לשנות הגדרות.
+מכאן כל push לענף הראשי מתפרסם אוטומטית, וכל ענף אחר מקבל כתובת Preview.
+
+`npm start` מריץ מקומית את אותן פונקציות בדיוק.
 
 ## בדיקות
 
