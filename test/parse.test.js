@@ -288,10 +288,21 @@ var eMarkers = [\n['כינוס',32.2655410766602,34.932056427002,false,1],]; }</
   assert.equal(d.wazeLL, '32.265541,34.932056');
 });
 
-test('eventFlags: only "מידע נוסף" counts – "אירוע סגור" and "אין הרשמה באתר"', () => {
+test('eventFlags: "אין הרשמה באתר" in מידע נוסף; "אירוע סגור" there or under the name', () => {
   assert.deepEqual(L.eventFlags({ title: 'פרדסי עין ורד', details: { description: ['אירוע סגור לתושבי היישוב'] } }), { closed: true, noSiteRegistration: false });
   assert.deepEqual(L.eventFlags({ title: 'מרכז מצוינות', details: { description: ['למי מיועד?', '*אין הרשמה באתר*'] } }), { closed: false, noSiteRegistration: true });
-  // the note line, the title or the blurb do not count
-  assert.deepEqual(L.eventFlags({ title: 'אירוע סגור', summary: 'אין הרשמה באתר', details: { note: '- אירוע סגור -', description: [] } }), { closed: false, noSiteRegistration: false });
+  // "אירוע סגור" also counts in the line under the name; the title and the home-page blurb do not
+  assert.deepEqual(L.eventFlags({ title: 'פרדסים', details: { note: '- אירוע סגור -', description: [] } }), { closed: true, noSiteRegistration: false });
+  assert.deepEqual(L.eventFlags({ title: 'אירוע סגור', summary: 'אין הרשמה באתר', details: { description: [] } }), { closed: false, noSiteRegistration: false });
+  // direction marks and no-break spaces between the words
+  assert.equal(L.eventFlags({ details: { description: ['*אין\u200f הרשמה\u00a0באתר*'] } }).noSiteRegistration, true);
   assert.deepEqual(L.eventFlags({ title: 'ליגה', details: { description: ['אין הרשמה במקום', 'ללא הרשמה מראש'] } }), { closed: false, noSiteRegistration: false });
+});
+
+test('event page: "מידע נוסף" found by its label when the cell has no itemprop', () => {
+  const html = fx('event.html').replace(/<td colspan="2" itemprop="description">/, '<td colspan="2">')
+    .replace(/(<td>מידע נוסף<\/td><td colspan="2">)[\s\S]*?(<\/td>)/, '$1<p>מרכז מצוינות</p><p>*אין הרשמה באתר*</p>$2');
+  const d = L.parseEventPage(html, 'https://nivut.org.il/3600/Info');
+  assert.deepEqual(d.description, ['מרכז מצוינות', '*אין הרשמה באתר*']);
+  assert.equal(L.eventFlags({ details: d }).noSiteRegistration, true);
 });

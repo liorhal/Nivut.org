@@ -837,9 +837,11 @@
   /** "מידע נוסף" from the event page (falls back to the home-page blurb). */
   const moreInfo = (e) => (e.details?.description?.length ? e.details.description : e.summary ? [e.summary] : []);
   /** The additional info says registration is not on the site ("*אין הרשמה באתר", "ללא הרשמה", "אין צורך בהרשמה"). */
-  // Hidden only when the organisers wrote it in "מידע נוסף": "אין הרשמה באתר" / "אירוע סגור".
-  const infoText = (e) => (e.details?.description || []).join(' ');
-  const noSiteRegistration = (e) => !!e.noSiteRegistration || /אין\s+הרשמה\s+(?:ב|דרך\s+ה)אתר/.test(infoText(e));
+  // Hidden when the organisers wrote "אין הרשמה באתר" in "מידע נוסף", or "אירוע סגור" there or under the name.
+  // Direction marks and zero-width characters sometimes sit between the words.
+  const plain = (t) => String(t || '').replace(/[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, '').replace(/[\s\u00a0]+/g, ' ');
+  const infoText = (e) => plain((e.details?.description || []).join(' '));
+  const noSiteRegistration = (e) => !!e.noSiteRegistration || /אין\s*(?:אפשרות\s*)?(?:ה)?רשמה\s*(?:ב|דרך\s*ה)אתר/.test(infoText(e));
   /** "ⓘ מידע נוסף": opens the event page at its "מידע נוסף" section. */
   const infoBtnHtml = (e) => (moreInfo(e).length
     ? `<a class="info-btn" href="#event/${encodeURIComponent(e.id)}" data-goto="ev-info" aria-label="מידע נוסף על ${esc(e.title)}"><span aria-hidden="true">i</span><span class="info-text">מידע נוסף</span></a>` : '');
@@ -861,7 +863,9 @@
 
   /** Has an event page on the association site, where you register (closed areas and calendar-only items do not). */
   /** "אירוע סגור" (a private event) in the title, category, the event-page note ("- אירוע סגור -") or additional info. */
-  const isClosedEvent = (e) => !!e.closed || /(?:אירוע|ארוע)\s+סגור/.test(infoText(e));
+  /** "אירוע סגור" in "מידע נוסף" or in the line under the event name (category / note). */
+  const isClosedEvent = (e) => !!e.closed
+    || /(?:אירוע|ארוע)\s*סגור/.test(`${infoText(e)} ${plain(e.details?.note)} ${plain(e.details?.eventType)}`);
   const hasRegistration = (e) => !!e.nivutId && e.source !== 'closed-area' && !noSiteRegistration(e) && !isClosedEvent(e);
   /** Upcoming events you can register for; the annual plan shows everything except closed events. */
   function upcoming() {
@@ -1472,7 +1476,7 @@
   /* ---------- Checking events as they come into view ---------- */
   // Events from the calendar arrive without their page. Their "מידע נוסף" is checked only when they
   // enter the shown months (the first two, then two more per "show more"), and the answer is kept here.
-  const FLAGS_KEY = 'evflags', FLAGS_TTL = 12 * 3600e3;
+  const FLAGS_KEY = 'evflags2', FLAGS_TTL = 12 * 3600e3;
   const flagCache = (() => {
     let all = store.get(FLAGS_KEY, {});
     const now = Date.now();
