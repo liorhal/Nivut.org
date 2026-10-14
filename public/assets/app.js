@@ -282,6 +282,10 @@
     return state.participants.get(e.nivutId);
   }
   const startListUrl = (e) => (e.nivutId ? `${(state.links.home || 'https://nivut.org.il/').replace(/\/?$/, '/')}${e.nivutId}/Start` : e.url);
+  /** My people who are on the list, earliest start first. */
+  const registeredPeople = (list) => state.people.map((name) => (list || []).find((p) => sameName(name, p.name))).filter(Boolean)
+    .filter((p, i, arr) => arr.indexOf(p) === i)
+    .sort((a, b) => (a.start || '99:99').localeCompare(b.start || '99:99'));
   const matchesIn = (list) => state.people.map((name) => ({ name, hit: (list || []).find((p) => sameName(name, p.name)) }));
 
   async function renderMyPeople(id) {
@@ -316,31 +320,38 @@
         ${mates.length ? `<details class="mates"><summary>הצגת הרשומים מהמועדון</summary><ul class="mypl">${mates.map((p) => `<li class="in"><span class="mark" aria-hidden="true">✓</span><div><strong>${esc(p.name)}</strong><span class="muted small">${detail(p)}</span></div></li>`).join('')}</ul></details>` : ''}`;
     }
     if (state.people.length) {
-      const m = matchesIn(data.participants);
-      const yes = m.filter((x) => x.hit), no = m.filter((x) => !x.hit);
-      html += `<h3 class="mypl-sub">האנשים שלי <span class="muted">${yes.length} מתוך ${m.length} רשומים</span></h3>
-      <ul class="mypl">
-        ${yes.map(({ hit }) => `<li class="in"><span class="mark" aria-hidden="true">✓</span><div><strong>${esc(hit.name)}</strong><span class="sr-only"> – רשום/ה</span>
-          <span class="muted small">${hit.club ? `${logoHtml({ name: hit.club }, 'cl-xs')} ${esc(hit.club)} · ` : ''}${detail(hit)}</span></div></li>`).join('')}
-        ${no.map(({ name }) => `<li class="out"><span class="mark" aria-hidden="true">–</span><div><span>${esc(name)}</span><span class="sr-only"> – </span><span class="muted small">לא ברשימה</span></div></li>`).join('')}
-      </ul>`;
+      const yes = registeredPeople(data.participants);
+      html += `<h3 class="mypl-sub">האנשים שלי</h3>
+      ${yes.length ? `<ul class="mypl">
+        ${yes.map((hit) => `<li class="in"><span class="mark" aria-hidden="true">✓</span><div>
+          <span class="mypl-line"><strong>${esc(hit.name)}</strong>${hit.start ? `<span class="pstart">זינוק ${esc(hit.start)}</span>` : ''}</span>
+          <span class="muted small">${[hit.club, hit.category, hit.course].filter(Boolean).map(esc).join(' · ')}</span></div></li>`).join('')}
+      </ul>` : '<p class="muted">אף אחד מהאנשים שלך עדיין לא רשום.</p>'}`;
     }
     html += `<p class="muted small">ברשימה כרגע <a href="${esc(startListUrl(e))}" target="_blank" rel="noopener">${data.count} משתתפים ↗</a> · <button type="button" class="linklike" data-open-people>עריכת המעקב</button></p>`;
     box.innerHTML = html;
   }
 
   /** "👥 registered: …" line on the top cards. */
-  async function decorateTopPeople() {
-    if (!state.people.length) return; // the top cards mark people only; club mates show on the event page
-    for (const e of topEvents()) {
-      if (!e.nivutId) continue;
+  function peopleChipHtml(hits) {
+    return `<div class="people-chip"><span class="pc-ico" aria-hidden="true">👥</span><span class="sr-only">רשומים מהאנשים שלי: </span>
+      ${hits.map((p) => `<span class="pc-person"><strong>${esc(p.name)}</strong>${p.start ? ` <span class="pstart">${esc(p.start)}</span><span class="sr-only"> זינוק</span>` : ''}</span>`).join('')}</div>`;
+  }
+  /** Marks my registered people on the home page cards (top four and the list). */
+  function decorateTopPeople() {
+    if (!state.people.length) return;
+    const visible = [...new Set([...$$('.top-card [href^="#event/"]'), ...$$('.event-card [data-open]')]
+      .map((el) => decodeURIComponent(el.getAttribute('href')?.slice(7) || el.dataset.open)))];
+    for (const id of visible) {
+      const e = state.events.find((x) => x.id === id);
+      if (!e?.nivutId) continue;
       participantsOf(e).then((data) => {
-        if (!data?.participants?.length) return;
-        const hits = matchesIn(data.participants).filter((x) => x.hit).map((x) => x.name);
-        const card = document.querySelector(`.top-card [href="#event/${CSS.escape(encodeURIComponent(e.id))}"]`)?.closest('.top-card');
-        if (!card || !hits.length || card.querySelector('.people-chip')) return;
-        const names = hits.length > 2 ? `${hits.slice(0, 2).join(', ')} ועוד ${hits.length - 2}` : hits.join(' ו');
-        card.querySelector('.top-meta').insertAdjacentHTML('beforeend', `<p class="people-chip"><span aria-hidden="true">👥</span> רשומים: ${esc(names)}</p>`);
+        const hits = registeredPeople(data?.participants);
+        if (!hits.length) return;
+        const top = document.querySelector(`.top-card [href="#event/${CSS.escape(encodeURIComponent(id))}"]`)?.closest('.top-card');
+        if (top && !top.querySelector('.people-chip')) top.querySelector('.top-meta').insertAdjacentHTML('beforeend', peopleChipHtml(hits));
+        const card = document.querySelector(`.event-card [data-open="${CSS.escape(id)}"]`)?.closest('.event-card');
+        if (card && !card.querySelector('.people-chip')) card.querySelector('.meta').insertAdjacentHTML('afterend', peopleChipHtml(hits));
       });
     }
   }
@@ -869,6 +880,7 @@
       return sep + eventCard(e, now);
     }).join('');
     tickCountdowns();
+    decorateTopPeople();
   }
 
   function renderNews() {

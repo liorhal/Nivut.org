@@ -982,3 +982,17 @@ main:focus { outline: none; }
 @media (max-width: 560px) {
   .hud-logo, .top-card.lead .hud-logo, .top-card:not(.lead) .hud-logo { width: 120px; height: 120px; inset-inline-end: -22px; top: 50%; bottom: auto; transform: translateY(-50%) rotate(-16deg); opacity: .14; }
 }
+
+/* ---------- My registered people (with their start time) ---------- */
+.people-chip { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 6px 0 0; font-size: .85rem; color: var(--text); }
+.pc-ico { font-size: 1rem; }
+.pc-person { display: inline-flex; align-items: center; gap: 5px; padding: 2px 4px 2px 8px; border-radius: 999px;
+  background: color-mix(in srgb, #16a34a 12%, var(--surface)); border: 1px solid color-mix(in srgb, #16a34a 40%, var(--border)); }
+.pstart { font-family: var(--num); font-weight: 900; font-size: .8rem; letter-spacing: -.01em; padding: 0 6px; border-radius: 999px; background: #16a34a; color: #fff; }
+.mypl-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.mypl .pstart { font-size: .85rem; padding: 1px 8px; }
+:root[data-contrast="high"] .pstart { background: var(--text); color: var(--bg); }
+@media (max-width: 560px) {
+  .top-card .people-chip { margin-top: 3px; font-size: .78rem; }
+  .top-card .pc-person { padding: 1px 3px 1px 6px; }
+}
