@@ -393,7 +393,7 @@
   function peopleStarHtml(hits) {
     const lines = hits.map((p) => `${p.name}${p.start ? ` · זינוק ${p.start}` : ''}`);
     const label = `${hits.length === 1 ? 'אחד מהאנשים שלך רשום' : `${hits.length} מהאנשים שלך רשומים`}: ${lines.join(', ')}`;
-    return `<button type="button" class="ppl-star" data-tip="${esc(hits.map((p) => `${p.name}\t${p.start || ''}`).join('\n'))}" aria-label="${esc(label)}">
+    return `<button type="button" class="ppl-star" data-tip="${esc(['רשומים:', ...hits.map((p) => `${p.name}\t${(p.start || '').replace(/^0(?=\d:)/, '')}`)].join('\n'))}" aria-label="${esc(label)}">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.4l-6.1 3.4 1.4-6.8-5.1-4.7 6.9-.8z"/></svg>
       <span class="n" aria-hidden="true">${hits.length}</span></button>`;
   }
@@ -408,6 +408,7 @@
       owner = el;
       tip.innerHTML = el.dataset.tip.split('\n').map((l) => {
         const [name, time] = l.split('\t');
+        if (time === undefined && name.endsWith(':')) return `<span class="tip-head">${esc(name)}</span>`;
         return `<span class="tip-row"><span>${esc(name)}</span>${time ? `<b>${esc(time)}</b>` : ''}</span>`;
       }).join('');
       tip.hidden = false;
@@ -954,14 +955,12 @@
     const left = daysBetween(now, d);
       return `<li class="top-card${lead ? ' lead' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}">
         ${watermarkHtml(e)}
-        ${infoBtnHtml(e).replace('class="info-btn"', 'class="info-btn info-m"')}
         ${lead ? `<div class="lead-band" aria-hidden="true">
           <span class="lb-day">${d.getDate()}</span>
           <span class="lb-mon">${MONTHS[d.getMonth()]}<br>יום ${DAYS[d.getDay()]}</span>
         </div>` : ''}
         <div class="top-bar">
           <div class="badges">${leagueBadge(e)}${mineBadge(e)}${discBadges(e)}</div>
-          ${infoBtnHtml(e)}
           ${e.clubName ? `<span class="top-club"><span>${esc(e.clubName)}</span></span>` : ''}
         </div>
         <div class="top-head">
@@ -970,7 +969,8 @@
 </div>
           <div class="top-meta">
             <${tag}><a href="#event/${encodeURIComponent(e.id)}" title="${esc(e.title)}"><span class="title-flags" aria-hidden="true">${isLeague(e) ? '🏆' : ''}${isMine(e) ? '⚑' : ''}</span>${esc(e.title)}</a></${tag}>
-            <p class="top-when">${[tlMini || (e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`), e.location && e.location !== e.title ? `<span class="top-loc">${esc(e.location)}${distParen(e)} ${wazeLink(e)}</span>` : `${distParen(e).trim()} ${wazeLink(e)}`.trim()].filter(Boolean).join(tlMini ? ' ' : ' · ')}<span class="sr-only">${e.time || e.location ? ', ' : ''}${fmtLong(d)}</span></p>
+            <p class="top-when">${[!tlMini && e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`, e.location && e.location !== e.title ? `<span class="top-loc">${esc(e.location)}${distParen(e)} ${wazeLink(e)}</span>` : `${distParen(e).trim()} ${wazeLink(e)}`.trim()].filter(Boolean).join(' · ')}<span class="sr-only">${e.time || e.location ? ', ' : ''}${fmtLong(d)}</span></p>
+            ${tlMini ? `<p class="top-tl">${tlMini}</p>` : ''}
           </div>
         </div>
         ${lead && e.summary ? `<p class="lead-summary">${esc(e.summary)}</p>` : ''}
@@ -1002,7 +1002,6 @@
     ['.ppl-star', 'כמה מהאנשים שלי רשומים (השמות בריחוף או בהקשה).'],
     ['.badges', 'ליגה, המועדון שלי וסוג הניווט.'],
     ['.top-club', 'המועדון המארגן.'],
-    ['.info-btn', 'מידע נוסף מהמארגנים.'],
     ['.top-date', 'התאריך.'],
     ['.tlm', 'זינוק ראשון, זינוק אחרון ושעת גג.'],
     ['.top-loc', 'המקום והמרחק ממך.'],

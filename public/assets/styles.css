@@ -1362,3 +1362,18 @@ a.info-btn { text-decoration: none; }
 .ev-dock .dock-waze { background: #33ccff; color: #062a3a; }
 .ev-dock .dock-waze svg { width: 26px; height: 26px; color: #062a3a; }
 :root[data-contrast="high"] .ev-dock .dock-waze { background: var(--text); }
+
+/* Card: place + Waze, then the start diagram on its own line */
+.top-tl { margin: 4px 0 0; line-height: 1; }
+.top-tl .tlm { width: 170px; }
+/* Club stays on the top line (it shortens with … if space runs out) */
+.top-bar { flex-wrap: nowrap; }
+.top-bar .badges { flex: none; flex-wrap: nowrap; }
+.top-bar .top-club { min-width: 0; overflow: hidden; }
+.top-bar .top-club > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Even bigger star */
+.top-bar .ppl-star { width: 52px; height: 52px; margin-block: -6px; }
+.top-bar .ppl-star .n { font-size: 1.2rem; }
+@media (max-width: 560px) { .top-bar .ppl-star { width: 40px; height: 40px; margin-block: -4px; } .top-bar .ppl-star .n { font-size: 1rem; } }
+/* Star tooltip: "רשומים:" heading */
+.tip-head { font-weight: 800; color: #fbbf24; margin-bottom: 2px; }
