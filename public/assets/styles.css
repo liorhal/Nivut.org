@@ -1498,7 +1498,6 @@ a.info-btn { text-decoration: none; }
 /* phones */
 @media (max-width: 560px) {
   :is(#top4, #eventList, #hhCard) > .top-card.tk, #top4 > .top-card.tk.lead { --stub: 70px; border-radius: 16px; }
-  #top4 > .top-card.tk.lead { grid-row: auto; }
   .top-card.tk .tk-stub { padding: 10px 4px; border-radius: 0 16px 16px 0; gap: 6px; }
   .top-card.tk .tk-body { border-radius: 16px 0 0 16px; padding: 10px 12px 10px 10px; gap: 6px; }
   .top-card.tk .tk-stub .top-date .day, #top4 > .top-card.tk.lead .tk-stub .top-date .day { font-size: 2rem; }
@@ -1510,7 +1509,6 @@ a.info-btn { text-decoration: none; }
   .top-card.tk .mine-pill .mine-tx { display: none; }
   .top-card.tk .top-bar .badges .pill { font-size: .72rem; padding: 2px 7px; }
   .top-card.tk .lead-summary { display: none; }
-  #top4 > .top-card.tk .top-tl { display: none; } /* the four nearest must fit one screen */
   :is(#top4, #eventList, #hhCard) > .top-card.tk .reg-cd, :is(#top4, #eventList, #hhCard) > .top-card.tk .top-foot { padding-top: 6px; }
 }
 :root[data-contrast="high"] .top-card.tk .tk-stub { background: var(--text); color: var(--bg); }
@@ -1523,13 +1521,6 @@ a.info-btn { text-decoration: none; }
 :is(#top4, #eventList, #hhCard) > .top-card.tk .reg-cd .reg-cd-main { min-width: 0; display: block; }
 :is(#top4, #eventList, #hhCard) > .top-card.tk .top-bar:not(:has(.pill, .top-club, .ppl-star)) { display: none; }
 @media (max-width: 560px) {
-  #top4 > .top-card.tk .tk-body { gap: 4px; padding-block: 8px; }
-  #top4 > .top-card.tk .tk-stub { padding-block: 8px; }
-  #top4 > .top-card.tk .tk-stub .top-date .day { font-size: 1.75rem; }
-  #top4 > .top-card.tk .top-bar { min-height: 0; }
-  #top4 > .top-card.tk .reg-cd .reg-cd-label { display: none; }
-  #top4 > .top-card.tk .waze-link { padding: 1px; }
-  #top4 > .top-card.tk .waze-link svg { width: 16px; height: 16px; }
 }
 :is(#top4, #eventList, #hhCard) > .top-card.tk .tk-body > :is(.reg-cd, .reg-line, .top-foot) { align-self: stretch; width: auto; justify-self: auto; grid-column: auto; grid-row: auto; }
 /* "הרשמה מוקדמת עוד [3 ימים]" on one row */
@@ -1620,27 +1611,16 @@ a.info-btn { text-decoration: none; }
 }
 /* Start times as text where the diagram is hidden (the four nearest on phones) */
 .top-card.tk .start-alt { display: none; }
-@media (max-width: 560px) { #top4 > .top-card.tk .start-alt { display: inline; } }
 .top-card.tk .start-time { color: var(--text); font-family: var(--num); font-weight: 900; font-size: .9rem; }
 /* Phones: the diagram is back in the four nearest (it replaces the text line) */
 @media (max-width: 560px) {
-  #top4 > .top-card.tk .top-tl { display: block; }
-  #top4 > .top-card.tk .start-alt { display: none; }
-  #top4 > .top-card.tk .top-tl .tlm { width: 100%; }
 }
 @media (max-width: 560px) {
   /* distance + Waze and the diagram share one row */
-  #top4 > .top-card.tk .tk-body { flex-flow: row wrap; align-content: flex-start; column-gap: 10px; }
-  #top4 > .top-card.tk .tk-body > * { flex: 1 1 100%; }
-  #top4 > .top-card.tk .tk-body > .hud-logo { flex: none; }
-  #top4 > .top-card.tk .tk-body > .top-when { flex: 0 1 auto; flex-wrap: nowrap; }
-  #top4 > .top-card.tk .tk-body > .top-tl { flex: 1 1 110px; min-width: 110px; align-self: center; }
-  #top4 > .top-card.tk .tk-body > :is(.reg-cd, .reg-line, .top-foot) { margin-top: 2px; }
-  #top4 > .top-card.tk .tlm-pts time { font-size: .66rem; }
 }
 @media (max-width: 560px) {
-  #top4 > .top-card.tk .tk-body { column-gap: 8px; }
-  #top4 > .top-card.tk .tk-body > .top-when { gap: 4px; }
-  #top4 > .top-card.tk .tk-body > .top-when .dist { font-size: .85rem; }
-  #top4 > .top-card.tk .tk-body > .top-tl { flex: 1 1 90px; min-width: 90px; }
 }
+
+/* The four nearest use the very same card as the rest (no lead variant, no phone shortcuts) */
+#top4.top4 { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: auto; gap: 14px; }
+@media (max-width: 700px) { #top4.top4 { grid-template-columns: 1fr; gap: 10px; } }

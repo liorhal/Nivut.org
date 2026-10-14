@@ -1092,7 +1092,7 @@
       return;
     }
     const now = new Date();
-    box.innerHTML = list.map((e, i) => hudCardHtml(e, { lead: i === 0, now })).join('');
+    box.innerHTML = list.map((e) => hudCardHtml(e, { now })).join('');
     staggerNew(box);
     tickCountdowns();
     decorateTopPeople();
