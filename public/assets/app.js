@@ -798,8 +798,38 @@
   }
 
   /* ---------- Upcoming ---------- */
+  /** "מידע נוסף" from the event page (falls back to the home-page blurb). */
+  const moreInfo = (e) => (e.details?.description?.length ? e.details.description : e.summary ? [e.summary] : []);
+  /** The additional info says registration is not on the site ("*אין הרשמה באתר", "ללא הרשמה", "אין צורך בהרשמה"). */
+  const noSiteRegistration = (e) => {
+    const t = (e.details?.description || []).join(' ');
+    return /(?:אין|ללא)\s+(?:צורך\s+ב)?הרשמה(?!\s+(?:במקום|ביום))/.test(t)
+      || /הרשמה\s+(?:אינה|לא)\s+(?:מתבצעת\s+|נעשית\s+)?(?:באתר|דרך\s+האתר)/.test(t);
+  };
+  const infoBtnHtml = (e) => (moreInfo(e).length
+    ? `<button type="button" class="info-btn" data-info="${esc(e.id)}" aria-haspopup="dialog" aria-label="מידע נוסף על ${esc(e.title)}"><span aria-hidden="true">i</span><span class="info-text">מידע נוסף</span></button>` : '');
+  function initInfo() {
+    const dlg = $('#infoDialog');
+    let opener = null;
+    document.addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-info]');
+      if (!b) return;
+      const e = state.events.find((x) => x.id === b.dataset.info);
+      if (!e) return;
+      ev.preventDefault();
+      opener = b;
+      $('#infoTitle').textContent = e.title;
+      $('#infoBody').innerHTML = moreInfo(e).map((p) => `<p>${linkify(p)}</p>`).join('');
+      $('#infoLink').href = `#event/${encodeURIComponent(e.id)}`;
+      dlg.showModal();
+    });
+    $('#infoLink').addEventListener('click', () => dlg.close());
+    dlg.addEventListener('click', (ev) => { if (ev.target === dlg) dlg.close(); });
+    dlg.addEventListener('close', () => opener?.isConnected && !location.hash.startsWith('#event/') && opener.focus());
+  }
+
   /** Has an event page on the association site, where you register (closed areas and calendar-only items do not). */
-  const hasRegistration = (e) => !!e.nivutId && e.source !== 'closed-area';
+  const hasRegistration = (e) => !!e.nivutId && e.source !== 'closed-area' && !noSiteRegistration(e);
   /** Upcoming events you can register for; the annual plan still shows everything. */
   function upcoming() {
     const today = startOfDay(new Date());
@@ -852,12 +882,14 @@
     const left = daysBetween(now, d);
       return `<li class="top-card${lead ? ' lead' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}">
         ${watermarkHtml(e)}
+        ${infoBtnHtml(e).replace('class="info-btn"', 'class="info-btn info-m"')}
         ${lead ? `<div class="lead-band" aria-hidden="true">
           <span class="lb-day">${d.getDate()}</span>
           <span class="lb-mon">${MONTHS[d.getMonth()]}<br>יום ${DAYS[d.getDay()]}</span>
         </div>` : ''}
         <div class="top-bar">
           <div class="badges">${leagueBadge(e)}${mineBadge(e)}${discBadges(e)}</div>
+          ${infoBtnHtml(e)}
           ${e.clubName ? `<span class="top-club"><span>${esc(e.clubName)}</span></span>` : ''}
         </div>
         <div class="top-head">
@@ -898,6 +930,7 @@
     ['.ppl-star', 'כמה מהאנשים שלי רשומים (השמות בריחוף או בהקשה).'],
     ['.badges', 'ליגה, המועדון שלי וסוג הניווט.'],
     ['.top-club', 'המועדון המארגן.'],
+    ['.info-btn', 'מידע נוסף מהמארגנים.'],
     ['.top-date', 'התאריך.'],
     ['.tlm', 'זינוק ראשון, זינוק אחרון ושעת גג.'],
     ['.top-loc', 'המקום והמרחק ממך.'],
@@ -910,7 +943,7 @@
     return {
       id: 'help-sample', title: 'ליגת ניווט – יער בן שמן', location: 'יער בן שמן', time: '09:00', date: iso(day),
       disciplines: ['foot'], tags: ['league'], clubName: 'מועדון לדוגמה', clubId: 'help-sample', url: '#',
-      details: { registrationDeadline: `${iso(reg)}T23:59`, startFrom: '09:00', startTo: '11:00', cutoff: '13:30', lat: 31.95, lng: 34.93, club: { pageLogo: SAMPLE_LOGO } },
+      details: { description: ['אימון לכל הרמות, מתאים גם למתחילים.'], registrationDeadline: `${iso(reg)}T23:59`, startFrom: '09:00', startTo: '11:00', cutoff: '13:30', lat: 31.95, lng: 34.93, club: { pageLogo: SAMPLE_LOGO } },
     };
   }
   function renderHelpCard() {
@@ -923,7 +956,7 @@
     tickCountdowns();
     const card = $('#hhCard .top-card');
     card.classList.add('has-people');
-    $('#hhNotes').innerHTML = HELP_NOTES.map(([sel, text]) => ({ el: card.querySelector(sel), text }))
+    $('#hhNotes').innerHTML = HELP_NOTES.map(([sel, text]) => ({ el: [...card.querySelectorAll(sel)].find((x) => x.offsetWidth > 2), text }))
       .filter((n) => n.el && n.el.offsetWidth > 2).map((n, i) => {
         n.el.dataset.hhNum = i + 1;
         return `<li data-n="${i + 1}"><span class="hh-num" aria-hidden="true">${i + 1}</span>${esc(n.text)}</li>`;
@@ -1311,6 +1344,7 @@
     initTooltip();
     initPeople();
     initHelp();
+    initInfo();
     initMoreEvents();
     initDiscFilter();
     window.addEventListener('hashchange', route);
