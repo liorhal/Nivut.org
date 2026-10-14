@@ -199,3 +199,23 @@ test('league: from the title or the category, unless it is only like a league', 
   assert.deepEqual(L.eventTags('יער ביריה', { eventType: 'ליגת ניווט רגלי (יער)', note: '' }), ['league']);
   assert.deepEqual(L.eventTags('ניווט ענבה', { eventType: 'ליגת ניווט רגלי (יער)', note: 'אימון עם מסלולים כמו בליגה' }), ['training']);
 });
+
+test('parseParticipants: one table per category, category taken from the heading', () => {
+  const html = `<h3>M21 – ארוך</h3><table><tr><th>שם</th><th>מועדון</th><th>זינוק</th></tr>
+      <tr><td>יואב לוי</td><td>כרמל</td><td>09:40</td></tr></table>
+    <h3>W21 – בינוני</h3><table><tr><th>שם</th><th>מועדון</th><th>זינוק</th></tr>
+      <tr><td>דנה כהן</td><td>השרון</td><td>09:12</td></tr><tr><td>מיכל רז</td><td>מנשה</td><td>09:20</td></tr></table>`;
+  const p = L.parseParticipants(html);
+  assert.deepEqual(p.map((x) => [x.name, x.category, x.club, x.start]), [
+    ['יואב לוי', 'M21 – ארוך', 'כרמל', '09:40'],
+    ['דנה כהן', 'W21 – בינוני', 'השרון', '09:12'],
+    ['מיכל רז', 'W21 – בינוני', 'מנשה', '09:20'],
+  ]);
+});
+
+test('parseParticipants: group rows inside one table', () => {
+  const html = `<table><tr><th>שם</th><th>מועדון</th><th>שעת זינוק</th></tr>
+    <tr><td colspan="3">קצר (רמה 2)</td></tr><tr><td>רפי הימן</td><td>השרון</td><td>10:02</td></tr>
+    <tr><td colspan="3">ארוך</td></tr><tr><td>יואב לוי</td><td>כרמל</td><td>09:40</td></tr></table>`;
+  assert.deepEqual(L.parseParticipants(html).map((x) => [x.name, x.category]), [['רפי הימן', 'קצר (רמה 2)'], ['יואב לוי', 'ארוך']]);
+});

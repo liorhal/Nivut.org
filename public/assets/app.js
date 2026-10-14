@@ -272,6 +272,7 @@
     }
     return state.participants.get(e.nivutId);
   }
+  const startListUrl = (e) => (e.nivutId ? `${(state.links.home || 'https://nivut.org.il/').replace(/\/?$/, '/')}${e.nivutId}/Start` : e.url);
   const matchesIn = (list) => state.people.map((name) => ({ name, hit: (list || []).find((p) => sameName(name, p.name)) }));
 
   async function renderMyPeople(id) {
@@ -289,11 +290,11 @@
     const data = await participantsOf(e);
     if (!$('#myPeople')) return;
     if (!data || data.error) {
-      box.innerHTML = `<h2 id="mypl-h">${title}</h2><p class="muted">לא ניתן לקרוא כרגע את רשימת המשתתפים. <a href="${esc(e.url)}" target="_blank" rel="noopener">לרשימה באתר האיגוד ↗</a></p>`;
+      box.innerHTML = `<h2 id="mypl-h">${title}</h2><p class="muted">לא ניתן לקרוא כרגע את רשימת המשתתפים. <a href="${esc(startListUrl(e))}" target="_blank" rel="noopener">לרשימה באתר האיגוד ↗</a></p>`;
       return;
     }
     if (!data.participants.length) {
-      box.innerHTML = `<h2 id="mypl-h">${title}</h2><p class="muted">רשימת המשתתפים ריקה, או שלא הצלחנו לקרוא אותה. <a href="${esc(e.url)}" target="_blank" rel="noopener">לרשימה באתר האיגוד ↗</a></p>
+      box.innerHTML = `<h2 id="mypl-h">${title}</h2><p class="muted">רשימת המשתתפים ריקה, או שלא הצלחנו לקרוא אותה. <a href="${esc(startListUrl(e))}" target="_blank" rel="noopener">לרשימה באתר האיגוד ↗</a></p>
         ${data.diag ? `<details class="diag"><summary>פרטים טכניים</summary><pre dir="ltr">${esc(JSON.stringify(data.diag, null, 2))}</pre></details>` : ''}`;
       return;
     }
@@ -315,7 +316,7 @@
         ${no.map(({ name }) => `<li class="out"><span class="mark" aria-hidden="true">–</span><div><span>${esc(name)}</span><span class="sr-only"> – </span><span class="muted small">לא ברשימה</span></div></li>`).join('')}
       </ul>`;
     }
-    html += `<p class="muted small">ברשימה כרגע ${data.count} משתתפים · <button type="button" class="linklike" data-open-people>עריכת המעקב</button></p>`;
+    html += `<p class="muted small">ברשימה כרגע <a href="${esc(startListUrl(e))}" target="_blank" rel="noopener">${data.count} משתתפים ↗</a> · <button type="button" class="linklike" data-open-people>עריכת המעקב</button></p>`;
     box.innerHTML = html;
   }
 
@@ -554,6 +555,7 @@
             <div class="ev-actions">
               <button type="button" class="btn ghost" data-ics="${esc(e.id)}">📅 ליומן</button>
               <button type="button" class="btn ghost" data-share="${esc(e.id)}">🔗 שיתוף</button>
+              ${e.nivutId ? `<a class="btn ghost" href="${esc(startListUrl(e))}" target="_blank" rel="noopener">👥 רשימת משתתפים</a>` : ''}
             </div>
           </section>
 
