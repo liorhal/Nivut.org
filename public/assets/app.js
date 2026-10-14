@@ -734,6 +734,17 @@
     </nav>`;
   }
 
+  /** An event page loaded in the browser fills the card fields, like the server does for home-page events. */
+  function applyDetails(e, d) {
+    e.details = d;
+    if (!d) return;
+    if (d.startFrom && d.startFrom !== '00:00' && !e.time) e.time = d.startFrom;
+    e.location = e.location || d.map?.name?.replace(/\s*\[[^\]]*\]\s*$/, '') || d.name || '';
+    e.clubName = e.clubName || d.club?.name || '';
+    e.clubId = e.clubId || d.club?.id || '';
+    e.eventType = e.eventType || d.eventType || '';
+  }
+
   async function showEvent(id) {
     const box = $('#eventPage');
     const e = state.events.find((x) => x.id === id);
@@ -753,8 +764,7 @@
     gotoSection(goto);
     if (!e.details && e.nivutId) {
       try {
-        e.details = await loadJson(`api/event?id=${encodeURIComponent(e.nivutId)}`);
-        if (e.details.startFrom && e.details.startFrom !== '00:00' && !e.time) e.time = e.details.startFrom;
+        applyDetails(e, await loadJson(`api/event?id=${encodeURIComponent(e.nivutId)}`));
       } catch { e.details = null; e.nivutId = null; }
       if (location.hash === `#event/${id}`) { box.innerHTML = eventPageHtml(e); tickCountdowns(); renderMyPeople(id); gotoSection(goto); }
     }
@@ -1502,23 +1512,23 @@
       while (i < list.length) {
         const e = list[i++];
         e.checked = true;
+        // A remembered "hide it" needs no request; everything else loads its page for the card's details.
         const cached = flagCache.get(e.nivutId);
-        if (cached) { e.closed = cached.c; e.noSiteRegistration = cached.n; continue; }
+        if (cached && (cached.c || cached.n)) { e.closed = cached.c; e.noSiteRegistration = cached.n; continue; }
         try {
-          e.details = await loadJson(`api/event?id=${encodeURIComponent(e.nivutId)}`);
-          if (e.details?.startFrom && e.details.startFrom !== '00:00' && !e.time) e.time = e.details.startFrom;
+          applyDetails(e, await loadJson(`api/event?id=${encodeURIComponent(e.nivutId)}`));
           flagCache.set(e.nivutId, { c: isClosedEvent(e), n: noSiteRegistration(e) });
         } catch { /* shown as is */ }
       }
     }));
   }
-  /** Checks the events now in view, then redraws if any of them dropped out. */
+  /** Loads the pages of the events now in view, then redraws the cards with their details. */
   async function checkInView() {
     const todo = uncheckedInView();
     if (!todo.length) return false;
-    const before = upcoming().map((e) => e.id).join();
     await checkEvents(todo);
-    if (upcoming().map((e) => e.id).join() !== before) { renderTop4(); renderList(); renderYear(); renderMonth(); }
+    // Redraw always: besides hiding events, the cards now have their start times, place, distance and countdown.
+    renderTop4(); renderList(); renderYear(); renderMonth();
     return true;
   }
 
