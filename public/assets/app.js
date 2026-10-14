@@ -334,40 +334,46 @@
     .sort((a, b) => (a.start || '99:99').localeCompare(b.start || '99:99'));
   const matchesIn = (list) => state.people.map((name) => ({ name, hit: (list || []).find((p) => sameName(name, p.name)) }));
 
+  /**
+   * My registrations on the event page: compact at the top (#regMine: names and start times),
+   * full in the registration section (#myPeople: list size, and each of my people with club, category, course).
+   */
   async function renderMyPeople(id) {
-    const box = $('#myPeople');
+    const box = $('#myPeople'), mine = $('#regMine');
     const e = state.events.find((x) => x.id === id);
-    if (!box || !e) return;
-    const title = 'האנשים שלי';
+    if (!e || (!box && !mine)) return;
+    const set = (el, html) => { if (el) el.innerHTML = html; };
+    const listLink = (n) => `<a href="${esc(startListUrl(e))}" target="_blank" rel="noopener">${n ? `${n} משתתפים` : 'לרשימה באתר האיגוד'} ↗</a>`;
+    const head = '<h3>משתתפים</h3>';
     if (!state.people.length) {
-      box.innerHTML = `<h2 id="mypl-h">האנשים שלי</h2><p class="muted">הוסיפו אנשים שמעניינים אתכם, ונראה בכל אירוע מי מהם רשום ומתי הוא מזנק.</p>
-        <button type="button" class="btn ghost" data-open-people>👥 הוספת אנשים</button>`;
-      return;
+      set(mine, '<button type="button" class="linklike" data-open-people>⭐ הוסיפו את האנשים שלכם כדי לראות את ההרשמות שלכם</button>');
+      set(box, `${head}<p class="muted small">${listLink(0)}</p>`);
+    } else {
+      set(mine, '<span class="muted small" role="status">בודק את ההרשמות שלי…</span>');
+      set(box, `${head}<p class="muted small" role="status">בודק את רשימת המשתתפים…</p>`);
     }
-    box.innerHTML = `<h2 id="mypl-h">${title}</h2><p class="muted" role="status">בודק את רשימת המשתתפים…</p>`;
     const data = await participantsOf(e);
-    if (!$('#myPeople')) return;
-    if (!data || data.error) {
-      box.innerHTML = `<h2 id="mypl-h">${title}</h2><p class="muted">לא ניתן לקרוא כרגע את רשימת המשתתפים. <a href="${esc(startListUrl(e))}" target="_blank" rel="noopener">לרשימה באתר האיגוד ↗</a></p>`;
+    const box2 = $('#myPeople'), mine2 = $('#regMine');
+    if (!data || data.error || !data.participants?.length) {
+      set(mine2, state.people.length ? `<span class="muted small">לא ניתן לבדוק כרגע את ההרשמות. ${listLink(0)}</span>` : mine2?.innerHTML || '');
+      set(box2, `${head}<p class="muted small">${data && !data.error ? 'רשימת המשתתפים ריקה, או שלא הצלחנו לקרוא אותה.' : 'לא ניתן לקרוא כרגע את רשימת המשתתפים.'} ${listLink(0)}</p>
+        ${data?.diag ? `<details class="diag"><summary>פרטים טכניים</summary><pre dir="ltr">${esc(JSON.stringify(data.diag, null, 2))}</pre></details>` : ''}`);
       return;
     }
-    if (!data.participants.length) {
-      box.innerHTML = `<h2 id="mypl-h">${title}</h2><p class="muted">רשימת המשתתפים ריקה, או שלא הצלחנו לקרוא אותה. <a href="${esc(startListUrl(e))}" target="_blank" rel="noopener">לרשימה באתר האיגוד ↗</a></p>
-        ${data.diag ? `<details class="diag"><summary>פרטים טכניים</summary><pre dir="ltr">${esc(JSON.stringify(data.diag, null, 2))}</pre></details>` : ''}`;
-      return;
-    }
-    const detail = (p) => [p.category, p.course, p.start && `זינוק ${p.start}`].filter(Boolean).map(esc).join(' · ');
-    let html = `<h2 id="mypl-h">${title}</h2>`;
+    const yes = state.people.length ? registeredPeople(data.participants) : [];
     if (state.people.length) {
-      const yes = registeredPeople(data.participants);
-      html += `${yes.length ? `<ul class="mypl">
+      set(mine2, yes.length
+        ? `<span class="reg-mine-k"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.4l-6.1 3.4 1.4-6.8-5.1-4.7 6.9-.8z"/></svg>ההרשמות שלי</span>
+          <ul>${yes.map((p) => `<li><strong>${esc(p.name)}</strong>${p.start ? ` <span class="pstart">${esc(p.start)}</span>` : ''}</li>`).join('')}</ul>`
+        : '<span class="muted small">⭐ אף אחד מהאנשים שלי לא רשום עדיין</span>');
+    }
+    set(box2, `${head}<p class="muted small">ברשימה כרגע ${listLink(data.count)}</p>
+      ${state.people.length ? `<h4>האנשים שלי</h4>${yes.length ? `<ul class="mypl">
         ${yes.map((hit) => `<li class="in"><span class="mark" aria-hidden="true">✓</span><div>
           <span class="mypl-line"><strong>${esc(hit.name)}</strong>${hit.start ? `<span class="pstart">זינוק ${esc(hit.start)}</span>` : ''}</span>
           <span class="muted small">${[hit.club, hit.category, hit.course].filter(Boolean).map(esc).join(' · ')}</span></div></li>`).join('')}
-      </ul>` : '<p class="muted">אף אחד מהאנשים שלך עדיין לא רשום.</p>'}`;
-    }
-    html += `<p class="muted small">ברשימה כרגע <a href="${esc(startListUrl(e))}" target="_blank" rel="noopener">${data.count} משתתפים ↗</a> · <button type="button" class="linklike" data-open-people>עריכת ההגדרות</button></p>`;
-    box.innerHTML = html;
+      </ul>` : '<p class="muted small">אף אחד מהאנשים שלך עדיין לא רשום.</p>'}` : ''}
+      <p class="muted small"><button type="button" class="linklike" data-open-people>${state.people.length ? 'עריכת האנשים שלי' : 'הוספת האנשים שלי'}</button></p>`);
   }
 
   /** "👥 registered: …" line on the top cards. */
@@ -585,25 +591,37 @@
       .filter((x) => x.score > 0).sort((a, b) => b.score - a.score || (b.t.lastActivity > a.t.lastActivity ? 1 : -1)).slice(0, 4).map((x) => x.t);
   }
 
-  /** Everything about registering, in one place: status, countdown, deadline, prices, on-site, button, participants. */
-  function regTileHtml(e, reg) {
+  /** Top of the event page: just the countdown, the register button and my registrations. */
+  function regTopHtml(e, reg) {
+    const dl = reg.deadline;
+    const open = reg.state === 'open';
+    return `<li class="fact-reg reg-${reg.state}" id="ev-reg"><span class="ev-ico" aria-hidden="true">${open ? '✍️' : reg.state === 'past' ? '🏁' : reg.state === 'none' ? 'ℹ️' : '⏳'}</span><span class="k">הרשמה</span>
+      ${open && dl ? `<div class="reg-when"><span class="reg-cd-label">הרשמה מוקדמת נסגרת בעוד</span>${countdownHtml(dl, 'cd-reg')}</div>` : `<strong>${esc(reg.title)}</strong>`}
+      <div class="reg-actions">
+        ${open ? `<a class="btn btn-xl" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(reg.cta)} ↗</a>` : ''}
+        <button type="button" class="linklike" data-scroll="ev-reg-full">${reg.state === 'none' ? 'פרטים' : 'כל פרטי ההרשמה'} ↓</button>
+      </div>
+      ${e.nivutId && reg.state !== 'none' ? '<div class="reg-mine" id="regMine" aria-live="polite"></div>' : ''}</li>`;
+  }
+
+  /** Lower on the page: every registration detail – deadline, prices, on-site, participants and my people. */
+  function regFullHtml(e, reg) {
     const d = e.details || {};
     const price = shekel(d.price), priceOut = shekel(d.priceNonMember);
     const dl = reg.deadline;
-    const prices = price ? `<b>${price} ₪</b> לחברי איגוד${priceOut ? ` · <b>${priceOut} ₪</b> לחיצוניים` : ''}` : d.price ? esc(d.price) : '';
-    const showCta = reg.state !== 'none' || e.url;
-    return `<li class="fact-reg reg-${reg.state}" id="ev-reg"><span class="ev-ico" aria-hidden="true">${reg.state === 'open' ? '✍️' : reg.state === 'past' ? '🏁' : reg.state === 'none' ? 'ℹ️' : '⏳'}</span><span class="k">הרשמה</span>
-      <strong>${esc(reg.title)}</strong>
-      ${reg.state === 'open' && dl ? `<div class="reg-when"><span class="reg-cd-label">נסגרת בעוד</span>${countdownHtml(dl, 'cd-reg')}</div>
-        <span class="reg-dl">עד יום ${DAYS[dl.getDay()]} ${dl.getDate()}.${dl.getMonth() + 1}${d.registrationDeadline.length > 10 ? ` בשעה ${esc(d.registrationDeadline.slice(11, 16))}` : ''}</span>`
-        : reg.text ? `<span class="reg-dl">${esc(reg.text)}</span>` : ''}
-      ${prices && reg.state !== 'past' && reg.state !== 'none' ? `<span class="reg-price">${prices}</span>` : ''}
-      ${d.onsite && reg.state === 'open' ? `<span class="reg-onsite">הרשמה במקום: ${esc(d.onsite)}</span>` : ''}
-      <div class="reg-actions">
-        ${reg.state === 'none' ? (moreInfo(e).length ? '<button type="button" class="btn ghost" data-scroll="ev-info">למידע הנוסף</button>' : '')
-          : showCta ? `<a class="btn${reg.state === 'open' ? ' btn-xl' : ' ghost'}" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(reg.cta)} ↗</a>` : ''}
-        ${e.nivutId && reg.state !== 'none' ? `<a class="btn ghost" href="${esc(startListUrl(e))}" target="_blank" rel="noopener">👥 רשימת משתתפים</a>` : ''}
-      </div></li>`;
+    const rows = [
+      reg.state === 'open' && dl && ['הרשמה מוקדמת עד', `יום ${DAYS[dl.getDay()]} ${dl.getDate()}.${dl.getMonth() + 1}${d.registrationDeadline.length > 10 ? ` בשעה ${esc(d.registrationDeadline.slice(11, 16))}` : ''}`],
+      reg.state !== 'none' && (price || d.price) && ['חברי איגוד', price ? `<b>${price} ₪</b>` : esc(d.price)],
+      reg.state !== 'none' && priceOut && ['שאינם חברי איגוד', `<b>${priceOut} ₪</b>`],
+      reg.state !== 'none' && d.onsite && ['הרשמה במקום', esc(d.onsite)],
+    ].filter(Boolean);
+    return `<section class="ev-card ev-reg-full reg-${reg.state}" id="ev-reg-full" aria-labelledby="rgf-h"><h2 id="rgf-h" tabindex="-1">הרשמה</h2>
+      <p class="reg-status"><strong>${esc(reg.title)}</strong>${reg.text && !(reg.state === 'open' && dl) ? ` · ${esc(reg.text)}` : ''}</p>
+      ${rows.length ? `<dl class="reg-rows">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>` : ''}
+      ${reg.state === 'none' && moreInfo(e).length ? '<button type="button" class="btn ghost" data-scroll="ev-info">למידע הנוסף</button>' : ''}
+      ${e.nivutId && reg.state !== 'none' ? '<div class="reg-people" id="myPeople" aria-live="polite"></div>' : ''}
+      ${reg.state !== 'none' ? `<div class="ev-actions"><a class="btn${reg.state === 'open' ? '' : ' ghost'}" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(reg.cta)} ↗</a></div>` : ''}
+    </section>`;
   }
 
   function eventPageHtml(e) {
@@ -653,7 +671,7 @@
           <strong>${esc(e.location || d.name || 'יפורסם')}${distParen(e)}</strong>
           ${!state.home && d.lat ? '<button type="button" class="linklike dist-set" data-open-people>📍 קבעו מיקום כדי לראות מרחק</button>' : ''}
           ${canNavigate(e) ? `<a href="${esc(wazeUrl(e))}" target="_blank" rel="noopener">ניווט לכינוס ב-Waze</a>` : '<span>&nbsp;</span>'}</li>
-        ${regTileHtml(e, reg)}
+        ${regTopHtml(e, reg)}
       </ul>
 
       <div class="ev-grid">
@@ -661,6 +679,7 @@
           ${loading ? '<section class="ev-card" role="status"><p class="muted">טוען את פרטי התחרות מאתר האיגוד…</p></section>' : ''}
           ${moreInfo(e).length ? `<section class="ev-card ev-info" id="ev-info" aria-labelledby="ab-h"><h2 id="ab-h" tabindex="-1">מידע נוסף</h2>
             ${moreInfo(e).map((p) => `<p>${linkify(p)}</p>`).join('')}</section>` : ''}
+          ${regFullHtml(e, reg)}
           ${coursesHtml(d.courses)}
           ${hasGeo || d.directions?.length ? `<section class="ev-card" aria-labelledby="go-h"><h2 id="go-h">איך מגיעים</h2>
             ${hasGeo ? `<iframe class="ev-osm" title="מפת נקודת הכינוס של ${esc(e.title)}" loading="lazy" src="https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${d.lat},${d.lng}"></iframe>` : ''}
@@ -671,7 +690,6 @@
 
         <aside class="ev-side" aria-label="פרטים נוספים">
 
-          ${e.nivutId ? '<section class="ev-card" id="myPeople" aria-labelledby="mypl-h" aria-live="polite"></section>' : ''}
 
           ${d.map ? `<section class="ev-card" aria-labelledby="mp-h"><h2 id="mp-h">מפת הניווט</h2>
             ${d.map.image ? `<a class="ev-mapimg" href="${esc(d.map.image)}" target="_blank" rel="noopener" data-lightbox="${esc(`מפת ${d.map.name}`)}"><img src="${esc(d.map.image)}" alt="תצוגה מקדימה של מפת ${esc(d.map.name)}" loading="lazy" onerror="this.parentNode.remove()"></a>` : ''}

@@ -1256,3 +1256,35 @@ a.info-btn { text-decoration: none; }
 .ev-facts .fact-reg .reg-actions .btn { font-size: .95rem; color: var(--brand-ink); text-decoration: none; }
 .ev-facts .fact-reg .reg-actions .btn.ghost { color: var(--brand); }
 .ev-facts .fact-reg .reg-actions .btn-xl { font-size: 1.05rem; background: var(--flag-ink, #b93f06); }
+
+/* Registration: compact at the top, full details lower down */
+.ev-facts.ev-facts3 { grid-template-columns: 1.5fr 1fr 1.3fr; }
+.ev-facts .fact-reg .reg-cd-label { flex-basis: 100%; }
+.ev-facts .fact-reg .reg-actions { align-items: center; }
+.ev-facts .fact-reg .reg-actions .linklike { font-size: .85rem; }
+.reg-mine { border-top: 1px dashed var(--border); padding-top: 8px; margin-top: 2px; }
+.ev-facts .reg-mine span { font-size: .85rem; }
+.reg-mine-k { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; color: var(--text); }
+.ev-facts .reg-mine .reg-mine-k { color: var(--text); }
+.reg-mine-k svg { width: 18px; height: 18px; fill: #f5b301; stroke: #b07d00; stroke-width: 1.2; }
+.reg-mine ul { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.reg-mine li { font-size: .9rem; }
+.ev-facts .reg-mine .pstart, .reg-mine .pstart { font-family: var(--num); font-weight: 900; color: var(--flag-ink); }
+.ev-reg-full .reg-status { margin: 0 0 10px; }
+.reg-rows { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0 0 12px; }
+.reg-rows dt { color: var(--muted); font-size: .9rem; }
+.reg-rows dd { margin: 0; }
+.reg-rows b { font-family: var(--num); font-weight: 900; }
+.reg-people { border-top: 1px solid var(--border); padding-top: 10px; margin-bottom: 12px; }
+.reg-people h3 { margin: 0 0 4px; font-size: 1.05rem; }
+.reg-people h4 { margin: 10px 0 6px; font-size: .95rem; }
+.reg-people p { margin: 4px 0; }
+.ev-facts .reg-mine strong { font-family: inherit; font-size: .95rem; font-weight: 800; line-height: 1.3; color: var(--text); letter-spacing: 0; }
+.ev-facts .reg-mine .pstart { background: none; padding: 0; font-size: .9rem; }
+@media (max-width: 1000px) {
+  .ev-facts.ev-facts3 { grid-template-columns: repeat(2, 1fr); }
+  .ev-facts.ev-facts3 .fact-reg { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+  .ev-facts.ev-facts3 { grid-template-columns: 1fr; }
+}
