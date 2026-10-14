@@ -22,6 +22,17 @@
   const fmtShort = (d) => `${d.getDate()}.${d.getMonth() + 1}`;
   const inDays = (n) => (n === 0 ? 'היום' : n === 1 ? 'מחר' : `בעוד ${n} ימים`);
 
+  // Preferred disciplines persist in a cookie for a year (empty = all).
+  const COOKIE = 'nivut_disc';
+  const cookies = {
+    get(name) {
+      try { return decodeURIComponent((document.cookie.split('; ').find((c) => c.startsWith(`${name}=`)) || '').split('=')[1] || ''); } catch { return ''; }
+    },
+    set(name, value) {
+      try { document.cookie = `${name}=${encodeURIComponent(value)}; max-age=${value ? 31536000 : 0}; path=/; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`; } catch { /* blocked */ }
+    },
+  };
+
   const store = {
     get(k, def) { try { const v = localStorage.getItem(k); return v === null ? def : JSON.parse(v); } catch { return def; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore */ } },
@@ -572,8 +583,42 @@
   }
 
   /** The nearest published events (closed-area placeholders only fill gaps). */
+  /** The saved discipline filter; events of any selected discipline pass. */
+  const discOk = (e) => !state.filter.disciplines.size || (e.disciplines || []).some((k) => state.filter.disciplines.has(k));
+
+  function renderDiscFilter() {
+    $('#discFilter').innerHTML = `<span class="df-label" aria-hidden="true">הצג:</span>${Object.entries(DISCIPLINES).map(([k, d]) => {
+      const on = !state.filter.disciplines.size || state.filter.disciplines.has(k); // pressed = shown
+      return `<button type="button" class="df-btn" data-disc="${k}" aria-pressed="${on}" style="--c:${d.color}">${discIcon(k)}<span class="df-text">${esc(d.label)}</span></button>`;
+    }).join('')}`;
+  }
+  function initDiscFilter() {
+    const saved = cookies.get(COOKIE).split(',').filter((k) => DISCIPLINES[k]);
+    state.filter.disciplines = new Set(saved);
+    renderDiscFilter();
+    $('#discFilter').addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-disc]');
+      if (!b) return;
+      const all = Object.keys(DISCIPLINES);
+      const shown = new Set(state.filter.disciplines.size ? state.filter.disciplines : all);
+      const k = b.dataset.disc;
+      if (shown.has(k) && shown.size === 1) { toast('צריך להציג לפחות סוג ניווט אחד'); return; }
+      shown.has(k) ? shown.delete(k) : shown.add(k);
+      const set = state.filter.disciplines;
+      set.clear();
+      if (shown.size < all.length) shown.forEach((x) => set.add(x)); // everything shown = no filter
+      cookies.set(COOKIE, [...set].join(','));
+      renderDiscFilter();
+      $(`#discFilter [data-disc="${b.dataset.disc}"]`).focus();
+      if (!state.events.length) return;
+      renderTop4(); renderList(); renderLegend(); renderYear(); renderMonth();
+      const n = upcoming().filter(discOk).length;
+      toast(set.size ? `מוצגים ${n} ניווטים מהסוגים שבחרת` : 'מוצגים כל סוגי הניווט');
+    });
+  }
+
   function topEvents(n = 4) {
-    const up = upcoming();
+    const up = upcoming().filter(discOk);
     const real = up.filter((e) => e.source !== 'closed-area');
     return [...real, ...up.filter((e) => e.source === 'closed-area')].slice(0, n).sort((a, b) => evDate(a) - evDate(b));
   }
@@ -581,7 +626,10 @@
   function renderTop4() {
     const box = $('#top4');
     const list = topEvents();
-    if (!list.length) { box.innerHTML = '<li class="top4-loading">אין אירועים מתוכננים כרגע.</li>'; return; }
+    if (!list.length) {
+      box.innerHTML = `<li class="top4-loading">${state.filter.disciplines.size ? 'אין ניווטים קרובים מהסוגים שבחרת.' : 'אין אירועים מתוכננים כרגע.'}</li>`;
+      return;
+    }
     const now = new Date();
     box.innerHTML = list.map((e, i) => {
       const d = evDate(e);
@@ -631,9 +679,7 @@
 
   function renderFilters() {
     const evs = upcoming();
-    const discs = new Set(evs.flatMap((e) => e.disciplines || []));
     const tags = new Set(evs.flatMap((e) => e.tags || []));
-    chipGroup($('#discChips'), Object.entries(DISCIPLINES).filter(([k]) => discs.has(k)).map(([k, d]) => [k, d.label, d.color]), state.filter.disciplines);
     chipGroup($('#tagChips'), Object.entries(TAGS).filter(([k]) => tags.has(k)).map(([k, l]) => [k, l]), state.filter.tags);
     const clubs = [...new Set(evs.map((e) => e.clubName).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'he'));
     $('#clubField').hidden = clubs.length < 2;
@@ -694,12 +740,13 @@
       </article></li>`;
   }
 
-  const filtering = () => !!(state.filter.q || state.filter.club || state.filter.disciplines.size || state.filter.tags.size);
+  // The saved discipline filter is a preference, not a search: it does not count here.
+  const filtering = () => !!(state.filter.q || state.filter.club || state.filter.tags.size);
 
   function renderList() {
     const { q, club, disciplines, tags } = state.filter;
     const ql = q.toLowerCase();
-    const active = [q, club].filter(Boolean).length + disciplines.size + tags.size;
+    const active = [q, club].filter(Boolean).length + tags.size;
     $('#filterCount').hidden = !active;
     $('#filterCount').textContent = active ? `(${active})` : '';
     const top = filtering() ? new Set() : new Set(topEvents().map((e) => e.id));
@@ -745,12 +792,12 @@
 
   function renderLegend() {
     $('#legend').innerHTML = Object.entries(DISCIPLINES)
-      .map(([k, t]) => `<span style="--c:${t.color}">${discIcon(k)}${esc(t.label)}</span>`).join('')
+      .map(([k, t]) => `<span style="--c:${t.color}" class="${state.filter.disciplines.size && !state.filter.disciplines.has(k) ? 'off' : ''}">${discIcon(k)}${esc(t.label)}${state.filter.disciplines.size && !state.filter.disciplines.has(k) ? '<span class="sr-only"> (מוסתר)</span>' : ''}</span>`).join('')
       + '<span class="muted">· מסגרת מקווקוות = שטח סגור, פרטים בקרוב</span>';
   }
 
   function eventsIn(y, m) {
-    return state.events.filter((e) => { const d = parseDate(e.date); return d.getFullYear() === y && d.getMonth() === m; });
+    return state.events.filter((e) => { const d = parseDate(e.date); return discOk(e) && d.getFullYear() === y && d.getMonth() === m; });
   }
 
   function renderYear() {
@@ -781,7 +828,7 @@
       for (let i = 0; i < 7; i++) {
         const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + w * 7 + i);
         const isoD = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const evs = state.events.filter((e) => e.date === isoD);
+        const evs = state.events.filter((e) => e.date === isoD && discOk(e));
         const cls = [d.getMonth() !== m && 'out', d.getTime() === today && 'today'].filter(Boolean).join(' ');
         html += `<td class="${cls}"${d.getTime() === today ? ' aria-current="date"' : ''}><span class="num">${d.getDate()}</span>${evs.map((e) => `<button type="button" data-open="${esc(e.id)}" style="--c:${disc(e).color}" class="${e.source === 'closed-area' ? 'tentative' : ''}" title="${esc(e.title)}">${discIcon(e.disciplines?.[0], 'di-xs')}${esc(e.title)}</button>`).join('')}</td>`;
       }
@@ -909,6 +956,7 @@
   async function boot() {
     initPrefs();
     initPeople();
+    initDiscFilter();
     window.addEventListener('hashchange', route);
     route();
     const [links, events, forum, news] = await Promise.all([
