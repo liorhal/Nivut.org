@@ -630,7 +630,7 @@
           ${e.nivutId ? '<section class="ev-card" id="myPeople" aria-labelledby="mypl-h" aria-live="polite"></section>' : ''}
 
           ${d.map ? `<section class="ev-card" aria-labelledby="mp-h"><h2 id="mp-h">מפת הניווט</h2>
-            ${d.map.image ? `<a class="ev-mapimg" href="${esc(d.map.image)}" target="_blank" rel="noopener"><img src="${esc(d.map.image)}" alt="תצוגה מקדימה של מפת ${esc(d.map.name)}" loading="lazy" onerror="this.parentNode.remove()"></a>` : ''}
+            ${d.map.image ? `<a class="ev-mapimg" href="${esc(d.map.image)}" target="_blank" rel="noopener" data-lightbox="${esc(`מפת ${d.map.name}`)}"><img src="${esc(d.map.image)}" alt="תצוגה מקדימה של מפת ${esc(d.map.name)}" loading="lazy" onerror="this.parentNode.remove()"></a>` : ''}
             <p><strong>${d.map.url ? `<a href="${esc(d.map.url)}" target="_blank" rel="noopener">${esc(d.map.name)}</a>` : esc(d.map.name)}</strong></p>
             <ul class="chips-static">${[d.map.terrain && `שטח ${d.map.terrain}`, d.map.scale && `קנ"מ ${d.map.scale}`, d.map.year && `מופה ${d.map.year}`].filter(Boolean).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
           </section>` : ''}
@@ -643,7 +643,7 @@
           </dl></section>` : ''}
 
           ${d.attachments?.length ? `<section class="ev-card" aria-labelledby="fl-h"><h2 id="fl-h">קבצים</h2><ul class="ev-files">
-            ${d.attachments.map((a) => `<li><a href="${esc(a.url)}" target="_blank" rel="noopener">📎 ${esc(a.name)}</a></li>`).join('')}</ul></section>` : ''}
+            ${d.attachments.map((a) => `<li><a href="${esc(a.url)}" target="_blank" rel="noopener"${isImageUrl(a.url) ? ` data-lightbox="${esc(a.name)}"` : ''}>${isImageUrl(a.url) ? '🖼' : '📎'} ${esc(a.name)}</a></li>`).join('')}</ul></section>` : ''}
 
           ${threads.length ? `<section class="ev-card" aria-labelledby="fr-h"><h2 id="fr-h">מדברים על זה בפורום</h2><ul class="ev-threads">
             ${threads.map((t) => `<li><a href="#forum/${esc(t.id)}">${esc(t.title)}</a><span class="muted small">${esc(t.author)} · ${t.replyCount} תגובות · ${relTime(t.lastActivity)}</span></li>`).join('')}</ul></section>` : ''}
@@ -708,6 +708,56 @@
       if (e) shareEvent(e);
     }
   });
+
+  /* ---------- Image lightbox (attached images open here, not as downloads) ---------- */
+  const isImageUrl = (u) => /\.(?:jpe?g|png|gif|webp|bmp|svg)(?:[?#].*)?$/i.test(u || '');
+  const lightbox = { items: [], i: 0, opener: null };
+  function showLightbox() {
+    const it = lightbox.items[lightbox.i];
+    const img = $('#lbImg');
+    img.removeAttribute('src');
+    img.alt = it.caption;
+    img.src = it.src;
+    $('#lbCaption').textContent = it.caption;
+    const many = lightbox.items.length > 1;
+    $('#lbNav').hidden = !many;
+    $('#lbCount').textContent = many ? `${lightbox.i + 1} / ${lightbox.items.length}` : '';
+  }
+  function openLightbox(link) {
+    const group = link.closest('.msg-images, .ev-files, .ev-card, .thread') || link.parentElement;
+    const links = [...group.querySelectorAll('a[data-lightbox]')];
+    lightbox.items = links.map((a) => ({ src: a.href, caption: a.dataset.lightbox || '' }));
+    lightbox.i = Math.max(0, links.indexOf(link));
+    lightbox.opener = link;
+    showLightbox();
+    const dlg = $('#lightbox');
+    if (!dlg.open) dlg.showModal();
+    $('#lbClose').focus();
+  }
+  function stepLightbox(n) {
+    if (lightbox.items.length < 2) return;
+    lightbox.i = (lightbox.i + n + lightbox.items.length) % lightbox.items.length;
+    showLightbox();
+  }
+  function initLightbox() {
+    const dlg = $('#lightbox');
+    document.addEventListener('click', (ev) => {
+      const a = ev.target.closest('a[data-lightbox]');
+      if (!a || ev.ctrlKey || ev.metaKey || ev.shiftKey) return; // modified clicks keep the browser's behaviour
+      ev.preventDefault();
+      openLightbox(a);
+    });
+    $('#lbPrev').addEventListener('click', () => stepLightbox(-1));
+    $('#lbNext').addEventListener('click', () => stepLightbox(1));
+    dlg.addEventListener('keydown', (ev) => {
+      // RTL: the left arrow moves forward
+      if (ev.key === 'ArrowLeft') { ev.preventDefault(); stepLightbox(1); }
+      if (ev.key === 'ArrowRight') { ev.preventDefault(); stepLightbox(-1); }
+    });
+    dlg.addEventListener('click', (ev) => { if (ev.target === dlg) dlg.close(); }); // backdrop
+    dlg.addEventListener('close', () => { $('#lbImg').removeAttribute('src'); if (lightbox.opener?.isConnected) lightbox.opener.focus(); });
+    $('#lbImg').addEventListener('error', () => { $('#lbCaption').textContent = 'לא ניתן להציג את התמונה.'; });
+  }
 
   /* ---------- Upcoming ---------- */
   function upcoming() {
@@ -1002,9 +1052,9 @@
     const images = m.images || [];
     let html = m.body.length ? m.body.map((p) => `<p>${linkify(p)}</p>`).join('') : '';
     if (images.length) {
-      html += `<div class="msg-images">${images.map((src, i) => `<a href="${esc(src)}" target="_blank" rel="noopener" class="msg-img">
+      html += `<div class="msg-images">${images.map((src, i) => `<a href="${esc(src)}" target="_blank" rel="noopener" class="msg-img" data-lightbox="${esc(`תמונה מצורפת${images.length > 1 ? ` ${i + 1}` : ''} – ${m.author}`)}">
         <img src="${esc(src)}" alt="תמונה מצורפת${images.length > 1 ? ` ${i + 1}` : ''} להודעה של ${esc(m.author)}" loading="lazy">
-        <span class="msg-img-open" aria-hidden="true">פתיחה ↗</span></a>`).join('')}</div>`;
+        <span class="msg-img-open" aria-hidden="true">🔍 הגדלה</span></a>`).join('')}</div>`;
     } else if (m.hasImage) {
       html += `<p><a class="msg-img-link" href="${esc(threadUrl || state.links.forum || '#')}" target="_blank" rel="noopener">📷 מצורפת תמונה – לצפייה בפורום ↗</a></p>`;
     }
@@ -1090,6 +1140,7 @@
     initPrefs();
     initMyClub();
     initHome();
+    initLightbox();
     initPeople();
     initDiscFilter();
     window.addEventListener('hashchange', route);

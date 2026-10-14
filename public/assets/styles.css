@@ -1054,3 +1054,22 @@ main:focus { outline: none; }
 .home-pick { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .home-pick select { flex: 1 1 160px; }
 .people-dialog { overflow-y: auto; overscroll-behavior: contain; }
+
+/* ---------- Image lightbox ---------- */
+.lightbox {
+  border: 0; padding: 0; width: min(1100px, calc(100vw - 24px)); max-width: none; max-height: calc(100dvh - 24px);
+  background: #0b0f0d; color: #fff; border-radius: 16px; overflow: hidden; display: none;
+}
+.lightbox[open] { display: grid; grid-template-rows: auto 1fr auto; }
+.lightbox::backdrop { background: rgb(0 0 0 / .8); }
+.lb-bar { display: flex; align-items: center; gap: 12px; padding: 10px 12px; }
+.lb-caption { margin: 0; flex: 1; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-orig { color: rgb(255 255 255 / .8); font-size: .85rem; }
+.lb-close { color: #fff; border-color: rgb(255 255 255 / .4); }
+.lb-figure { margin: 0; min-height: 0; display: grid; place-items: center; padding: 0 12px; }
+.lb-figure img { max-width: 100%; max-height: calc(100dvh - 140px); object-fit: contain; border-radius: 8px; background: #1a1f1c; }
+.lb-nav { display: flex; justify-content: center; align-items: center; gap: 16px; padding: 10px; }
+.lb-nav .icon-btn { color: #fff; border-color: rgb(255 255 255 / .4); font-size: 1.4rem; }
+.ev-files a[data-lightbox] { cursor: zoom-in; }
+.msg-img, .ev-mapimg { cursor: zoom-in; }
+@media (prefers-reduced-motion: no-preference) { .lightbox[open] { animation: lb-in .18s ease-out; } @keyframes lb-in { from { opacity: 0; transform: scale(.98); } } }

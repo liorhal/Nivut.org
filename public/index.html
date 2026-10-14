@@ -145,6 +145,18 @@
   </main>
 
   <div id="toast" class="toast" role="status" hidden></div>
+  <dialog id="lightbox" class="lightbox" aria-labelledby="lbCaption">
+    <div class="lb-bar">
+      <p id="lbCaption" class="lb-caption"></p>
+      <form method="dialog"><button class="icon-btn lb-close" id="lbClose" aria-label="סגירת התמונה">✕</button></form>
+    </div>
+    <figure class="lb-figure"><img id="lbImg" alt=""></figure>
+    <div class="lb-nav" id="lbNav" hidden>
+      <button type="button" class="icon-btn" id="lbPrev" aria-label="התמונה הקודמת">›</button>
+      <span id="lbCount" aria-live="polite"></span>
+      <button type="button" class="icon-btn" id="lbNext" aria-label="התמונה הבאה">‹</button>
+    </div>
+  </dialog>
   <dialog id="peopleDialog" class="people-dialog" aria-labelledby="peopleTitle">
     <form method="dialog" class="dlg-x"><button class="icon-btn" aria-label="סגירה">✕</button></form>
     <h2 id="peopleTitle">ההגדרות שלי</h2>
