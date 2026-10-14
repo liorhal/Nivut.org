@@ -355,11 +355,18 @@
   setInterval(tickCountdowns, 30000);
 
   /** Registration block for cards: countdown when open, otherwise a short status line. */
+  /** Registration can still be done online: early deadline ahead, or not known (no details yet). */
+  const regOpen = (e) => {
+    if (e.source === 'closed-area' || daysBetween(new Date(), evDate(e)) < 0) return false;
+    const dl = regDeadline(e);
+    return dl ? dl > new Date() : true;
+  };
+
   function regBlock(e, size) {
     const dl = regDeadline(e);
-    if (e.source === 'closed-area') return '<p class="reg-line muted">הרשמה טרם נפתחה</p>';
-    if (!dl) return e.details ? '<p class="reg-line muted">הרשמה באתר האיגוד</p>' : '';
-    if (dl <= new Date()) return `<p class="reg-line muted">ההרשמה המוקדמת נסגרה${e.details.onsite ? ' · אפשר להירשם במקום' : ''}</p>`;
+    if (e.source === 'closed-area') return '<p class="reg-line reg-soon"><span aria-hidden="true">⏳</span> הרשמה טרם נפתחה</p>';
+    if (!dl) return e.details ? '<p class="reg-line">הרשמה באתר האיגוד</p>' : '';
+    if (dl <= new Date()) return `<p class="reg-line reg-closed"><span aria-hidden="true">🔒</span> ההרשמה המוקדמת נסגרה${e.details.onsite ? ' · <strong>אפשר להירשם במקום</strong>' : ''}</p>`;
     return `<div class="reg-cd"><p class="reg-cd-label">הרשמה מוקדמת נסגרת בעוד</p>${countdownHtml(dl, size)}</div>`;
   }
 
@@ -713,20 +720,22 @@
           <span class="lb-mon">${MONTHS[d.getMonth()]}<br>יום ${DAYS[d.getDay()]}</span>
           <span class="lb-icons">${(e.disciplines || []).map((k) => discIcon(k, 'di-xl')).join('')}</span>
         </div>` : ''}
+        <div class="top-bar">
+          <div class="badges">${leagueBadge(e)}${mineBadge(e)}${discBadges(e)}</div>
+          ${e.clubName ? `<span class="top-club">${eventLogo(e, 'cl-sm')}<span>${esc(e.clubName)}</span></span>` : ''}
+        </div>
         <div class="top-head">
           <div class="top-date" aria-hidden="true"><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span>
-            <span class="top-di">${(e.disciplines || []).map((k) => discIcon(k, 'di-sm')).join('')}</span></div>
+            <span class="top-di">${(e.disciplines || []).map((k) => discIcon(k, 'di-sm')).join('')}</span>
+            ${e.clubName ? `<span class="date-club">${eventLogo(e, 'cl-xs')}</span>` : ''}</div>
           <div class="top-meta">
-            <div class="badges">${discBadges(e)}</div>
-            ${isLeague(e) || isMine(e) ? `<div class="flags">${leagueBadge(e)}${mineBadge(e)}</div>` : ''}
-            <h2><a href="#event/${encodeURIComponent(e.id)}">${esc(e.title)}</a></h2>
-            <p>${DAYS[d.getDay()]}${e.time ? ` · <strong class="start-time">זינוק ${esc(e.time)}</strong>` : ''}${e.location && e.location !== e.title ? ` · ${esc(e.location)}` : ''}<span class="sr-only">, ${fmtLong(d)}</span></p>
-            ${e.clubName ? `<p class="top-club">${eventLogo(e, 'cl-xs')}<span>${esc(e.clubName)}</span></p>` : ''}
+            <h2><a href="#event/${encodeURIComponent(e.id)}"><span class="title-flags" aria-hidden="true">${isLeague(e) ? '🏆' : ''}${isMine(e) ? '★' : ''}</span>${esc(e.title)}</a></h2>
+            <p class="top-when">${DAYS[d.getDay()]}${e.time ? ` · <strong class="start-time">זינוק ${esc(e.time)}</strong>` : ''}${e.location && e.location !== e.title ? ` · <span class="top-loc">${esc(e.location)}</span>` : ''}<span class="sr-only">, ${fmtLong(d)}</span></p>
           </div>
         </div>
         ${lead && e.summary ? `<p class="lead-summary">${esc(e.summary)}</p>` : ''}
         ${regBlock(e, 'cd-card')}
-        <p class="top-foot"><span>${inDays(left)}</span><a class="top-cta" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד">הרשמה ↗</a></p>
+        ${regOpen(e) ? `<p class="top-foot"><span>${inDays(left)}</span><a class="top-cta" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד">הרשמה ↗</a></p>` : ''}
       </li>`;
     }).join('');
     tickCountdowns();
@@ -805,13 +814,13 @@
             ${closed ? '<li class="muted">שטח סגור לקראת תחרות · פרטים בקרוב</li>' : ''}
           </ul>
           ${e.summary ? `<p class="summary">${esc(e.summary)}</p>` : ''}
-          ${regDeadline(e) && regDeadline(e) > now ? regBlock(e, 'cd-inline') : ''}
+          ${regDeadline(e) ? regBlock(e, 'cd-inline') : ''}
         </div>
         ${e.image ? `<img class="thumb" src="${esc(e.image)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
         <div class="card-actions">
           <button type="button" class="btn ghost" data-ics="${esc(e.id)}" aria-label="הוסף ליומן: ${esc(e.title)}">📅 ליומן</button>
           ${canNavigate(e) ? `<a class="btn ghost" href="${esc(wazeUrl(e))}" target="_blank" rel="noopener" aria-label="ניווט ב-Waze אל ${esc(e.location || e.title)}">🚗 Waze</a>` : ''}
-          ${closed ? '' : `<a class="btn ghost" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד">↗ הרשמה</a>`}
+          ${regOpen(e) ? `<a class="btn ghost" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד">↗ הרשמה</a>` : ''}
         </div>
       </article></li>`;
   }

@@ -899,3 +899,46 @@ main:focus { outline: none; }
   .top-card .flags { margin: 0; }
   .top-club { display: none; } /* phones: the "my club" badge stays; logos show on the event page */
 }
+
+/* ---------- Card HUD: attributes on top, club top-left, clear status ---------- */
+.top-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
+.top-bar .badges { margin: 0; }
+.top-bar .top-club { display: inline-flex; align-items: center; margin: 0 0 0 0; margin-inline-start: auto; font-size: .85rem; font-weight: 700; color: var(--text); white-space: nowrap; }
+.top-card.lead > .top-bar { margin-top: 14px; }
+.top-card:not(.lead) .top-bar { grid-column: 1 / -1; }
+.top-meta .top-when { font-size: .95rem; color: var(--text); }
+.top-meta .top-loc { color: var(--muted); }
+.start-time { background: color-mix(in srgb, var(--brand) 10%, transparent); padding: 0 6px; border-radius: 6px; }
+.title-flags:empty, .date-club { display: none; }
+.title-flags { margin-inline-end: 6px; }
+.reg-line { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0; padding: 5px 10px; border-radius: 10px;
+  font-size: .85rem; font-weight: 600; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); }
+.reg-closed { background: color-mix(in srgb, #64748b 12%, var(--surface)); }
+.reg-closed strong { color: var(--brand); }
+:root[data-theme="dark"] .reg-closed strong { color: #4ade80; }
+.reg-soon { background: color-mix(in srgb, #d97706 12%, var(--surface)); border-color: color-mix(in srgb, #d97706 45%, var(--border)); }
+.top-card:not(:has(.top-foot)) .reg-line, .top-card:not(:has(.top-foot)) .reg-cd { grid-column: 1 / -1; }
+.event-card .reg-line { margin-top: 8px; }
+@media (max-width: 560px) {
+  /* keep four cards on screen: attributes become icons, the club logo sits under the date */
+  .top-bar { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .title-flags:not(:empty) { display: inline; }
+  .date-club { display: block; margin-top: 4px; }
+  .date-club .club-logo { margin: 0; }
+  .top-meta .top-when { font-size: .85rem; }
+  .reg-line { font-size: .78rem; padding: 3px 8px; }
+}
+.title-flags { display: none; }
+@media (max-width: 560px) { .title-flags:not(:empty) { display: inline; } }
+@media (min-width: 1001px) {
+  /* side cards: attributes bar · title with the button beside it · registration status */
+  .top4 .top-card:not(.lead) .top-bar { grid-column: 1 / -1; grid-row: 1; }
+  .top4 .top-card:not(.lead) .top-head { grid-column: 1; grid-row: 2; }
+  .top4 .top-card:not(.lead) .top-foot { grid-column: 2; grid-row: 2; align-self: center; }
+  .top4 .top-card:not(.lead) .reg-cd, .top4 .top-card:not(.lead) .reg-line { grid-column: 1 / -1; grid-row: 3; justify-self: stretch; }
+  .top4 .top-card:not(.lead):not(:has(.top-foot)) .top-head { grid-column: 1 / -1; }
+}
+@media (max-width: 1000px) and (min-width: 561px) {
+  .top4 .top-card:not(.lead) .top-foot { grid-row: auto; }
+  .top4 .top-card:not(.lead) .top-bar { grid-row: auto; }
+}
