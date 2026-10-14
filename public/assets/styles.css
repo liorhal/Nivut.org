@@ -1098,3 +1098,17 @@ main:focus { outline: none; }
   .top-card .people-chip { display: none; } /* phones: the star and its tooltip carry it */
   .ppl-star { width: 30px; height: 30px; top: -10px; inset-inline-start: -10px; }
 }
+
+/* star first in the card's top bar (not on the date) */
+.top-bar .ppl-star { position: relative; top: auto; inset-inline-start: auto; flex: none; width: 32px; height: 32px; margin-inline-end: 2px; }
+.top-bar { justify-content: flex-start; }
+.top-bar .top-club { margin-inline-start: auto; }
+.tip { min-width: 160px; }
+.tip-row { display: flex; justify-content: space-between; gap: 16px; }
+.tip-row b { font-family: var(--num); font-weight: 900; color: #fbbf24; }
+@media (max-width: 560px) {
+  /* phones: the bar is screen-reader only, except the star on cards with my people */
+  .top-card.has-people .top-bar { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; grid-column: 1 / -1; margin: -2px 0 0; }
+  .top-card.has-people .top-bar > :not(.ppl-star) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .top-bar .ppl-star { width: 28px; height: 28px; }
+}

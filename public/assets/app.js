@@ -384,8 +384,7 @@
   function peopleStarHtml(hits) {
     const lines = hits.map((p) => `${p.name}${p.start ? ` · זינוק ${p.start}` : ''}`);
     const label = `${hits.length === 1 ? 'אחד מהאנשים שלך רשום' : `${hits.length} מהאנשים שלך רשומים`}: ${lines.join(', ')}`;
-    return `<button type="button" class="ppl-star" data-tip-title="${esc(hits.length === 1 ? 'רשום מהאנשים שלך' : `${hits.length} רשומים מהאנשים שלך`)}"
-      data-tip="${esc(lines.join('\n'))}" aria-label="${esc(label)}">
+    return `<button type="button" class="ppl-star" data-tip="${esc(hits.map((p) => `${p.name}\t${p.start || ''}`).join('\n'))}" aria-label="${esc(label)}">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.4l-6.1 3.4 1.4-6.8-5.1-4.7 6.9-.8z"/></svg>
       <span class="n" aria-hidden="true">${hits.length}</span></button>`;
   }
@@ -398,7 +397,10 @@
     const show = (el) => {
       if (owner !== el) shownAt = Date.now();
       owner = el;
-      tip.innerHTML = `${el.dataset.tipTitle ? `<strong>${esc(el.dataset.tipTitle)}</strong>` : ''}${el.dataset.tip.split('\n').map((l) => `<span>${esc(l)}</span>`).join('')}`;
+      tip.innerHTML = el.dataset.tip.split('\n').map((l) => {
+        const [name, time] = l.split('\t');
+        return `<span class="tip-row"><span>${esc(name)}</span>${time ? `<b>${esc(time)}</b>` : ''}</span>`;
+      }).join('');
       tip.hidden = false;
       const r = el.getBoundingClientRect(), t = tip.getBoundingClientRect();
       const left = Math.min(Math.max(8, r.left + r.width / 2 - t.width / 2), innerWidth - t.width - 8);
@@ -433,7 +435,7 @@
         cards.filter(([c, cid]) => cid === id && c.isConnected && !c.querySelector('.people-chip')).forEach(([c]) => {
           c.classList.add('has-people');
           c.querySelector('.top-meta').insertAdjacentHTML('beforeend', peopleChipHtml(hits));
-          c.querySelector('.top-date')?.insertAdjacentHTML('beforeend', peopleStarHtml(hits));
+          c.querySelector('.top-bar')?.insertAdjacentHTML('afterbegin', peopleStarHtml(hits));
         });
       });
     }
