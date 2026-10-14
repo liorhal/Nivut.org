@@ -1618,3 +1618,7 @@ a.info-btn { text-decoration: none; }
   .toast:not([hidden]) { animation: toast-in .26s var(--ease-out); }
   @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 10px); } }
 }
+/* Start times as text where the diagram is hidden (the four nearest on phones) */
+.top-card.tk .start-alt { display: none; }
+@media (max-width: 560px) { #top4 > .top-card.tk .start-alt { display: inline; } }
+.top-card.tk .start-time { color: var(--text); font-family: var(--num); font-weight: 900; font-size: .9rem; }

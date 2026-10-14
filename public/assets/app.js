@@ -1073,7 +1073,10 @@
             ${e.clubName ? `<span class="top-club">${eventLogo(e, 'cl-sm')}<span>${esc(e.clubName)}</span></span>` : ''}
           </div>
           <${tag}><a href="#event/${encodeURIComponent(e.id)}" title="${esc(e.title)}">${esc(e.title)}</a></${tag}>
-          <p class="top-when">${[!tlMini && e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`, where].filter(Boolean).join(' · ')}<span class="sr-only">${e.time || where ? ', ' : ''}${fmtLong(d)}, ${esc(disc(e).label)}${e.location ? `, ${esc(e.location)}` : ''}</span></p>
+          <p class="top-when">${[!tlMini && e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`,
+            // Phones hide the diagram in the four nearest; this short line takes its place there.
+            tlMini && e.details?.startFrom && `<strong class="start-time start-alt">זינוק <bdi dir="ltr">${esc(e.details.startFrom)}${e.details.startTo ? `–${esc(e.details.startTo)}` : ''}</bdi></strong>`,
+            where].filter(Boolean).join(' ')}<span class="sr-only">${e.time || where ? ', ' : ''}${fmtLong(d)}, ${esc(disc(e).label)}${e.location ? `, ${esc(e.location)}` : ''}</span></p>
           ${tlMini ? `<p class="top-tl">${tlMini}</p>` : ''}
           ${lead && e.summary ? `<p class="lead-summary">${esc(e.summary)}</p>` : ''}
           ${reg}
