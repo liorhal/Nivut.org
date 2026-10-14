@@ -996,3 +996,37 @@ main:focus { outline: none; }
   .top-card .people-chip { margin-top: 3px; font-size: .78rem; }
   .top-card .pc-person { padding: 1px 3px 1px 6px; }
 }
+
+/* ---------- "More events" use the same HUD cards ---------- */
+.event-list.hud-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
+.hud-list > .month-sep, .hud-list > .empty { grid-column: 1 / -1; }
+.hud-list .top-card { position: relative; box-shadow: var(--shadow); border: 1px solid var(--border); border-inline-start: 6px solid var(--c); }
+.hud-list .top-card.is-league { box-shadow: inset 0 4px 0 var(--gold), var(--shadow); }
+.hud-list .top-card h3 { margin: 2px 0; font-size: 1.05rem; line-height: 1.3; }
+.hud-list .top-card h3 a { color: var(--text); text-decoration: none; }
+.hud-list .top-card h3 a::after { content: ""; position: absolute; inset: 0; border-radius: 20px; }
+.hud-list .top-card h3 a:hover { text-decoration: underline; }
+.hud-list .top-card .top-foot, .hud-list .top-card .reg-cd, .hud-list .top-card .reg-line, .hud-list .top-card .top-cta { position: relative; z-index: 2; }
+@media (min-width: 1001px) {
+  .hud-list .top-card { grid-template-columns: 1fr auto; align-content: start; }
+  .hud-list .top-card .top-bar { grid-column: 1 / -1; grid-row: 1; }
+  .hud-list .top-card .top-head { grid-column: 1; grid-row: 2; }
+  .hud-list .top-card .top-foot { grid-column: 2; grid-row: 2; align-self: center; margin: 0; }
+  .hud-list .top-card .top-foot > span { display: none; }
+  .hud-list .top-card .reg-cd, .hud-list .top-card .reg-line { grid-column: 1 / -1; grid-row: 3; }
+  .hud-list .top-card:not(:has(.top-foot)) .top-head { grid-column: 1 / -1; }
+}
+@media (max-width: 1000px) { .event-list.hud-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .event-list.hud-list { grid-template-columns: 1fr; gap: 8px; } }
+
+/* list cards: placement scoped to the list (beats the side-card rules) */
+@media (min-width: 1001px) {
+  #eventList .top-card .top-bar { grid-column: 1 / -1; grid-row: 1; }
+  #eventList .top-card .top-head { grid-column: 1; grid-row: 2; }
+  #eventList .top-card .top-foot { grid-column: 2; grid-row: 2; align-self: center; }
+  #eventList .top-card .reg-cd, #eventList .top-card .reg-line { grid-column: 1 / -1; grid-row: 3; }
+  #eventList .top-card:not(:has(.top-foot)) .top-head { grid-column: 1 / -1; }
+}
+@media (max-width: 1000px) and (min-width: 561px) {
+  #eventList .top-card .top-foot { grid-row: auto; }
+}

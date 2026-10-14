@@ -128,32 +128,6 @@
   }
   const canNavigate = (e) => !!(e.details?.wazeLL || e.location);
 
-  function icsFor(events) {
-    const pad = (n) => String(n).padStart(2, '0');
-    const stamp = (d) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
-    const clean = (s) => String(s || '').replace(/([,;\\])/g, '\\$1').replace(/\n/g, '\\n');
-    const now = new Date();
-    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//nivut-wrapper//HE', 'CALSCALE:GREGORIAN'];
-    events.forEach((e) => {
-      const s = evDate(e);
-      const when = e.time
-        ? [`DTSTART;TZID=Asia/Jerusalem:${stamp(s)}`, `DTEND;TZID=Asia/Jerusalem:${stamp(new Date(s.getTime() + 4 * 3600e3))}`]
-        : [`DTSTART;VALUE=DATE:${stamp(s).slice(0, 8)}`, `DTEND;VALUE=DATE:${stamp(new Date(s.getFullYear(), s.getMonth(), s.getDate() + 1)).slice(0, 8)}`];
-      const d = e.details;
-      lines.push('BEGIN:VEVENT', `UID:${e.id}@nivut-wrapper`, `DTSTAMP:${stamp(now)}`, ...when,
-        `SUMMARY:${clean(e.title)}`, `LOCATION:${clean(e.location)}`, `URL:${clean(e.url)}`,
-        ...(d?.lat && d?.lng ? [`GEO:${d.lat};${d.lng}`] : []),
-        `DESCRIPTION:${clean([disc(e).label, e.eventType, e.clubName, e.url].filter(Boolean).join(' · '))}`, 'END:VEVENT');
-    });
-    lines.push('END:VCALENDAR');
-    return lines.join('\r\n');
-  }
-  function downloadIcs(events, name) {
-    const url = URL.createObjectURL(new Blob([icsFor(events)], { type: 'text/calendar;charset=utf-8' }));
-    const a = Object.assign(document.createElement('a'), { href: url, download: name });
-    document.body.append(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
 
   /* ---------- Clubs: logos, "my club", league highlight ---------- */
   const clubOf = (id) => state.clubs.find((c) => c.id === String(id || ''));
@@ -340,18 +314,15 @@
   /** Marks my registered people on the home page cards (top four and the list). */
   function decorateTopPeople() {
     if (!state.people.length) return;
-    const visible = [...new Set([...$$('.top-card [href^="#event/"]'), ...$$('.event-card [data-open]')]
-      .map((el) => decodeURIComponent(el.getAttribute('href')?.slice(7) || el.dataset.open)))];
-    for (const id of visible) {
+    const cards = $$('.top-card').map((c) => [c, decodeURIComponent(c.querySelector('[href^="#event/"]')?.getAttribute('href').slice(7) || '')]);
+    for (const id of new Set(cards.map(([, id]) => id))) {
       const e = state.events.find((x) => x.id === id);
       if (!e?.nivutId) continue;
       participantsOf(e).then((data) => {
         const hits = registeredPeople(data?.participants);
         if (!hits.length) return;
-        const top = document.querySelector(`.top-card [href="#event/${CSS.escape(encodeURIComponent(id))}"]`)?.closest('.top-card');
-        if (top && !top.querySelector('.people-chip')) top.querySelector('.top-meta').insertAdjacentHTML('beforeend', peopleChipHtml(hits));
-        const card = document.querySelector(`.event-card [data-open="${CSS.escape(id)}"]`)?.closest('.event-card');
-        if (card && !card.querySelector('.people-chip')) card.querySelector('.meta').insertAdjacentHTML('afterend', peopleChipHtml(hits));
+        cards.filter(([c, cid]) => cid === id && c.isConnected && !c.querySelector('.people-chip'))
+          .forEach(([c]) => c.querySelector('.top-meta').insertAdjacentHTML('beforeend', peopleChipHtml(hits)));
       });
     }
   }
@@ -581,7 +552,6 @@
             ${d.onsite && reg.state === 'open' ? `<p class="muted small">הרשמה במקום: ${esc(d.onsite)}</p>` : ''}
             <a class="btn btn-xl" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(reg.cta)} ↗</a>
             <div class="ev-actions">
-              <button type="button" class="btn ghost" data-ics="${esc(e.id)}">📅 ליומן</button>
               <button type="button" class="btn ghost" data-share="${esc(e.id)}">🔗 שיתוף</button>
               ${e.nivutId ? `<a class="btn ghost" href="${esc(startListUrl(e))}" target="_blank" rel="noopener">👥 רשימת משתתפים</a>` : ''}
             </div>
@@ -614,7 +584,6 @@
     <nav class="ev-dock" aria-label="פעולות מהירות">
       <a class="dock-main" href="${esc(e.url)}" target="_blank" rel="noopener">${reg.state === 'open' ? 'להרשמה' : 'לאתר האיגוד'}</a>
       ${canNavigate(e) ? `<a href="${esc(wazeUrl(e))}" target="_blank" rel="noopener" aria-label="ניווט ב-Waze">🚗</a>` : ''}
-      <button type="button" data-ics="${esc(e.id)}" aria-label="הוסף ליומן">📅</button>
       <button type="button" data-share="${esc(e.id)}" aria-label="שיתוף">🔗</button>
     </nav>`;
   }
@@ -663,12 +632,6 @@
   document.addEventListener('click', (ev) => {
     const openBtn = ev.target.closest('[data-open]');
     if (openBtn) { location.hash = `event/${encodeURIComponent(openBtn.dataset.open)}`; return; }
-    const icsBtn = ev.target.closest('[data-ics]');
-    if (icsBtn) {
-      const e = state.events.find((x) => x.id === icsBtn.dataset.ics);
-      if (e) { downloadIcs([e], `${e.date}-${e.id}.ics`); toast('קובץ היומן ירד'); }
-      return;
-    }
     const shareBtn = ev.target.closest('[data-share]');
     if (shareBtn) {
       const e = state.events.find((x) => x.id === shareBtn.dataset.share);
@@ -723,18 +686,10 @@
     return [...real, ...up.filter((e) => e.source === 'closed-area')].slice(0, n).sort((a, b) => evDate(a) - evDate(b));
   }
 
-  function renderTop4() {
-    const box = $('#top4');
-    const list = topEvents();
-    if (!list.length) {
-      box.innerHTML = `<li class="top4-loading">${state.filter.disciplines.size ? 'אין ניווטים קרובים מהסוגים שבחרת.' : 'אין אירועים מתוכננים כרגע.'}</li>`;
-      return;
-    }
-    const now = new Date();
-    box.innerHTML = list.map((e, i) => {
-      const d = evDate(e);
-      const left = daysBetween(now, d);
-      const lead = i === 0;
+  /** One event card (the "HUD"): attributes and club on top, date, title, start and place, registration. */
+  function hudCardHtml(e, { lead = false, now = new Date(), tag = 'h2' } = {}) {
+    const d = evDate(e);
+    const left = daysBetween(now, d);
       return `<li class="top-card${lead ? ' lead' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}">
         ${watermarkHtml(e)}
         ${lead ? `<div class="lead-band" aria-hidden="true">
@@ -750,7 +705,7 @@
             <span class="top-di">${(e.disciplines || []).map((k) => discIcon(k, 'di-sm')).join('')}</span>
 </div>
           <div class="top-meta">
-            <h2><a href="#event/${encodeURIComponent(e.id)}"><span class="title-flags" aria-hidden="true">${isLeague(e) ? '🏆' : ''}${isMine(e) ? '★' : ''}</span>${esc(e.title)}</a></h2>
+            <${tag}><a href="#event/${encodeURIComponent(e.id)}"><span class="title-flags" aria-hidden="true">${isLeague(e) ? '🏆' : ''}${isMine(e) ? '★' : ''}</span>${esc(e.title)}</a></${tag}>
             <p class="top-when">${DAYS[d.getDay()]}${e.time ? ` · <strong class="start-time">זינוק ${esc(e.time)}</strong>` : ''}${e.location && e.location !== e.title ? ` · <span class="top-loc">${esc(e.location)}</span>` : ''}<span class="sr-only">, ${fmtLong(d)}</span></p>
           </div>
         </div>
@@ -762,7 +717,17 @@
             : `${regBlock(e, 'cd-card')}${regOpen(e) ? `<p class="top-foot"><span>${inDays(left)}</span>${cta}</p>` : ''}`;
         })()}
       </li>`;
-    }).join('');
+  }
+
+  function renderTop4() {
+    const box = $('#top4');
+    const list = topEvents();
+    if (!list.length) {
+      box.innerHTML = `<li class="top4-loading">${state.filter.disciplines.size ? 'אין ניווטים קרובים מהסוגים שבחרת.' : 'אין אירועים מתוכננים כרגע.'}</li>`;
+      return;
+    }
+    const now = new Date();
+    box.innerHTML = list.map((e, i) => hudCardHtml(e, { lead: i === 0, now })).join('');
     tickCountdowns();
     decorateTopPeople();
   }
@@ -819,37 +784,6 @@
     $('#mineOnly').addEventListener('change', (e) => { state.filter.mine = e.target.checked; renderList(); });
   }
 
-  function eventCard(e, now) {
-    const d = evDate(e);
-    const left = daysBetween(now, d);
-    const det = e.details;
-    const when = det?.startFrom ? `תחילת זינוקים ${esc(det.startFrom)}` : '';
-    const closed = e.source === 'closed-area';
-    return `<li>
-      <article class="event-card${closed ? ' compact' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}" aria-labelledby="t-${esc(e.id)}">
-        <div class="date-badge" aria-hidden="true"><span class="d">${d.getDate()}</span><span class="m">${MONTHS[d.getMonth()]}</span><span class="w">יום ${DAYS_SHORT[d.getDay()]}</span></div>
-        <div class="card-main">
-          <div class="badges">${leagueBadge(e)}${mineBadge(e)}${discBadges(e)}${tagBadges({ ...e, tags: (e.tags || []).filter((t) => t !== 'league') })}</div>
-          <h3 id="t-${esc(e.id)}"><button type="button" data-open="${esc(e.id)}">${esc(e.title)}</button></h3>
-          <ul class="meta">
-            <li><span class="sr-only">מועד: </span>${fmtLong(d)}</li>
-            ${when ? `<li>⏱ ${when}</li>` : ''}
-            ${e.location && e.location !== e.title ? `<li>📍 ${esc(e.location)}</li>` : ''}
-            ${e.clubName ? `<li class="club-li">${eventLogo(e, 'cl-sm')}מועדון ${esc(e.clubName)}</li>` : ''}
-            ${closed ? '<li class="muted">שטח סגור לקראת תחרות · פרטים בקרוב</li>' : ''}
-          </ul>
-          ${e.summary ? `<p class="summary">${esc(e.summary)}</p>` : ''}
-          ${regDeadline(e) ? regBlock(e, 'cd-inline', regDeadline(e) > now ? `<a class="top-cta" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד">הרשמה ↗</a>` : '') : ''}
-        </div>
-        ${e.image ? `<img class="thumb" src="${esc(e.image)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
-        <div class="card-actions">
-          <button type="button" class="btn ghost" data-ics="${esc(e.id)}" aria-label="הוסף ליומן: ${esc(e.title)}">📅 ליומן</button>
-          ${canNavigate(e) ? `<a class="btn ghost" href="${esc(wazeUrl(e))}" target="_blank" rel="noopener" aria-label="ניווט ב-Waze אל ${esc(e.location || e.title)}">🚗 Waze</a>` : ''}
-          ${regOpen(e) && !(regDeadline(e) && regDeadline(e) > now) ? `<a class="btn ghost" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד">↗ הרשמה</a>` : ''}
-        </div>
-      </article></li>`;
-  }
-
   // The saved discipline filter is a preference, not a search: it does not count here.
   const filtering = () => !!(state.filter.q || state.filter.club || state.filter.tags.size || state.filter.mine);
 
@@ -877,7 +811,7 @@
       const mKey = `${d.getFullYear()}-${d.getMonth()}`;
       const sep = mKey !== lastMonth ? `<li class="month-sep" aria-hidden="true">${MONTHS[d.getMonth()]} ${d.getFullYear()}</li>` : '';
       lastMonth = mKey;
-      return sep + eventCard(e, now);
+      return sep + hudCardHtml(e, { now, tag: 'h3' });
     }).join('');
     tickCountdowns();
     decorateTopPeople();
@@ -964,7 +898,6 @@
     const shift = (n) => { state.monthCursor = new Date(state.monthCursor.getFullYear(), state.monthCursor.getMonth() + n, 1); renderMonth(); };
     $('#prevMonth').addEventListener('click', () => shift(-1));
     $('#nextMonth').addEventListener('click', () => shift(1));
-    $('#downloadIcs').addEventListener('click', (e) => { e.preventDefault(); downloadIcs(upcoming(), 'nivut-season.ics'); });
   }
 
   /* ---------- Forum ---------- */
