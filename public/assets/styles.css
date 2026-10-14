@@ -1354,3 +1354,11 @@ a.info-btn { text-decoration: none; }
 :root[data-contrast="high"] .waze-link { background: var(--text); color: var(--bg); }
 :root[data-contrast="high"] .waze-link svg { color: var(--bg); }
 @media (max-width: 560px) { .waze-link { font-size: 0; gap: 0; padding: 3px; } .waze-link svg { width: 18px; height: 18px; } }
+/* Waze on the event page: larger, with its label, also on phones */
+.waze-link.waze-lg, .ev-facts .waze-link.waze-lg { font-size: .95rem; gap: 6px; padding: 6px 14px 6px 10px; color: #062a3a; text-decoration: none; justify-self: start; align-self: start; }
+.waze-link.waze-lg svg { width: 22px; height: 22px; }
+@media (max-width: 560px) { .waze-link.waze-lg, .ev-facts .waze-link.waze-lg { font-size: .95rem; gap: 6px; padding: 6px 14px 6px 10px; } .waze-link.waze-lg svg { width: 22px; height: 22px; } }
+.ev-actions .waze-link.waze-lg { min-height: 40px; }
+.ev-dock .dock-waze { background: #33ccff; color: #062a3a; }
+.ev-dock .dock-waze svg { width: 26px; height: 26px; color: #062a3a; }
+:root[data-contrast="high"] .ev-dock .dock-waze { background: var(--text); }

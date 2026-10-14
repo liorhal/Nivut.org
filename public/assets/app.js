@@ -132,9 +132,10 @@
     return ll ? `https://waze.com/ul?ll=${encodeURIComponent(ll)}&navigate=yes` : `https://waze.com/ul?q=${encodeURIComponent(e.location)}&navigate=yes`;
   }
   const canNavigate = (e) => !!(e.details?.wazeLL || e.location);
-  /** Small Waze button for the cards (above the card-wide link). */
-  const wazeLink = (e) => (e.source !== 'closed-area' && canNavigate(e)
-    ? `<a class="waze-link" href="${esc(wazeUrl(e))}" target="_blank" rel="noopener" aria-label="ניווט ב-Waze אל ${esc(e.location || e.title)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3C7 3 3.5 6.4 3.5 10.6c0 1.6.5 3 1.4 4.2-.2 1-.8 1.9-1.6 2.5 1.6.3 3.1-.1 4.2-.9 1.3.6 2.8 1 4.5 1 5 0 8.5-3.4 8.5-7.6S17 3 12 3z" fill="#fff" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="10" r="1.1" fill="currentColor"/><circle cx="15" cy="10" r="1.1" fill="currentColor"/><path d="M9 13.2c1.6 1.4 4.4 1.4 6 0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Waze</a>` : '');
+  const wazeIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3C7 3 3.5 6.4 3.5 10.6c0 1.6.5 3 1.4 4.2-.2 1-.8 1.9-1.6 2.5 1.6.3 3.1-.1 4.2-.9 1.3.6 2.8 1 4.5 1 5 0 8.5-3.4 8.5-7.6S17 3 12 3z" fill="#fff" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="10" r="1.1" fill="currentColor"/><circle cx="15" cy="10" r="1.1" fill="currentColor"/><path d="M9 13.2c1.6 1.4 4.4 1.4 6 0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  /** Waze button: small on the cards (above the card-wide link), larger with a label on the event page. */
+  const wazeLink = (e, label = 'Waze', cls = '') => (e.source !== 'closed-area' && canNavigate(e)
+    ? `<a class="waze-link ${cls}" href="${esc(wazeUrl(e))}" target="_blank" rel="noopener" aria-label="ניווט ב-Waze אל ${esc(e.location || e.title)}">${wazeIcon}${label}</a>` : '');
 
 
   /* ---------- My location & distance (kept in this browser only) ---------- */
@@ -682,7 +683,7 @@
         <li><span class="ev-ico" aria-hidden="true">📍</span><span class="k">איפה</span>
           <strong>${esc(e.location || d.name || 'יפורסם')}${distParen(e)}</strong>
           ${!state.home && d.lat ? '<button type="button" class="linklike dist-set" data-open-people>📍 קבעו מיקום כדי לראות מרחק</button>' : ''}
-          ${canNavigate(e) ? `<a href="${esc(wazeUrl(e))}" target="_blank" rel="noopener">ניווט לכינוס ב-Waze</a>` : '<span>&nbsp;</span>'}</li>
+          ${wazeLink(e, 'ניווט לכינוס ב-Waze', 'waze-lg') || '<span>&nbsp;</span>'}</li>
         ${regTopHtml(e, reg)}
       </ul>
 
@@ -696,7 +697,7 @@
           ${hasGeo || d.directions?.length ? `<section class="ev-card" aria-labelledby="go-h"><h2 id="go-h">איך מגיעים</h2>
             ${hasGeo ? `<iframe class="ev-osm" title="מפת נקודת הכינוס של ${esc(e.title)}" loading="lazy" src="https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${d.lat},${d.lng}"></iframe>` : ''}
             ${(d.directions || []).map((p) => `<p>${linkify(p)}</p>`).join('')}
-            <div class="ev-actions">${canNavigate(e) ? `<a class="btn" href="${esc(wazeUrl(e))}" target="_blank" rel="noopener">🚗 Waze</a><a class="btn ghost" href="${esc(mapsUrl(e))}" target="_blank" rel="noopener">Google Maps</a>` : ''}</div>
+            <div class="ev-actions">${canNavigate(e) ? `${wazeLink(e, 'ניווט ב-Waze', 'waze-lg')}<a class="btn ghost" href="${esc(mapsUrl(e))}" target="_blank" rel="noopener">Google Maps</a>` : ''}</div>
           </section>` : ''}
         </div>
 
@@ -727,7 +728,7 @@
 
     <nav class="ev-dock" aria-label="פעולות מהירות">
       <a class="dock-main" href="${esc(e.url)}" target="_blank" rel="noopener">${reg.state === 'open' ? 'להרשמה' : 'לאתר האיגוד'}</a>
-      ${canNavigate(e) ? `<a href="${esc(wazeUrl(e))}" target="_blank" rel="noopener" aria-label="ניווט ב-Waze">🚗</a>` : ''}
+      ${canNavigate(e) ? `<a class="dock-waze" href="${esc(wazeUrl(e))}" target="_blank" rel="noopener" aria-label="ניווט ב-Waze">${wazeIcon}</a>` : ''}
       <button type="button" data-share="${esc(e.id)}" aria-label="שיתוף">🔗</button>
     </nav>`;
   }
