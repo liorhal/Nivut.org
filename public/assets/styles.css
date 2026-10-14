@@ -1320,3 +1320,25 @@ a.info-btn { text-decoration: none; }
 .reg-mine:empty { display: none; }
 .fact-reg .reg-mine { border-top: 0; padding: 8px 10px; margin: 2px 0 4px; border-radius: 10px; background: color-mix(in srgb, #f5b301 16%, var(--surface)); border: 1px solid color-mix(in srgb, #f5b301 45%, var(--border)); }
 .fact-reg .reg-mine ul { gap: 2px 14px; }
+
+/* ---- Polish pass ---- */
+/* Header in the forest green of the hero, in both themes */
+.site-header { background: var(--forest, #0b3d2e); }
+:root[data-contrast="high"] .site-header { background: var(--bg); color: var(--text); }
+/* Card register button keeps its contrast in dark mode (system or chosen) */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .top-cta { background: #2f8f5f; } }
+/* The big register button: a fixed deep orange, so white text reads in both themes */
+.ev-facts .fact-reg .reg-actions .btn-xl { background: #c2410c; }
+.ev-facts .fact-reg .reg-actions .btn-xl:hover { background: #9a3412; }
+/* Titles get the full width: the register button moves to its own row
+   (everywhere except the four nearest on phones, which must fit one screen) */
+@media (min-width: 561px) {
+  .top-card:not(.lead) > .top-head { grid-column: 1 / -1; }
+  .top-card:not(.lead) > .top-foot { grid-column: 1 / -1; grid-row: auto; align-self: end; justify-content: space-between; }
+}
+#eventList .top-card > .top-head { grid-column: 1 / -1; }
+#eventList .top-card > .top-foot { grid-column: 1 / -1; grid-row: auto; align-self: end; justify-content: space-between; }
+@media (min-width: 561px) {
+  .top4 > .top-card:not(.lead) > .top-head { grid-column: 1 / -1; }
+  .top4 > .top-card:not(.lead) > .top-foot { grid-column: 1 / -1; grid-row: auto; align-self: end; justify-content: space-between; }
+}
