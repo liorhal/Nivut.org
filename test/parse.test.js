@@ -288,16 +288,10 @@ var eMarkers = [\n['כינוס',32.2655410766602,34.932056427002,false,1],]; }</
   assert.equal(d.wazeLL, '32.265541,34.932056');
 });
 
-test('eventFlags: closed events and no site registration, from any of the event text', () => {
-  assert.deepEqual(L.eventFlags({ title: 'פרדסי עין ורד', details: { note: '- אירוע סגור -' } }), { closed: true, noSiteRegistration: false });
-  assert.deepEqual(L.eventFlags({ title: 'מרכז מצוינות', details: { description: ['למי מיועד?', '*אין הרשמה באתר'] } }), { closed: false, noSiteRegistration: true });
-  assert.deepEqual(L.eventFlags({ title: 'אימון', summary: 'ללא הרשמה מראש' }), { closed: false, noSiteRegistration: true });
-  assert.deepEqual(L.eventFlags({ title: 'ליגה', details: { description: ['אין הרשמה במקום'] } }), { closed: false, noSiteRegistration: false });
-});
-
-test('event page: the register button label ("אין הרשמה באתר") marks no site registration', () => {
-  const html = fx('event.html').replace('</body>', '<button type="submit" name="ctl00$ContentPlaceHolder1$rbRegister" value="אין הרשמה באתר" id="ctl00_ContentPlaceHolder1_rbRegister" class="RadButton rbDisabled" disabled="disabled"><span class="rbText" disabled="disabled">אין הרשמה באתר</span></button></body>');
-  const d = L.parseEventPage(html, 'https://nivut.org.il/3600/Info');
-  assert.equal(d.registerLabel, 'אין הרשמה באתר');
-  assert.equal(L.eventFlags({ title: 'אימון', details: d }).noSiteRegistration, true);
+test('eventFlags: only "מידע נוסף" counts – "אירוע סגור" and "אין הרשמה באתר"', () => {
+  assert.deepEqual(L.eventFlags({ title: 'פרדסי עין ורד', details: { description: ['אירוע סגור לתושבי היישוב'] } }), { closed: true, noSiteRegistration: false });
+  assert.deepEqual(L.eventFlags({ title: 'מרכז מצוינות', details: { description: ['למי מיועד?', '*אין הרשמה באתר*'] } }), { closed: false, noSiteRegistration: true });
+  // the note line, the title or the blurb do not count
+  assert.deepEqual(L.eventFlags({ title: 'אירוע סגור', summary: 'אין הרשמה באתר', details: { note: '- אירוע סגור -', description: [] } }), { closed: false, noSiteRegistration: false });
+  assert.deepEqual(L.eventFlags({ title: 'ליגה', details: { description: ['אין הרשמה במקום', 'ללא הרשמה מראש'] } }), { closed: false, noSiteRegistration: false });
 });

@@ -32,11 +32,16 @@
         <span class="track-ico" aria-hidden="true">👥</span><span class="people-label">ההגדרות שלי</span> <span class="people-count" id="peopleCount"></span>
       </button>
       <button type="button" class="icon-btn help-btn" id="helpBtn" aria-haspopup="dialog" aria-label="עזרה: מה מופיע בכרטיס ניווט">?</button>
-      <div class="a11y-tools" role="group" aria-label="הגדרות תצוגה ונגישות">
+      <div class="a11y-menu">
+      <button type="button" class="icon-btn a11y-toggle" id="a11yToggle" aria-expanded="false" aria-controls="a11yTools" aria-label="נגישות ותצוגה">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="4" r="2" fill="currentColor"/><path d="M4 8h16M12 8v6m0 0-3.5 7M12 14l3.5 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </button>
+      <div class="a11y-tools" id="a11yTools" role="group" aria-label="הגדרות תצוגה ונגישות" hidden>
         <button type="button" class="icon-btn" id="fontDown" aria-label="הקטן גופן">א-</button>
         <button type="button" class="icon-btn" id="fontUp" aria-label="הגדל גופן">א+</button>
         <button type="button" class="icon-btn" id="contrastToggle" aria-pressed="false" aria-label="ניגודיות גבוהה"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 2a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button>
         <button type="button" class="icon-btn" id="themeToggle" aria-label="מצב כהה/בהיר">☾</button>
+      </div>
       </div>
     </div>
   </header>

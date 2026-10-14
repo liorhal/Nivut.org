@@ -72,6 +72,12 @@
     let scale = store.get('scale', 1);
     const applyScale = () => root.style.setProperty('--scale', scale);
     applyScale();
+    // The tools fold into one button; Escape or a click elsewhere closes them.
+    const a11yBtn = $('#a11yToggle'), a11yBox = $('#a11yTools');
+    const setA11y = (open) => { a11yBox.hidden = !open; a11yBtn.setAttribute('aria-expanded', String(open)); };
+    a11yBtn.addEventListener('click', () => { setA11y(a11yBox.hidden); if (!a11yBox.hidden) a11yBox.querySelector('button')?.focus(); });
+    document.addEventListener('click', (ev) => { if (!a11yBox.hidden && !ev.target.closest('.a11y-menu')) setA11y(false); });
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !a11yBox.hidden) { setA11y(false); a11yBtn.focus(); } });
     $('#fontUp').addEventListener('click', () => { scale = Math.min(1.5, +(scale + 0.1).toFixed(2)); applyScale(); store.set('scale', scale); });
     $('#fontDown').addEventListener('click', () => { scale = Math.max(0.8, +(scale - 0.1).toFixed(2)); applyScale(); store.set('scale', scale); });
 
@@ -156,9 +162,11 @@
   };
   const fmtKm = (km) => (km < 10 ? km.toFixed(1) : Math.round(km)) + ' ק"מ';
   /** " (26 ק"מ)" after a place name; empty when the distance is unknown. */
+  /** Hue for a distance: green (120) when close, through yellow and orange, to red (0) from 150 km. */
+  const distHue = (km) => Math.round(120 * (1 - Math.min(km, 150) / 150));
   const distParen = (e) => {
     const km = distKm(e);
-    return km === null ? '' : ` <span class="dist">(${fmtKm(km)}<span class="sr-only"> ממך בקו אווירי</span>)</span>`;
+    return km === null ? '' : ` <span class="dist" style="--dh:${distHue(km)}"><span class="dist-dot" aria-hidden="true"></span>(${fmtKm(km)}<span class="sr-only"> ממך בקו אווירי</span>)</span>`;
   };
 
   function loadHome() {
@@ -346,16 +354,16 @@
     const listLink = (n) => `<a href="${esc(startListUrl(e))}" target="_blank" rel="noopener">${n ? `${n} משתתפים` : 'לרשימה באתר האיגוד'} ↗</a>`;
     const head = '<h3>משתתפים</h3>';
     if (!state.people.length) {
-      set(mine, '<button type="button" class="linklike" data-open-people>⭐ הוסיפו את האנשים שלכם כדי לראות את ההרשמות שלכם</button>');
+      set(mine, '');
       set(box, `${head}<p class="muted small">${listLink(0)}</p>`);
     } else {
-      set(mine, '<span class="muted small" role="status">בודק את ההרשמות שלי…</span>');
+      set(mine, '');
       set(box, `${head}<p class="muted small" role="status">בודק את רשימת המשתתפים…</p>`);
     }
     const data = await participantsOf(e);
     const box2 = $('#myPeople'), mine2 = $('#regMine');
     if (!data || data.error || !data.participants?.length) {
-      set(mine2, state.people.length ? `<span class="muted small">לא ניתן לבדוק כרגע את ההרשמות. ${listLink(0)}</span>` : mine2?.innerHTML || '');
+      set(mine2, '');
       set(box2, `${head}<p class="muted small">${data && !data.error ? 'רשימת המשתתפים ריקה, או שלא הצלחנו לקרוא אותה.' : 'לא ניתן לקרוא כרגע את רשימת המשתתפים.'} ${listLink(0)}</p>
         ${data?.diag ? `<details class="diag"><summary>פרטים טכניים</summary><pre dir="ltr">${esc(JSON.stringify(data.diag, null, 2))}</pre></details>` : ''}`);
       return;
@@ -365,7 +373,7 @@
       set(mine2, yes.length
         ? `<span class="reg-mine-k"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.4l-6.1 3.4 1.4-6.8-5.1-4.7 6.9-.8z"/></svg>ההרשמות שלי</span>
           <ul>${yes.map((p) => `<li><strong>${esc(p.name)}</strong>${p.start ? ` <span class="pstart">${esc(p.start)}</span>` : ''}</li>`).join('')}</ul>`
-        : '<span class="muted small">⭐ אף אחד מהאנשים שלי לא רשום עדיין</span>');
+        : '');
     }
     set(box2, `${head}<p class="muted small">ברשימה כרגע ${listLink(data.count)}</p>
       ${state.people.length ? `<h4>האנשים שלי</h4>${yes.length ? `<ul class="mypl">
@@ -567,7 +575,7 @@
     const maxLevel = Math.max(5, ...parsed.map((c) => c.level));
     const beginner = (c) => (c.level && c.level <= 2) || /קצרצר|משפחות|עממי|מתחילים/.test(c.name);
     return `<section class="ev-card ev-span" aria-labelledby="co-h">
-      <h2 id="co-h">בחרו מסלול <span class="muted">${parsed.length} מסלולים</span></h2>
+      <h2 id="co-h">מסלולים <span class="muted">${parsed.length}</span></h2>
       <ul class="courses-viz">${parsed.map((c) => `<li class="${beginner(c) ? 'easy' : ''}">
         <div class="cv-name"><strong>${esc(c.name)}</strong>${beginner(c) ? '<span class="pill easy-pill">מתאים למתחילים</span>' : ''}</div>
         <div class="cv-level" ${c.level ? `aria-label="רמת קושי ${c.level} מתוך ${maxLevel}"` : ''}>${c.level ? Array.from({ length: maxLevel }, (_, i) => `<span class="${i < c.level ? 'on' : ''}"></span>`).join('') : '<span class="muted small">—</span>'}</div>
@@ -596,12 +604,13 @@
     const dl = reg.deadline;
     const open = reg.state === 'open';
     return `<li class="fact-reg reg-${reg.state}" id="ev-reg"><span class="ev-ico" aria-hidden="true">${open ? '✍️' : reg.state === 'past' ? '🏁' : reg.state === 'none' ? 'ℹ️' : '⏳'}</span><span class="k">הרשמה</span>
+      ${e.nivutId && reg.state !== 'none' ? '<div class="reg-mine" id="regMine" aria-live="polite"></div>' : ''}
       ${open && dl ? `<div class="reg-when"><span class="reg-cd-label">הרשמה מוקדמת נסגרת בעוד</span>${countdownHtml(dl, 'cd-reg')}</div>` : `<strong>${esc(reg.title)}</strong>`}
       <div class="reg-actions">
         ${open ? `<a class="btn btn-xl" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(reg.cta)} ↗</a>` : ''}
         <button type="button" class="linklike" data-scroll="ev-reg-full">${reg.state === 'none' ? 'פרטים' : 'כל פרטי ההרשמה'} ↓</button>
       </div>
-      ${e.nivutId && reg.state !== 'none' ? '<div class="reg-mine" id="regMine" aria-live="polite"></div>' : ''}</li>`;
+</li>`;
   }
 
   /** Lower on the page: every registration detail – deadline, prices, on-site, participants and my people. */
@@ -828,12 +837,9 @@
   /** "מידע נוסף" from the event page (falls back to the home-page blurb). */
   const moreInfo = (e) => (e.details?.description?.length ? e.details.description : e.summary ? [e.summary] : []);
   /** The additional info says registration is not on the site ("*אין הרשמה באתר", "ללא הרשמה", "אין צורך בהרשמה"). */
-  const noSiteRegistration = (e) => {
-    if (e.noSiteRegistration) return true; // set by the server from all of the event's text
-    const t = [e.fullTitle, e.summary, e.details?.note, e.details?.registerLabel, ...(e.details?.description || [])].join(' ');
-    return /(?:אין|ללא)\s+(?:צורך\s+ב)?הרשמה(?!\s+(?:במקום|ביום))/.test(t)
-      || /הרשמה\s+(?:אינה|לא)\s+(?:מתבצעת\s+|נעשית\s+)?(?:באתר|דרך\s+האתר)/.test(t);
-  };
+  // Hidden only when the organisers wrote it in "מידע נוסף": "אין הרשמה באתר" / "אירוע סגור".
+  const infoText = (e) => (e.details?.description || []).join(' ');
+  const noSiteRegistration = (e) => !!e.noSiteRegistration || /אין\s+הרשמה\s+(?:ב|דרך\s+ה)אתר/.test(infoText(e));
   /** "ⓘ מידע נוסף": opens the event page at its "מידע נוסף" section. */
   const infoBtnHtml = (e) => (moreInfo(e).length
     ? `<a class="info-btn" href="#event/${encodeURIComponent(e.id)}" data-goto="ev-info" aria-label="מידע נוסף על ${esc(e.title)}"><span aria-hidden="true">i</span><span class="info-text">מידע נוסף</span></a>` : '');
@@ -855,7 +861,7 @@
 
   /** Has an event page on the association site, where you register (closed areas and calendar-only items do not). */
   /** "אירוע סגור" (a private event) in the title, category, the event-page note ("- אירוע סגור -") or additional info. */
-  const isClosedEvent = (e) => !!e.closed || /(?:אירוע|ארוע)\s+סגור/.test([e.fullTitle, e.title, e.eventType, e.summary, e.details?.eventType, e.details?.note, ...(e.details?.description || [])].join(' '));
+  const isClosedEvent = (e) => !!e.closed || /(?:אירוע|ארוע)\s+סגור/.test(infoText(e));
   const hasRegistration = (e) => !!e.nivutId && e.source !== 'closed-area' && !noSiteRegistration(e) && !isClosedEvent(e);
   /** Upcoming events you can register for; the annual plan shows everything except closed events. */
   function upcoming() {
@@ -955,7 +961,7 @@
             <span class="top-di">${(e.disciplines || []).map((k) => discIcon(k, 'di-sm')).join('')}</span>
 </div>
           <div class="top-meta">
-            <${tag}><a href="#event/${encodeURIComponent(e.id)}"><span class="title-flags" aria-hidden="true">${isLeague(e) ? '🏆' : ''}${isMine(e) ? '⚑' : ''}</span>${esc(e.title)}</a></${tag}>
+            <${tag}><a href="#event/${encodeURIComponent(e.id)}" title="${esc(e.title)}"><span class="title-flags" aria-hidden="true">${isLeague(e) ? '🏆' : ''}${isMine(e) ? '⚑' : ''}</span>${esc(e.title)}</a></${tag}>
             <p class="top-when">${[tlMini || (e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`), e.location && e.location !== e.title ? `<span class="top-loc">${esc(e.location)}${distParen(e)}</span>` : distParen(e).trim()].filter(Boolean).join(tlMini ? ' ' : ' · ')}<span class="sr-only">${e.time || e.location ? ', ' : ''}${fmtLong(d)}</span></p>
           </div>
         </div>
@@ -1171,7 +1177,7 @@
       const rest = list.length - shown.length;
       if (rest) {
         more.hidden = false;
-        more.textContent = `הצג עוד – חודשיים נוספים (${rest} ניווטים עוד בהמשך)`;
+        more.textContent = `הצג עוד – חודשיים נוספים (${rest === 1 ? 'עוד ניווט אחד' : `עוד ${rest} ניווטים`} בהמשך)`;
       }
     }
     const now = new Date();
@@ -1188,9 +1194,16 @@
   }
 
   function initMoreEvents() {
-    $('#moreEvents').addEventListener('click', () => {
+    $('#moreEvents').addEventListener('click', async () => {
+      const btn = $('#moreEvents');
       const before = $$('#eventList > .top-card').length;
       state.listMonths += 2;
+      if (uncheckedInView().length) {
+        btn.setAttribute('aria-busy', 'true');
+        btn.textContent = 'בודק את הניווטים בחודשים הבאים…';
+        await checkEvents(uncheckedInView());
+        btn.removeAttribute('aria-busy');
+      }
       renderList();
       // Keyboard and screen-reader users continue from the first newly added event.
       const first = $$('#eventList > .top-card')[before];
@@ -1453,30 +1466,53 @@
     initAnnual();
     initForum();
     if (/^#(event|forum)\//.test(location.hash)) route();
-    hydrateDetails();
+    checkInView();
   }
 
-  /**
-   * Fallback: upcoming events the server could not read a page for (a timeout on the association site)
-   * load it here, so closed events and ones without site registration still drop out of the lists.
-   */
-  async function hydrateDetails() {
-    const today = startOfDay(new Date());
-    const todo = state.events.filter((e) => e.nivutId && !e.details && e.source !== 'closed-area' && parseDate(e.date) >= today);
-    if (!todo.length) return;
-    const before = upcoming().map((e) => e.id).join();
+  /* ---------- Checking events as they come into view ---------- */
+  // Events from the calendar arrive without their page. Their "מידע נוסף" is checked only when they
+  // enter the shown months (the first two, then two more per "show more"), and the answer is kept here.
+  const FLAGS_KEY = 'evflags', FLAGS_TTL = 12 * 3600e3;
+  const flagCache = (() => {
+    let all = store.get(FLAGS_KEY, {});
+    const now = Date.now();
+    all = Object.fromEntries(Object.entries(all || {}).filter(([, v]) => v && now - v.t < FLAGS_TTL));
+    return {
+      get: (id) => all[id],
+      set: (id, v) => { all[id] = { ...v, t: Date.now() }; store.set(FLAGS_KEY, all); },
+    };
+  })();
+  const listUntil = () => { const d = startOfDay(new Date()); d.setMonth(d.getMonth() + state.listMonths); return d; };
+  /** Upcoming events within the shown months whose "מידע נוסף" was not checked yet. */
+  function uncheckedInView() {
+    const today = startOfDay(new Date()), until = listUntil();
+    return state.events.filter((e) => e.nivutId && !e.details && !e.checked && e.source !== 'closed-area'
+      && parseDate(e.date) >= today && parseDate(e.date) < until);
+  }
+  async function checkEvents(list) {
     let i = 0;
-    await Promise.all(Array.from({ length: Math.min(4, todo.length) }, async () => {
-      while (i < todo.length) {
-        const e = todo[i++];
+    await Promise.all(Array.from({ length: Math.min(4, list.length) }, async () => {
+      while (i < list.length) {
+        const e = list[i++];
+        e.checked = true;
+        const cached = flagCache.get(e.nivutId);
+        if (cached) { e.closed = cached.c; e.noSiteRegistration = cached.n; continue; }
         try {
           e.details = await loadJson(`api/event?id=${encodeURIComponent(e.nivutId)}`);
           if (e.details?.startFrom && e.details.startFrom !== '00:00' && !e.time) e.time = e.details.startFrom;
-        } catch { /* keep it as is */ }
+          flagCache.set(e.nivutId, { c: isClosedEvent(e), n: noSiteRegistration(e) });
+        } catch { /* shown as is */ }
       }
     }));
-    if (upcoming().map((e) => e.id).join() !== before) { renderTop4(); renderList(); }
-    renderYear(); renderMonth();
+  }
+  /** Checks the events now in view, then redraws if any of them dropped out. */
+  async function checkInView() {
+    const todo = uncheckedInView();
+    if (!todo.length) return false;
+    const before = upcoming().map((e) => e.id).join();
+    await checkEvents(todo);
+    if (upcoming().map((e) => e.id).join() !== before) { renderTop4(); renderList(); renderYear(); renderMonth(); }
+    return true;
   }
 
   boot();

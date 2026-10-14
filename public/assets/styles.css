@@ -1288,3 +1288,35 @@ a.info-btn { text-decoration: none; }
 @media (max-width: 640px) {
   .ev-facts.ev-facts3 { grid-template-columns: 1fr; }
 }
+
+/* Accessibility tools fold into one button */
+.a11y-menu { position: relative; }
+.a11y-tools[hidden] { display: none; }
+.a11y-menu .a11y-tools {
+  position: absolute; top: calc(100% + 8px); inset-inline-end: 0; z-index: 30; padding: 8px; border-radius: 14px;
+  background: var(--forest, #0b3d2e); box-shadow: 0 12px 30px rgb(0 0 0 / .35); display: flex; gap: 6px;
+}
+.a11y-toggle[aria-expanded="true"] { background: rgb(255 255 255 / .2); }
+:root[data-contrast="high"] .a11y-menu .a11y-tools { background: var(--bg); border: 2px solid var(--text); }
+@media (max-width: 640px) { .a11y-menu { order: 2; } .a11y-toggle { min-width: 36px; min-height: 36px; } }
+
+/* Distance colour: green close, red far */
+.dist .dist-dot { display: inline-block; width: .62em; height: .62em; border-radius: 50%; margin-inline-end: 4px; vertical-align: .05em; background: hsl(var(--dh, 120) 80% 42%); box-shadow: 0 0 0 2px color-mix(in srgb, hsl(var(--dh, 120) 80% 42%) 25%, transparent); }
+.top-loc .dist, .ev-facts strong .dist, .dist { color: hsl(var(--dh, 120) 75% 30%); }
+:root[data-theme="dark"] .top-loc .dist, :root[data-theme="dark"] .ev-facts strong .dist, :root[data-theme="dark"] .dist { color: hsl(var(--dh, 120) 75% 62%); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dist { color: hsl(var(--dh, 120) 75% 62%); } }
+:root[data-contrast="high"] .dist { color: var(--text); }
+
+/* Bigger star for my registered people */
+.top-bar .ppl-star { width: 42px; height: 42px; }
+.top-bar .ppl-star .n { font-size: 1.05rem; }
+@media (max-width: 560px) { .top-bar .ppl-star { width: 34px; height: 34px; } .top-bar .ppl-star .n { font-size: .92rem; } }
+
+/* Event names fit one line; the full name is in the tooltip and on the event page */
+.top-meta { min-width: 0; }
+.top-meta h2, .top-meta h3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top-meta h2 a, .top-meta h3 a { display: inline; }
+/* "My registrations" heads the registration box, only when someone of mine is registered */
+.reg-mine:empty { display: none; }
+.fact-reg .reg-mine { border-top: 0; padding: 8px 10px; margin: 2px 0 4px; border-radius: 10px; background: color-mix(in srgb, #f5b301 16%, var(--surface)); border: 1px solid color-mix(in srgb, #f5b301 45%, var(--border)); }
+.fact-reg .reg-mine ul { gap: 2px 14px; }
