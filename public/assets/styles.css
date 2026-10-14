@@ -1622,3 +1622,25 @@ a.info-btn { text-decoration: none; }
 .top-card.tk .start-alt { display: none; }
 @media (max-width: 560px) { #top4 > .top-card.tk .start-alt { display: inline; } }
 .top-card.tk .start-time { color: var(--text); font-family: var(--num); font-weight: 900; font-size: .9rem; }
+/* Phones: the diagram is back in the four nearest (it replaces the text line) */
+@media (max-width: 560px) {
+  #top4 > .top-card.tk .top-tl { display: block; }
+  #top4 > .top-card.tk .start-alt { display: none; }
+  #top4 > .top-card.tk .top-tl .tlm { width: 100%; }
+}
+@media (max-width: 560px) {
+  /* distance + Waze and the diagram share one row */
+  #top4 > .top-card.tk .tk-body { flex-flow: row wrap; align-content: flex-start; column-gap: 10px; }
+  #top4 > .top-card.tk .tk-body > * { flex: 1 1 100%; }
+  #top4 > .top-card.tk .tk-body > .hud-logo { flex: none; }
+  #top4 > .top-card.tk .tk-body > .top-when { flex: 0 1 auto; flex-wrap: nowrap; }
+  #top4 > .top-card.tk .tk-body > .top-tl { flex: 1 1 110px; min-width: 110px; align-self: center; }
+  #top4 > .top-card.tk .tk-body > :is(.reg-cd, .reg-line, .top-foot) { margin-top: 2px; }
+  #top4 > .top-card.tk .tlm-pts time { font-size: .66rem; }
+}
+@media (max-width: 560px) {
+  #top4 > .top-card.tk .tk-body { column-gap: 8px; }
+  #top4 > .top-card.tk .tk-body > .top-when { gap: 4px; }
+  #top4 > .top-card.tk .tk-body > .top-when .dist { font-size: .85rem; }
+  #top4 > .top-card.tk .tk-body > .top-tl { flex: 1 1 90px; min-width: 90px; }
+}
