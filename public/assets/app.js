@@ -166,6 +166,7 @@
   function logoHtml({ id = '', name = '', src = '', fallback = '' }, cls = '') {
     const club = clubOf(id) || (name ? clubByName(name) : null);
     const primary = src || club?.logo || fallback;
+    fallback = fallback && fallback !== primary ? fallback : (club?.logoAlt && club.logoAlt !== primary ? club.logoAlt : '');
     const label = name || club?.name || '';
     const initial = label.replace(/^(מועדון|אס"?א|הפועל)\s+/, '').trim()[0] || '•';
     const alt = fallback && fallback !== primary ? ` data-fallback="${esc(fallback)}"` : '';

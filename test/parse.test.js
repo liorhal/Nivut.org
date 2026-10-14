@@ -50,7 +50,8 @@ test('parseHome reads featured events, closed areas and news', () => {
   assert.deepEqual(h.closedAreas.map((a) => [a.date, a.discipline, a.name]), [
     ['2026-10-16', 'mtbo', 'בריכות מעגן מיכאל'], ['2026-10-17', 'foot', 'בית ענבה'], ['2026-11-14', 'foot', 'שער הכרמל']]);
   assert.deepEqual(h.clubs.map((c) => [c.id, c.name]), [['2', 'הפועל תל אביב'], ['11', 'השרון']]);
-  assert.equal(h.clubs[1].logo, 'https://cdn.nivut.org.il/club-logos/club11.png');
+  assert.equal(h.clubs[1].logo, 'https://cdn.nivut.org.il/images/clubs/ramathasharon.jpg');
+  assert.equal(h.clubs[0].logo, 'https://cdn.nivut.org.il/club-logos/club2.png'); // not seen yet: read from its club page
   assert.equal(h.news.length, 1);
   assert.equal(h.news[0].date, '2026-08-07');
   assert.equal(h.news[0].category, 'חדשות');
@@ -73,7 +74,7 @@ test('parseEventPage reads the event details', () => {
   assert.equal(d.registrationDeadline, '2026-10-16T18:00');
   assert.deepEqual(d.club, {
     name: 'השרון', url: 'https://nivut.org.il/Club/11', id: '11',
-    logo: 'https://cdn.nivut.org.il/club-logos/club11.png', pageLogo: 'https://cdn.nivut.org.il/images/clubs/x.jpg',
+    logo: 'https://cdn.nivut.org.il/images/clubs/x.jpg', pageLogo: 'https://cdn.nivut.org.il/images/clubs/x.jpg',
   });
   assert.equal(d.director, 'מנהל לדוגמה');
   assert.equal(d.map.name, 'בית ענבה [ת]');
@@ -218,4 +219,12 @@ test('parseParticipants: group rows inside one table', () => {
     <tr><td colspan="3">קצר (רמה 2)</td></tr><tr><td>רפי הימן</td><td>השרון</td><td>10:02</td></tr>
     <tr><td colspan="3">ארוך</td></tr><tr><td>יואב לוי</td><td>כרמל</td><td>09:40</td></tr></table>`;
   assert.deepEqual(L.parseParticipants(html).map((x) => [x.name, x.category]), [['רפי הימן', 'קצר (רמה 2)'], ['יואב לוי', 'ארוך']]);
+});
+
+test('club logos: from the club page, with known ids for the site logo files', () => {
+  assert.equal(L.clubLogo('9'), 'https://cdn.nivut.org.il/images/clubs/modiin.jpg');
+  const page = '<div><img src="/images/logo.png"><img src="https://cdn.nivut.org.il/images/clubs/modiin.jpg" alt="חבל מודיעין"></div>';
+  assert.equal(L.parseClubLogo(page, 'https://nivut.org.il/Club/9'), 'https://cdn.nivut.org.il/images/clubs/modiin.jpg');
+  assert.equal(L.parseClubLogo("<img src='../images/clubs/tec.jpg'>", 'https://nivut.org.il/Club/7'), 'https://nivut.org.il/images/clubs/tec.jpg');
+  assert.equal(L.parseClubLogo('<img src="/x.png">', 'https://nivut.org.il/Club/7'), '');
 });
