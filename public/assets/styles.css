@@ -513,6 +513,7 @@ main:focus { outline: none; }
   .top-foot { grid-column: 2; margin: 0; }
   .top-foot > span { display: none; }
   .top-cta { padding: 5px 12px; font-size: .85rem; }
+  .top-di { display: flex; } /* the badge row is hidden here, the icon on the date shows the discipline */
   .top-card .reg-cd { flex-wrap: wrap; row-gap: 2px; }
   .cd.cd-card > div:nth-child(3) { display: none; } /* days + hours are enough here */
   /* No registration info yet: the button moves up beside the title */
@@ -539,3 +540,22 @@ main:focus { outline: none; }
   .ev-facts.has-tl { grid-template-columns: repeat(2, 1fr); }
   .ev-facts.has-tl .fact-when { grid-column: 1 / -1; }
 }
+
+/* ---------- Discipline icons ---------- */
+.di { --s: 22px; flex: none; display: inline-grid; place-items: center; width: var(--s); height: var(--s); border-radius: 50%; background: var(--c); color: #fff; }
+.di svg { width: 72%; height: 72%; }
+.di.di-sm { --s: 18px; }
+.di.di-xs { --s: 15px; vertical-align: -3px; margin-inline-end: 3px; background: rgb(255 255 255 / .25); }
+.tag .di { --s: 20px; }
+.chip .di { --s: 22px; }
+.chip[aria-pressed="true"] .di { box-shadow: 0 0 0 2px var(--bg); }
+.legend .di { --s: 20px; }
+.ev-head .tag .di { box-shadow: 0 0 0 2px rgb(255 255 255 / .5); }
+.top-date { position: relative; }
+.top-di { display: none; position: absolute; inset-inline-start: -7px; bottom: -7px; display: flex; }
+.top-di .di { box-shadow: 0 0 0 2px var(--surface); }
+.top-di .di + .di { margin-inline-start: -5px; }
+.month-card li button { grid-template-columns: 28px 18px 1fr; }
+.month-card li button.tentative .di { background: transparent; color: var(--c); box-shadow: inset 0 0 0 1.5px var(--c); }
+.month-table button.tentative .di { background: transparent; color: var(--c); }
+:root[data-contrast="high"] .di { background: var(--text); color: var(--bg); }

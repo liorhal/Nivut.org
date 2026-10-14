@@ -29,10 +29,20 @@
 
   // The site's own disciplines (icons on nivut.org.il) set an event's color.
   const DISCIPLINES = {
-    foot: { label: 'ניווט רגלי', color: '#15803d', icon: '🏃' },
-    mtbo: { label: 'ניווט רכוב', color: '#1d6fd8', icon: '🚵' },
-    ammi: { label: 'ניווט עממי', color: '#c2410c', icon: '👨‍👩‍👧' },
+    foot: { label: 'ניווט רגלי', color: '#15803d' },
+    mtbo: { label: 'ניווט רכוב', color: '#1d6fd8' },
+    ammi: { label: 'ניווט עממי', color: '#c2410c' },
   };
+  // Line icons (24×24, drawn with currentColor): runner, bicycle, adult and child walking.
+  const ICONS = {
+    foot: '<circle cx="15" cy="4" r="2.2" fill="currentColor" stroke="none"/><path d="M7.5 11.5 10.5 8l4 1 2 3h3M10.5 8 13 13l-1.2 3.5L9 20.5H5.5M13 13l3.5 2.5L15.5 21"/>',
+    mtbo: '<circle cx="5.5" cy="16" r="3.8"/><circle cx="18.5" cy="16" r="3.8"/><path d="M5.5 16 9.3 9.5h5.9L18.5 16M5.5 16H11l4.2-6.5M11 16 8.8 7.2M7.4 7.2h3M15.2 9.5l-1-3h2.6"/>',
+    ammi: '<circle cx="8" cy="3.8" r="2" fill="currentColor" stroke="none"/><path d="M8 7v7.5M8 14.5 6 21M8 14.5l2 6.5M5 10.5l3-2 4.5 4"/><circle cx="17" cy="9.2" r="1.7" fill="currentColor" stroke="none"/><path d="M17 11.8v4.4M17 16.2 15.6 21M17 16.2l1.4 4.8M12.5 12.5l4.5 1.2 2.6-1"/>',
+  };
+  /** Discipline icon in a coloured disc (decorative: the label is always present as text). */
+  const discIcon = (k, cls = '') => (ICONS[k]
+    ? `<span class="di ${cls}" style="--c:${DISCIPLINES[k].color}" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[k]}</svg></span>`
+    : '<span class="dot" aria-hidden="true"></span>');
   // Tags are inferred from the event title and type.
   const TAGS = {
     champ: 'אליפות', league: 'ליגה', sprint: 'ספרינט', training: 'אימון / מודל',
@@ -89,10 +99,10 @@
   }
 
   /* ---------- Shared bits ---------- */
-  const disc = (e) => DISCIPLINES[e.disciplines?.[0]] || { label: 'ניווט', color: '#64748b', icon: '🧭' };
+  const disc = (e) => DISCIPLINES[e.disciplines?.[0]] || { label: 'ניווט', color: '#64748b' };
   const evDate = (e) => parseDate(e.date, e.time);
-  const discBadges = (e) => (e.disciplines || []).map((k) => DISCIPLINES[k])
-    .filter(Boolean).map((d) => `<span class="tag" style="--c:${d.color}"><span class="dot"></span>${esc(d.label)}</span>`).join('');
+  const discBadges = (e) => (e.disciplines || []).filter((k) => DISCIPLINES[k])
+    .map((k) => `<span class="tag" style="--c:${DISCIPLINES[k].color}">${discIcon(k)}${esc(DISCIPLINES[k].label)}</span>`).join('');
   const tagBadges = (e) => (e.tags || []).map((t) => (TAGS[t] ? `<span class="pill">${esc(TAGS[t])}</span>` : '')).join('');
 
   function mapsUrl(e) {
@@ -450,7 +460,8 @@
       const left = daysBetween(now, d);
       return `<li class="top-card" style="--c:${disc(e).color}">
         <div class="top-head">
-          <div class="top-date" aria-hidden="true"><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span></div>
+          <div class="top-date" aria-hidden="true"><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span>
+            <span class="top-di">${(e.disciplines || []).map((k) => discIcon(k, 'di-sm')).join('')}</span></div>
           <div class="top-meta">
             <div class="badges">${discBadges(e)}</div>
             <h2><a href="#event/${encodeURIComponent(e.id)}">${esc(e.title)}</a></h2>
@@ -471,7 +482,7 @@
       b.type = 'button'; b.className = 'chip';
       b.setAttribute('aria-pressed', 'false');
       if (color) b.style.setProperty('--c', color);
-      b.innerHTML = `${color ? '<span class="dot"></span>' : ''}${esc(label)}`;
+      b.innerHTML = `${DISCIPLINES[key] ? discIcon(key) : color ? '<span class="dot"></span>' : ''}${esc(label)}`;
       b.addEventListener('click', () => {
         const on = !set.has(key);
         on ? set.add(key) : set.delete(key);
@@ -597,8 +608,8 @@
   }
 
   function renderLegend() {
-    $('#legend').innerHTML = Object.values(DISCIPLINES)
-      .map((t) => `<span style="--c:${t.color}"><span class="dot"></span>${esc(t.label)}</span>`).join('')
+    $('#legend').innerHTML = Object.entries(DISCIPLINES)
+      .map(([k, t]) => `<span style="--c:${t.color}">${discIcon(k)}${esc(t.label)}</span>`).join('')
       + '<span class="muted">· מסגרת מקווקוות = שטח סגור, פרטים בקרוב</span>';
   }
 
@@ -614,7 +625,7 @@
       return `<section class="month-card${past ? ' past' : ''}" aria-label="${MONTHS[m.getMonth()]} ${m.getFullYear()}">
         <h2>${MONTHS[m.getMonth()]} <small>${m.getFullYear()} · ${evs.length} אירועים</small></h2>
         ${evs.length ? `<ul>${evs.map((e) => `<li><button type="button" data-open="${esc(e.id)}" style="--c:${disc(e).color}" class="${e.source === 'closed-area' ? 'tentative' : ''}">
-            <strong>${parseDate(e.date).getDate()}</strong><span class="dot"></span><span>${esc(e.title)}<span class="sr-only"> (${esc(disc(e).label)})</span></span></button></li>`).join('')}</ul>`
+            <strong>${parseDate(e.date).getDate()}</strong>${discIcon(e.disciplines?.[0], 'di-sm')}<span>${esc(e.title)}<span class="sr-only"> (${esc(disc(e).label)})</span></span></button></li>`).join('')}</ul>`
           : `<p class="none">${past ? 'אין אירועים' : 'טרם פורסמו אירועים'}</p>`}
       </section>`;
     }).join('');
@@ -636,7 +647,7 @@
         const isoD = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const evs = state.events.filter((e) => e.date === isoD);
         const cls = [d.getMonth() !== m && 'out', d.getTime() === today && 'today'].filter(Boolean).join(' ');
-        html += `<td class="${cls}"${d.getTime() === today ? ' aria-current="date"' : ''}><span class="num">${d.getDate()}</span>${evs.map((e) => `<button type="button" data-open="${esc(e.id)}" style="--c:${disc(e).color}" class="${e.source === 'closed-area' ? 'tentative' : ''}" title="${esc(e.title)}">${esc(e.title)}</button>`).join('')}</td>`;
+        html += `<td class="${cls}"${d.getTime() === today ? ' aria-current="date"' : ''}><span class="num">${d.getDate()}</span>${evs.map((e) => `<button type="button" data-open="${esc(e.id)}" style="--c:${disc(e).color}" class="${e.source === 'closed-area' ? 'tentative' : ''}" title="${esc(e.title)}">${discIcon(e.disciplines?.[0], 'di-xs')}${esc(e.title)}</button>`).join('')}</td>`;
       }
       html += '</tr>';
     }
