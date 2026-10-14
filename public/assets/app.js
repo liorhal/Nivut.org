@@ -460,7 +460,6 @@
       const left = daysBetween(now, d);
       const lead = i === 0;
       return `<li class="top-card${lead ? ' lead' : ''}" style="--c:${disc(e).color}">
-        <span class="ctrl" aria-hidden="true">${i + 1}</span>
         ${lead ? `<div class="lead-band" aria-hidden="true">
           <span class="lb-day">${d.getDate()}</span>
           <span class="lb-mon">${MONTHS[d.getMonth()]}<br>יום ${DAYS[d.getDay()]}</span>
