@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8"><title>Card layouts</title>
+<style>
+:root{--forest:#0b3d2e;--flag:#f26a1b;--flag-ink:#b93f06;--text:#17201b;--muted:#5b665f;--line:#e3e8e2;--soft:#f1f4ef;--gold:#f5b301;--c:#15803d;}
+*{box-sizing:border-box}
+body{margin:0;padding:28px;background:#0f4a36;font-family:Heebo,system-ui,sans-serif;color:var(--text)}
+h1{color:#fff;margin:0 0 6px;font-size:26px}
+.sub{color:#cfe3d8;margin:0 0 22px;font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(3,440px);gap:26px;align-items:start}
+.opt h2{color:#fff;font-size:18px;margin:0 0 4px}
+.opt p.d{color:#cfe3d8;font-size:13px;margin:0 0 12px;line-height:1.5;min-height:58px}
+.card{position:relative;background:#fff;border-radius:20px;box-shadow:0 14px 30px rgb(0 0 0/.25);overflow:hidden}
+.num{font-family:Heebo;font-weight:900;font-variant-numeric:tabular-nums}
+.star{position:relative;width:46px;height:46px;flex:none;display:grid;place-items:center;filter:drop-shadow(0 2px 4px rgb(0 0 0/.25))}
+.star svg{position:absolute;inset:0;fill:var(--gold);stroke:#fff;stroke-width:1.4}
+.star b{position:relative;font-weight:900;font-size:17px;color:#3d2c00;transform:translateY(1px)}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:800;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.league{background:var(--gold);color:#3d2c00}.mine{border:1.5px solid var(--forest);color:var(--forest)}
+.disc{color:var(--forest);font-weight:800;font-size:13px;display:inline-flex;gap:6px;align-items:center}
+.dot{width:22px;height:22px;border-radius:50%;background:var(--c);display:inline-block}
+.title{font-size:20px;font-weight:800;margin:0;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.place{display:flex;align-items:center;gap:8px;font-size:15px;color:var(--muted);flex-wrap:wrap}
+.place .km{color:#2e7d16;font-weight:900}.place .km::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:#35b311;margin-inline-end:5px}
+.waze{background:#33ccff;color:#062a3a;font-weight:800;font-size:12px;padding:3px 10px;border-radius:999px}
+.tl{position:relative;height:30px}
+.tl .track{position:absolute;top:2px;inset-inline:0;height:8px;border-radius:9px;background:#eef1ec;border:1px solid var(--line)}
+.tl .win{position:absolute;top:0;bottom:0;right:14%;width:36%;border-radius:9px;background:repeating-linear-gradient(45deg,#16a34a 0 4px,#22c55e 4px 8px)}
+.tl .run{position:absolute;top:2px;bottom:2px;right:50%;width:36%;background:#f6c66a}
+.tl i{position:absolute;top:-2px;width:2px;height:16px;background:var(--text)}
+.tl span{position:absolute;top:16px;transform:translateX(50%);font-weight:900;font-size:12px}
+.tl .cut{color:#dc2626}.tl i.cut{background:#dc2626}
+.reg{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff3ea;border:1.5px solid #f3b38c;border-radius:14px;padding:10px 12px}
+.reg .lbl{font-size:12px;font-weight:800;color:var(--flag-ink);margin-bottom:5px}
+.cd{display:flex;gap:6px}.cd div{background:var(--flag);color:#fff;border-radius:8px;padding:2px 8px;display:flex;align-items:baseline;gap:4px}
+.cd strong{font-size:19px;font-weight:900}.cd small{font-size:11px;font-weight:700}
+.cta{background:var(--forest);color:#fff;font-weight:800;border-radius:999px;padding:10px 18px;font-size:15px;white-space:nowrap}
+.club{font-size:13px;font-weight:800;display:inline-flex;align-items:center;gap:6px}
+.logo{width:24px;height:24px;border-radius:50%;background:conic-gradient(var(--flag) 0 25%,#fff 0 50%,var(--forest) 0)}
+.lbl2{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.03em;margin-bottom:4px}
+
+/* A: sections */
+.A{padding:16px 18px 18px;border-inline-start:6px solid var(--c);display:grid;gap:14px}
+.A .top{display:flex;align-items:center;gap:8px}.A .top .club{margin-inline-start:auto}
+.A .head{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
+.A .date{width:64px;text-align:center;background:var(--soft);border-radius:14px;padding:6px 0}
+.A .date .dw{color:var(--flag-ink);font-weight:800;font-size:13px}.A .date .dd{font-size:30px;line-height:1}.A .date .mm{font-size:12px;color:var(--muted)}
+.A .info{display:grid;gap:12px;padding:12px 0;border-block:1px solid var(--line)}
+.A .row{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start}.A .ic{font-size:16px;line-height:22px;text-align:center}
+
+/* B: ticket */
+.B{display:grid;grid-template-columns:96px 1fr}
+.B .stub{background:var(--c);color:#fff;display:grid;align-content:space-between;justify-items:center;padding:16px 8px;position:relative}
+.B .stub::after{content:"";position:absolute;inset-block:10px;inset-inline-start:-1px;border-inline-start:2px dashed rgb(255 255 255/.55)}
+.B .stub .dw{font-weight:800;font-size:14px;opacity:.95}.B .stub .dd{font-size:42px;line-height:1}.B .stub .mm{font-size:13px}
+.B .stub .star{margin-top:8px}
+.B .body{padding:14px 16px 16px;display:grid;gap:12px}
+.B .chips{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.B .meta{display:flex;justify-content:space-between;align-items:center;gap:8px}
+
+/* C: hero countdown */
+.C{padding:0;border-top:6px solid var(--c)}
+.C .band{display:flex;align-items:center;gap:12px;padding:14px 16px;background:linear-gradient(90deg,#fff 0,#f4f8f2 100%);border-bottom:1px solid var(--line)}
+.C .band .date{display:flex;align-items:baseline;gap:6px}.C .band .dd{font-size:34px;line-height:1}.C .band .dm{font-weight:700;color:var(--muted)}
+.C .band .chips{margin-inline-start:auto;display:flex;gap:6px;align-items:center}
+.C .main{padding:14px 16px 4px;display:grid;gap:10px}
+.C .facts{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 14px}
+.C .fact{background:var(--soft);border-radius:12px;padding:8px 10px}
+.C .foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;background:#fff3ea;border-top:1.5px solid #f3b38c}
+.mobile{width:360px}
+.mrow{display:grid;grid-template-columns:repeat(3,440px);gap:26px;margin-top:26px}
+.mrow .card{width:360px}
+/* mobile fits */
+.mrow .card{width:360px;max-width:360px}
+.mrow .A .top{flex-wrap:wrap;row-gap:6px}
+.mrow .A .top .club{margin-inline-start:0}
+.mrow .B{grid-template-columns:72px minmax(0,1fr)}
+.mrow .B .stub .dd{font-size:34px}
+.mrow .reg{flex-wrap:wrap}
+.mrow .title{font-size:18px}
+.body,.A,.main{min-width:0}
+.tag{color:#fff;font-size:12px;font-weight:800;opacity:.85;margin:0 0 6px}
+</style></head><body>
+<h1>שלוש פריסות מוצעות לכרטיס ניווט</h1>
+<p class="sub">אותם נתונים כמו בכרטיס הדוגמה בעזרה. למעלה ברוחב מחשב, למטה ברוחב מובייל.</p>
+<div class="grid" id="desk"></div>
+<div class="mrow" id="mob"></div>
+<script>
+const star = '<span class="star"><svg viewBox="0 0 24 24"><path d="M12 2.2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.4l-6.1 3.4 1.4-6.8-5.1-4.7 6.9-.8z"/></svg><b>2</b></span>';
+const tl = '<div class="tl"><div class="track"><div class="win"></div><div class="run"></div></div><i style="right:14%"></i><i style="right:50%"></i><i class="cut" style="right:86%"></i><span style="right:14%">09:00</span><span style="right:50%">11:00</span><span class="cut" style="right:86%">13:30</span></div>';
+const cd = '<div class="cd"><div><strong>3</strong><small>ימים</small></div><div><strong>7</strong><small>שעות</small></div><div><strong>18</strong><small>דקות</small></div></div>';
+const place = '<div class="place"><span>יער בן שמן</span><span class="km">(31 ק"מ)</span><span class="waze">Waze</span></div>';
+const A = `<div class="card A">
+  <div class="top">${star}<span class="pill league">🏆 ליגה</span><span class="pill mine">⚑ המועדון שלי</span><span class="disc"><span class="dot"></span>רגלי</span><span class="club"><span class="logo"></span>מועדון לדוגמה</span></div>
+  <div class="head"><div class="date"><div class="dw">שישי</div><div class="dd num">23</div><div class="mm">אוקטובר</div></div><h3 class="title">ליגת ניווט – יער בן שמן</h3></div>
+  <div class="info"><div class="row"><span class="ic">📍</span>${place}</div><div class="row"><span class="ic">🕘</span>${tl}</div></div>
+  <div class="reg"><div><div class="lbl">הרשמה מוקדמת נסגרת בעוד</div>${cd}</div><span class="cta">הרשמה ↗</span></div></div>`;
+const B = `<div class="card B">
+  <div class="stub"><div><div class="dw">שישי</div><div class="dd num">23</div><div class="mm">אוקטובר</div></div>${star}</div>
+  <div class="body">
+    <div class="chips"><span class="pill league">🏆 ליגה</span><span class="pill mine">⚑ המועדון שלי</span><span class="disc"><span class="dot"></span>רגלי</span></div>
+    <h3 class="title">ליגת ניווט – יער בן שמן</h3>
+    <div class="meta"><span class="club"><span class="logo"></span>מועדון לדוגמה</span></div>
+    ${place}${tl}
+    <div class="reg"><div><div class="lbl">הרשמה מוקדמת נסגרת בעוד</div>${cd}</div><span class="cta">הרשמה ↗</span></div>
+  </div></div>`;
+const C = `<div class="card C">
+  <div class="band"><div class="date"><span class="dd num">23</span><span class="dm">שישי · אוקטובר</span></div><div class="chips">${star}<span class="pill league">🏆 ליגה</span></div></div>
+  <div class="main"><h3 class="title">ליגת ניווט – יער בן שמן</h3><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="pill mine">⚑ המועדון שלי</span><span class="disc"><span class="dot"></span>רגלי</span><span class="club"><span class="logo"></span>מועדון לדוגמה</span></div></div>
+  <div class="facts"><div class="fact"><div class="lbl2">איפה</div>${place}</div><div class="fact"><div class="lbl2">זינוקים</div>${tl}</div></div>
+  <div class="foot"><div><div class="lbl">הרשמה מוקדמת נסגרת בעוד</div>${cd}</div><span class="cta">הרשמה ↗</span></div></div>`;
+const desc = {
+  A: ['א. מקטעים', 'שלוש שכבות ברורות: מי ומה (תגיות ומועדון), השם עם התאריך, ואזור "פרטים" מופרד בקווים עם אייקון לכל שורה (מקום, זינוקים). ההרשמה נשארת פס בתחתית. הכי קרוב לכרטיס היום, אבל מרווח יותר.'],
+  B: ['ב. כרטיס כניסה', 'עמודת תאריך צבעונית בצד, בצבע סוג הניווט, עם הכוכב מתחתיו, ו"קו תלישה" מקווקו. כל שאר התוכן בעמודה אחת: תגיות, שם, מועדון, מקום, זינוקים והרשמה. התאריך בולט מאוד, והתוכן לא מתחרה בו.'],
+  C: ['ג. רצועת תאריך', 'רצועה עליונה עם התאריך ותגית הליגה. מתחתיה השם והתגיות, ואז שתי "קוביות" קטנות באותו גובה, "איפה" ו"זינוקים", כמו בעמוד התחרות. ההרשמה היא תחתית צבעונית של הכרטיס ולא תיבה בתוכו.'],
+};
+const wrap = (k, html) => `<div class="opt"><h2>${desc[k][0]}</h2><p class="d">${desc[k][1]}</p>${html}</div>`;
+document.getElementById('desk').innerHTML = wrap('A', A) + wrap('B', B) + wrap('C', C);
+document.getElementById('mob').innerHTML = [A, B, C].map((h, i) => `<div><p class="tag">${'אבג'[i]} · מובייל 360</p>${h}</div>`).join('');
+</script></body></html>
