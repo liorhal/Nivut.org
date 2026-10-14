@@ -1624,3 +1624,14 @@ a.info-btn { text-decoration: none; }
 /* The four nearest use the very same card as the rest (no lead variant, no phone shortcuts) */
 #top4.top4 { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: auto; gap: 14px; }
 @media (max-width: 700px) { #top4.top4 { grid-template-columns: 1fr; gap: 10px; } }
+
+/* "ניווט ישראל" in the headings' display face */
+.brand { font-family: var(--display); font-weight: 700; font-size: 2rem; line-height: 1; letter-spacing: .01em; }
+@media (max-width: 640px) { .brand { font-size: 1.75rem; } }
+/* Phones: breathing room between the filters and the cards */
+@media (max-width: 640px) {
+  .hero-head { margin-bottom: 16px; }
+  .hero-head .hero-title { margin-bottom: 0; }
+  .filters { margin-bottom: 18px; }
+  .list-head { margin-bottom: 12px; }
+}
