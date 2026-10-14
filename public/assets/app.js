@@ -132,6 +132,9 @@
     return ll ? `https://waze.com/ul?ll=${encodeURIComponent(ll)}&navigate=yes` : `https://waze.com/ul?q=${encodeURIComponent(e.location)}&navigate=yes`;
   }
   const canNavigate = (e) => !!(e.details?.wazeLL || e.location);
+  /** Small Waze button for the cards (above the card-wide link). */
+  const wazeLink = (e) => (e.source !== 'closed-area' && canNavigate(e)
+    ? `<a class="waze-link" href="${esc(wazeUrl(e))}" target="_blank" rel="noopener" aria-label="ניווט ב-Waze אל ${esc(e.location || e.title)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3C7 3 3.5 6.4 3.5 10.6c0 1.6.5 3 1.4 4.2-.2 1-.8 1.9-1.6 2.5 1.6.3 3.1-.1 4.2-.9 1.3.6 2.8 1 4.5 1 5 0 8.5-3.4 8.5-7.6S17 3 12 3z" fill="#fff" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="10" r="1.1" fill="currentColor"/><circle cx="15" cy="10" r="1.1" fill="currentColor"/><path d="M9 13.2c1.6 1.4 4.4 1.4 6 0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Waze</a>` : '');
 
 
   /* ---------- My location & distance (kept in this browser only) ---------- */
@@ -966,7 +969,7 @@
 </div>
           <div class="top-meta">
             <${tag}><a href="#event/${encodeURIComponent(e.id)}" title="${esc(e.title)}"><span class="title-flags" aria-hidden="true">${isLeague(e) ? '🏆' : ''}${isMine(e) ? '⚑' : ''}</span>${esc(e.title)}</a></${tag}>
-            <p class="top-when">${[tlMini || (e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`), e.location && e.location !== e.title ? `<span class="top-loc">${esc(e.location)}${distParen(e)}</span>` : distParen(e).trim()].filter(Boolean).join(tlMini ? ' ' : ' · ')}<span class="sr-only">${e.time || e.location ? ', ' : ''}${fmtLong(d)}</span></p>
+            <p class="top-when">${[tlMini || (e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`), e.location && e.location !== e.title ? `<span class="top-loc">${esc(e.location)}${distParen(e)} ${wazeLink(e)}</span>` : `${distParen(e).trim()} ${wazeLink(e)}`.trim()].filter(Boolean).join(tlMini ? ' ' : ' · ')}<span class="sr-only">${e.time || e.location ? ', ' : ''}${fmtLong(d)}</span></p>
           </div>
         </div>
         ${lead && e.summary ? `<p class="lead-summary">${esc(e.summary)}</p>` : ''}

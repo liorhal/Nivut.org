@@ -1342,3 +1342,15 @@ a.info-btn { text-decoration: none; }
   .top4 > .top-card:not(.lead) > .top-head { grid-column: 1 / -1; }
   .top4 > .top-card:not(.lead) > .top-foot { grid-column: 1 / -1; grid-row: auto; align-self: end; justify-content: space-between; }
 }
+
+/* Waze on the cards */
+.waze-link {
+  position: relative; z-index: 2; display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px 2px 6px; border-radius: 999px;
+  background: #33ccff; color: #062a3a; font-weight: 800; font-size: .78rem; text-decoration: none; line-height: 1.5; white-space: nowrap; vertical-align: middle;
+}
+.waze-link svg { width: 16px; height: 16px; color: #062a3a; }
+.waze-link:hover { background: #1fb8ef; }
+.waze-link:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+:root[data-contrast="high"] .waze-link { background: var(--text); color: var(--bg); }
+:root[data-contrast="high"] .waze-link svg { color: var(--bg); }
+@media (max-width: 560px) { .waze-link { font-size: 0; gap: 0; padding: 3px; } .waze-link svg { width: 18px; height: 18px; } }
