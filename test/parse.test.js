@@ -287,3 +287,10 @@ var eMarkers = [\n['כינוס',32.2655410766602,34.932056427002,false,1],]; }</
   assert.equal(d.lng, 34.932056);
   assert.equal(d.wazeLL, '32.265541,34.932056');
 });
+
+test('eventFlags: closed events and no site registration, from any of the event text', () => {
+  assert.deepEqual(L.eventFlags({ title: 'פרדסי עין ורד', details: { note: '- אירוע סגור -' } }), { closed: true, noSiteRegistration: false });
+  assert.deepEqual(L.eventFlags({ title: 'מרכז מצוינות', details: { description: ['למי מיועד?', '*אין הרשמה באתר'] } }), { closed: false, noSiteRegistration: true });
+  assert.deepEqual(L.eventFlags({ title: 'אימון', summary: 'ללא הרשמה מראש' }), { closed: false, noSiteRegistration: true });
+  assert.deepEqual(L.eventFlags({ title: 'ליגה', details: { description: ['אין הרשמה במקום'] } }), { closed: false, noSiteRegistration: false });
+});

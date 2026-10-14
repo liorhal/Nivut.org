@@ -1207,3 +1207,12 @@ main:focus { outline: none; }
 .fact-when .tl-points li { padding-top: 4px; }
 .fact-when .tl-points time { line-height: 1.1; }
 .ev-facts .fact-when .tl-points span { font-size: .68rem; line-height: 1.1; }
+
+/* Quick filter: only where my people are registered */
+.reg-filter { padding-inline: 10px 14px; }
+.reg-filter .rf-star { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; flex: none; }
+.reg-filter[aria-pressed="true"] .rf-star { fill: #f5b301; stroke: #b07d00; }
+.reg-filter[aria-busy="true"] .rf-star { animation: rf-spin 1s linear infinite; }
+@keyframes rf-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .reg-filter[aria-busy="true"] .rf-star { animation: none; opacity: .5; } }
+@media (max-width: 640px) { .reg-filter { min-width: 38px; min-height: 38px; padding: 0; justify-content: center; } }

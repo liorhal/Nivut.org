@@ -282,6 +282,9 @@
     store.set('people', state.people);
     loadPeople();
     renderPeopleList();
+    state.regIds = null;
+    renderRegFilter();
+    if (state.filter.registered) findRegistered().then(() => { renderTop4(); renderList(); });
     renderTop4();
     if (location.hash.startsWith('#event/')) renderMyPeople(decodeURIComponent(location.hash.slice(7)));
   }
@@ -801,7 +804,8 @@
   const moreInfo = (e) => (e.details?.description?.length ? e.details.description : e.summary ? [e.summary] : []);
   /** The additional info says registration is not on the site ("*אין הרשמה באתר", "ללא הרשמה", "אין צורך בהרשמה"). */
   const noSiteRegistration = (e) => {
-    const t = (e.details?.description || []).join(' ');
+    if (e.noSiteRegistration) return true; // set by the server from all of the event's text
+    const t = [e.fullTitle, e.summary, e.details?.note, ...(e.details?.description || [])].join(' ');
     return /(?:אין|ללא)\s+(?:צורך\s+ב)?הרשמה(?!\s+(?:במקום|ביום))/.test(t)
       || /הרשמה\s+(?:אינה|לא)\s+(?:מתבצעת\s+|נעשית\s+)?(?:באתר|דרך\s+האתר)/.test(t);
   };
@@ -829,15 +833,46 @@
 
   /** Has an event page on the association site, where you register (closed areas and calendar-only items do not). */
   /** "אירוע סגור" (a private event) in the title, category, the event-page note ("- אירוע סגור -") or additional info. */
-  const isClosedEvent = (e) => /(?:אירוע|ארוע)\s+סגור/.test([e.fullTitle, e.title, e.eventType, e.summary, e.details?.eventType, e.details?.note, ...(e.details?.description || [])].join(' '));
+  const isClosedEvent = (e) => !!e.closed || /(?:אירוע|ארוע)\s+סגור/.test([e.fullTitle, e.title, e.eventType, e.summary, e.details?.eventType, e.details?.note, ...(e.details?.description || [])].join(' '));
   const hasRegistration = (e) => !!e.nivutId && e.source !== 'closed-area' && !noSiteRegistration(e) && !isClosedEvent(e);
-  /** Upcoming events you can register for; the annual plan still shows everything. */
+  /** Upcoming events you can register for; the annual plan shows everything except closed events. */
   function upcoming() {
     const today = startOfDay(new Date());
     return state.events.filter((e) => hasRegistration(e) && parseDate(e.date) >= today);
   }
 
   /** The saved discipline filter; events of any selected discipline pass. */
+  /** Quick filter: only events where my people are registered (state.regIds is filled on demand). */
+  const regOk = (e) => !state.filter.registered || !!state.regIds?.has(e.id);
+  async function findRegistered() {
+    const ids = new Set();
+    await Promise.all(upcoming().filter((e) => e.nivutId).map((e) => participantsOf(e)
+      .then((data) => { if (registeredPeople(data?.participants).length) ids.add(e.id); })));
+    state.regIds = ids;
+  }
+  function renderRegFilter() {
+    const b = $('#regFilter');
+    b.hidden = !state.people.length;
+    if (!state.people.length) state.filter.registered = false;
+    b.setAttribute('aria-pressed', String(state.filter.registered));
+  }
+  function initRegFilter() {
+    renderRegFilter();
+    $('#regFilter').addEventListener('click', async () => {
+      const b = $('#regFilter');
+      state.filter.registered = !state.filter.registered;
+      renderRegFilter();
+      if (state.filter.registered && !state.regIds) {
+        b.setAttribute('aria-busy', 'true');
+        toast('בודק ברשימות המשתתפים…');
+        await findRegistered();
+        b.removeAttribute('aria-busy');
+      }
+      renderTop4(); renderList();
+      const n = upcoming().filter((e) => discOk(e) && regOk(e)).length;
+      toast(state.filter.registered ? (n === 1 ? 'ניווט אחד שהאנשים שלך רשומים אליו' : n ? `${n} ניווטים שהאנשים שלך רשומים אליהם` : 'האנשים שלך לא רשומים לאף ניווט קרוב') : 'מוצגים כל הניווטים');
+    });
+  }
   const discOk = (e) => !state.filter.disciplines.size || (e.disciplines || []).some((k) => state.filter.disciplines.has(k));
 
   function renderDiscFilter() {
@@ -872,7 +907,7 @@
   }
 
   function topEvents(n = 4) {
-    const up = upcoming().filter(discOk);
+    const up = upcoming().filter(discOk).filter(regOk);
     return [...up].sort((a, b) => evDate(a) - evDate(b)).slice(0, n);
   }
 
@@ -916,7 +951,7 @@
     const box = $('#top4');
     const list = topEvents();
     if (!list.length) {
-      box.innerHTML = `<li class="top4-loading">${state.filter.disciplines.size ? 'אין ניווטים קרובים מהסוגים שבחרת.' : 'אין אירועים מתוכננים כרגע.'}</li>`;
+      box.innerHTML = `<li class="top4-loading">${state.filter.registered ? 'האנשים שלך לא רשומים לאף ניווט קרוב.' : state.filter.disciplines.size ? 'אין ניווטים קרובים מהסוגים שבחרת.' : 'אין אירועים מתוכננים כרגע.'}</li>`;
       return;
     }
     const now = new Date();
@@ -1092,7 +1127,7 @@
     const top = filtering() ? new Set() : new Set(topEvents().map((e) => e.id));
     $('#all-title').textContent = filtering() ? 'תוצאות חיפוש' : 'עוד ניווטים';
     const list = upcoming().filter((e) => !top.has(e.id)).filter((e) =>
-      (!disciplines.size || (e.disciplines || []).some((k) => disciplines.has(k))) &&
+      (!disciplines.size || (e.disciplines || []).some((k) => disciplines.has(k))) && regOk(e) &&
       (!tags.size || (e.tags || []).some((k) => tags.has(k))) &&
       (!club || e.clubName === club) &&
       (!state.filter.mine || isMine(e)) &&
@@ -1168,7 +1203,7 @@
   }
 
   function eventsIn(y, m) {
-    return state.events.filter((e) => { const d = parseDate(e.date); return discOk(e) && d.getFullYear() === y && d.getMonth() === m; });
+    return state.events.filter((e) => { const d = parseDate(e.date); return discOk(e) && !isClosedEvent(e) && d.getFullYear() === y && d.getMonth() === m; });
   }
 
   function renderYear() {
@@ -1199,7 +1234,7 @@
       for (let i = 0; i < 7; i++) {
         const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + w * 7 + i);
         const isoD = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const evs = state.events.filter((e) => e.date === isoD && discOk(e));
+        const evs = state.events.filter((e) => e.date === isoD && discOk(e) && !isClosedEvent(e));
         const cls = [d.getMonth() !== m && 'out', d.getTime() === today && 'today'].filter(Boolean).join(' ');
         html += `<td class="${cls}"${d.getTime() === today ? ' aria-current="date"' : ''}><span class="num">${d.getDate()}</span>${evs.map((e) => `<button type="button" data-open="${esc(e.id)}" style="--c:${disc(e).color}" class="${e.source === 'closed-area' ? 'tentative' : ''}" title="${esc(e.title)}${isLeague(e) ? ' (ליגה)' : ''}">${discIcon(e.disciplines?.[0], 'di-xs')}${isLeague(e) ? '🏆 ' : ''}${esc(e.title)}</button>`).join('')}</td>`;
       }
@@ -1348,6 +1383,7 @@
     initInfo();
     initMoreEvents();
     initDiscFilter();
+    initRegFilter();
     window.addEventListener('hashchange', route);
     route();
     const [links, events, forum, news] = await Promise.all([
