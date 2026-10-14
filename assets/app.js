@@ -23,10 +23,23 @@
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore */ } },
   };
 
+  // Event types are inferred server-side from the event text.
+  const TYPES = {
+    league: { label: 'ליגה', color: '#1d6fd8' },
+    champ: { label: 'אליפות', color: '#c2410c' },
+    sprint: { label: 'ספרינט / עירוני', color: '#7c3aed' },
+    night: { label: 'ניווט לילה', color: '#334155' },
+    mtbo: { label: 'אופני ניווט', color: '#0f766e' },
+    rogaine: { label: 'רוגיין / ארוך', color: '#a16207' },
+    school: { label: 'בתי ספר', color: '#be185d' },
+    training: { label: 'אימון / הדרכה', color: '#15803d' },
+    other: { label: 'אחר', color: '#64748b' },
+  };
+
   const state = {
-    config: null, types: {}, events: [], forum: null,
-    filter: { q: '', region: '', types: new Set() },
-    forumCat: '', annualMode: 'year', monthCursor: null,
+    links: {}, types: TYPES, events: [], forum: null, meta: null,
+    filter: { q: '', club: '', types: new Set() },
+    forumQ: '', annualMode: 'year', monthCursor: null,
   };
 
   /* ---------- Accessibility & display preferences ---------- */
@@ -68,18 +81,14 @@
   }
 
   /* ---------- Shared bits ---------- */
-  const typeOf = (e) => state.types[e.type] || { label: e.type, color: '#64748b' };
+  const typeOf = (e) => {
+    const t = state.types[e.type] || state.types.other;
+    return e.type === 'other' && e.typeLabel ? { ...t, label: e.typeLabel } : t;
+  };
   const evDate = (e) => parseDate(e.date, e.time);
 
-  function mapsUrl(e) {
-    const q = e.lat && e.lng ? `${e.lat},${e.lng}` : e.location;
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
-  }
-  function wazeUrl(e) {
-    return e.lat && e.lng
-      ? `https://waze.com/ul?ll=${e.lat},${e.lng}&navigate=yes`
-      : `https://waze.com/ul?q=${encodeURIComponent(e.location)}&navigate=yes`;
-  }
+  const mapsUrl = (e) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(e.location)}`;
+  const wazeUrl = (e) => `https://waze.com/ul?q=${encodeURIComponent(e.location)}&navigate=yes`;
 
   function icsFor(events) {
     const pad = (n) => String(n).padStart(2, '0');
@@ -89,11 +98,12 @@
     const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//nivut-wrapper//HE', 'CALSCALE:GREGORIAN'];
     events.forEach((e) => {
       const s = evDate(e);
-      const end = new Date(s.getTime() + 4 * 3600e3);
-      lines.push('BEGIN:VEVENT', `UID:${e.id}@nivut-wrapper`, `DTSTAMP:${stamp(now)}`,
-        `DTSTART;TZID=Asia/Jerusalem:${stamp(s)}`, `DTEND;TZID=Asia/Jerusalem:${stamp(end)}`,
-        `SUMMARY:${clean(e.title)}`, `LOCATION:${clean(e.location)}`,
-        `DESCRIPTION:${clean([typeOf(e).label, e.club, e.description].filter(Boolean).join(' · '))}`, 'END:VEVENT');
+      const when = e.time
+        ? [`DTSTART;TZID=Asia/Jerusalem:${stamp(s)}`, `DTEND;TZID=Asia/Jerusalem:${stamp(new Date(s.getTime() + 4 * 3600e3))}`]
+        : [`DTSTART;VALUE=DATE:${stamp(s).slice(0, 8)}`, `DTEND;VALUE=DATE:${stamp(new Date(s.getFullYear(), s.getMonth(), s.getDate() + 1)).slice(0, 8)}`];
+      lines.push('BEGIN:VEVENT', `UID:${e.id}@nivut-wrapper`, `DTSTAMP:${stamp(now)}`, ...when,
+        `SUMMARY:${clean(e.title)}`, `LOCATION:${clean(e.location)}`, `URL:${clean(e.url)}`,
+        `DESCRIPTION:${clean([typeOf(e).label, e.club, e.url].filter(Boolean).join(' · '))}`, 'END:VEVENT');
     });
     lines.push('END:VCALENDAR');
     return lines.join('\r\n');
@@ -112,23 +122,24 @@
     const t = typeOf(e);
     const d = evDate(e);
     const left = daysBetween(new Date(), d);
-    const deadline = e.registrationDeadline ? parseDate(e.registrationDeadline) : null;
+    const shown = new Set([e.title, e.location, e.club, e.time]);
+    const extra = (e.raw || []).filter((x) => !shown.has(x) && !/^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(x) && !/^(יום\s)?[א-ש]['׳]?$/.test(x));
     $('#dlgBody').innerHTML = `
       <span class="tag" style="--c:${esc(t.color)}"><span class="dot"></span>${esc(t.label)}</span>
       <h2 id="dlgTitle">${esc(e.title)}</h2>
-      ${e.description ? `<p>${esc(e.description)}</p>` : ''}
       <dl>
         <dt>מועד</dt><dd>${fmtLong(d)}${e.time ? `, ${esc(e.time)}` : ''}${left >= 0 ? ` <span class="muted">(${left === 0 ? 'היום' : `בעוד ${left} ימים`})</span>` : ''}</dd>
-        <dt>מיקום</dt><dd>${esc(e.location)}${e.region ? ` · ${esc(e.region)}` : ''}</dd>
+        ${e.location ? `<dt>מיקום</dt><dd>${esc(e.location)}</dd>` : ''}
         ${e.club ? `<dt>מארגן</dt><dd>${esc(e.club)}</dd>` : ''}
-        ${e.courses?.length ? `<dt>מסלולים</dt><dd>${e.courses.map(esc).join(' · ')}</dd>` : ''}
-        ${deadline ? `<dt>סגירת הרשמה</dt><dd>${fmtLong(deadline)}</dd>` : ''}
+        ${extra.length ? `<dt>פרטים</dt><dd>${extra.map(esc).join(' · ')}</dd>` : ''}
       </dl>
       <div class="dlg-actions">
-        <a class="btn" href="${esc(e.url || state.config.links.calendar)}" rel="noopener" target="_blank">פרטים והרשמה באתר האיגוד ↗</a>
+        <a class="btn" href="${esc(e.url)}" rel="noopener" target="_blank">לדף האירוע באתר האיגוד ↗</a>
+        ${e.registerUrl ? `<a class="btn ghost" href="${esc(e.registerUrl)}" rel="noopener" target="_blank">הרשמה ↗</a>` : ''}
+        ${e.resultsUrl ? `<a class="btn ghost" href="${esc(e.resultsUrl)}" rel="noopener" target="_blank">תוצאות ↗</a>` : ''}
         <button type="button" class="btn ghost" data-ics="${esc(e.id)}">הוסף ליומן</button>
-        <a class="btn ghost" href="${esc(wazeUrl(e))}" rel="noopener" target="_blank">Waze</a>
-        <a class="btn ghost" href="${esc(mapsUrl(e))}" rel="noopener" target="_blank">מפה</a>
+        ${e.location ? `<a class="btn ghost" href="${esc(wazeUrl(e))}" rel="noopener" target="_blank">Waze</a>
+        <a class="btn ghost" href="${esc(mapsUrl(e))}" rel="noopener" target="_blank">מפה</a>` : ''}
       </div>`;
     const dlg = $('#eventDialog');
     dlg.showModal();
@@ -176,7 +187,9 @@
 
   function renderFilters() {
     const chips = $('#typeChips');
-    Object.entries(state.types).forEach(([key, t]) => {
+    const present = new Set(state.events.map((e) => e.type));
+    chips.hidden = present.size < 2;
+    Object.entries(state.types).filter(([key]) => present.has(key)).forEach(([key, t]) => {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'chip'; b.dataset.type = key;
       b.setAttribute('aria-pressed', 'false');
@@ -190,19 +203,20 @@
       });
       chips.append(b);
     });
-    const regions = [...new Set(state.events.map((e) => e.region).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'he'));
-    $('#region').insertAdjacentHTML('beforeend', regions.map((r) => `<option>${esc(r)}</option>`).join(''));
+    const clubs = [...new Set(state.events.map((e) => e.club).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'he'));
+    $('#clubField').hidden = clubs.length < 2;
+    $('#club').insertAdjacentHTML('beforeend', clubs.map((r) => `<option>${esc(r)}</option>`).join(''));
     $('#q').addEventListener('input', (e) => { state.filter.q = e.target.value.trim(); renderList(); });
-    $('#region').addEventListener('change', (e) => { state.filter.region = e.target.value; renderList(); });
+    $('#club').addEventListener('change', (e) => { state.filter.club = e.target.value; renderList(); });
   }
 
   function renderList() {
-    const { q, region, types } = state.filter;
+    const { q, club, types } = state.filter;
     const ql = q.toLowerCase();
     const list = upcoming().filter((e) =>
       (!types.size || types.has(e.type)) &&
-      (!region || e.region === region) &&
-      (!ql || [e.title, e.location, e.club, e.region].join(' ').toLowerCase().includes(ql)));
+      (!club || e.club === club) &&
+      (!ql || [e.title, e.location, e.club, e.typeLabel].join(' ').toLowerCase().includes(ql)));
     $('#resultCount').textContent = `${list.length} אירועים קרובים`;
     const el = $('#eventList');
     if (!list.length) { el.innerHTML = '<li class="empty">לא נמצאו אירועים התואמים לסינון.</li>'; return; }
@@ -215,7 +229,6 @@
       const sep = mKey !== lastMonth ? `<li class="month-sep" aria-hidden="true">${MONTHS[d.getMonth()]} ${d.getFullYear()}</li>` : '';
       lastMonth = mKey;
       const left = daysBetween(now, d);
-      const deadline = e.registrationDeadline ? daysBetween(now, parseDate(e.registrationDeadline)) : null;
       return `${sep}<li>
         <article class="event-card" style="--c:${esc(t.color)}" aria-labelledby="t-${esc(e.id)}">
           <div class="date-badge" aria-hidden="true"><span class="d">${d.getDate()}</span><span class="m">${MONTHS[d.getMonth()]}</span><span class="w">יום ${DAYS_SHORT[d.getDay()]}</span></div>
@@ -225,14 +238,14 @@
             <h3 id="t-${esc(e.id)}"><button type="button" data-open="${esc(e.id)}">${esc(e.title)}</button></h3>
             <ul class="meta">
               <li><span class="sr-only">מועד: </span>${fmtLong(d)}${e.time ? ` · ${esc(e.time)}` : ''}</li>
-              <li>📍 ${esc(e.location)}</li>
+              ${e.location ? `<li>📍 ${esc(e.location)}</li>` : ''}
               ${e.club ? `<li>${esc(e.club)}</li>` : ''}
-              ${deadline !== null && deadline >= 0 ? `<li><strong>הרשמה נסגרת ${deadline === 0 ? 'היום' : `בעוד ${deadline} ימים`}</strong></li>` : ''}
             </ul>
           </div>
           <div class="card-actions">
             <button type="button" class="btn ghost" data-ics="${esc(e.id)}" aria-label="הוסף ליומן: ${esc(e.title)}">📅 ליומן</button>
-            <a class="btn ghost" href="${esc(wazeUrl(e))}" target="_blank" rel="noopener" aria-label="ניווט ב-Waze אל ${esc(e.location)}">🚗 Waze</a>
+            ${e.location ? `<a class="btn ghost" href="${esc(wazeUrl(e))}" target="_blank" rel="noopener" aria-label="ניווט ב-Waze אל ${esc(e.location)}">🚗 Waze</a>` : ''}
+            <a class="btn ghost" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="${esc(e.title)} באתר האיגוד">↗ באתר</a>
           </div>
         </article></li>`;
     }).join('');
@@ -247,7 +260,8 @@
   }
 
   function renderLegend() {
-    $('#legend').innerHTML = Object.values(state.types)
+    const present = new Set(state.events.map((e) => e.type));
+    $('#legend').innerHTML = Object.entries(state.types).filter(([k]) => present.has(k)).map(([, t]) => t)
       .map((t) => `<span style="--c:${esc(t.color)}"><span class="dot"></span>${esc(t.label)}</span>`).join('');
   }
 
@@ -314,6 +328,7 @@
 
   /* ---------- Forum ---------- */
   function relTime(iso) {
+    if (!iso) return '';
     const diff = (Date.now() - new Date(iso)) / 1000;
     const rtf = new Intl.RelativeTimeFormat('he', { numeric: 'auto' });
     if (diff < 3600) return rtf.format(-Math.max(1, Math.round(diff / 60)), 'minute');
@@ -323,71 +338,90 @@
 
   function renderForum() {
     const f = state.forum;
-    if (!f) { $('#topicList').innerHTML = '<li class="empty">לא ניתן לטעון את הפורום.</li>'; return; }
-    const cats = Object.fromEntries(f.categories.map((c) => [c.id, c.label]));
-    const topics = f.topics
-      .filter((t) => !state.forumCat || t.category === state.forumCat)
-      .sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+    if (!f || f.error) {
+      $('#topicList').innerHTML = `<li class="empty">לא ניתן לטעון כרגע את הפורום. <a href="${esc(state.links.home || '#')}" target="_blank" rel="noopener">לאתר האיגוד</a></li>`;
+      return;
+    }
+    const q = state.forumQ.toLowerCase();
+    const topics = f.topics.filter((t) => !q || `${t.title} ${t.author}`.toLowerCase().includes(q));
     $('#topicList').innerHTML = topics.length ? topics.map((t) => {
-      const ev = t.eventId && state.events.find((e) => e.id === t.eventId);
+      const ev = matchEvent(t.title);
       return `<li class="topic">
         <div>
-          <span class="cat">${esc(cats[t.category] || t.category)}</span>
-          <h2><a href="${esc(t.url || state.config.links.forum)}" target="_blank" rel="noopener">${esc(t.title)}</a></h2>
-          <p class="meta"><span>${esc(t.author)}</span><span>פעילות אחרונה ${relTime(t.lastActivity)}</span>
+          <h2><a href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.title)}</a></h2>
+          <p class="meta">${t.author ? `<span>${esc(t.author)}</span>` : ''}${t.lastActivity ? `<span>פעילות אחרונה ${relTime(t.lastActivity)}</span>` : ''}
           ${ev ? `<span>קשור ל: <button type="button" class="chip" data-open="${esc(ev.id)}">${esc(ev.title)}</button></span>` : ''}</p>
         </div>
-        <div class="replies"><strong>${Number(t.replies) || 0}</strong><span>תגובות</span></div>
+        ${t.replies !== null && t.replies !== undefined ? `<div class="replies"><strong>${Number(t.replies)}</strong><span>תגובות</span></div>` : ''}
       </li>`;
-    }).join('') : '<li class="empty">אין נושאים בקטגוריה זו.</li>';
+    }).join('') : `<li class="empty">${q ? 'לא נמצאו נושאים.' : 'אין נושאים להצגה.'}</li>`;
+  }
+
+  // Links a forum topic to an upcoming event whose title it mentions.
+  function matchEvent(title) {
+    const words = (str) => str.split(/[\s\-–,|:()"']+/).filter((w) => w.length > 2);
+    const tw = new Set(words(title));
+    let best = null, bestScore = 1;
+    upcoming().forEach((e) => {
+      const score = words(`${e.title} ${e.location}`).filter((w) => tw.has(w)).length;
+      if (score > bestScore) { best = e; bestScore = score; }
+    });
+    return best;
   }
 
   function initForum() {
-    $('#forumLink').href = state.config.links.forum;
-    if (!state.forum) { renderForum(); return; }
-    const wrap = $('#forumChips');
-    const all = [{ id: '', label: 'הכל' }, ...state.forum.categories];
-    wrap.innerHTML = all.map((c) => `<button type="button" class="chip" data-cat="${esc(c.id)}" aria-pressed="${c.id === ''}">${esc(c.label)}</button>`).join('');
-    wrap.addEventListener('click', (e) => {
-      const b = e.target.closest('[data-cat]');
-      if (!b) return;
-      state.forumCat = b.dataset.cat;
-      $$('[data-cat]', wrap).forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-      renderForum();
-    });
+    const f = state.forum;
+    $('#forumLink').href = f?.source || state.links.home || '#';
+    $('#forumQ').addEventListener('input', (e) => { state.forumQ = e.target.value.trim(); renderForum(); });
+    $('#forumStatus').textContent = f && !f.error ? statusText(f) : '';
     renderForum();
   }
 
   /* ---------- Boot ---------- */
   async function loadJson(path) {
     const r = await fetch(path, { cache: 'no-cache' });
-    if (!r.ok) throw new Error(`${path}: ${r.status}`);
-    return r.json();
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(body.error || `${path}: ${r.status}`);
+    return body;
+  }
+
+  function statusText(d) {
+    const t = new Date(d.fetchedAt);
+    const hm = `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
+    return d.stale ? `אתר האיגוד לא זמין כרגע – מוצג מידע מ-${hm}` : `מתעדכן ישירות מאתר האיגוד · עודכן ב-${hm}`;
   }
 
   async function boot() {
     initPrefs();
     window.addEventListener('hashchange', route);
     route();
-    try {
-      const [config, ev, forum] = await Promise.all([
-        loadJson('data/config.json'), loadJson('data/events.json'), loadJson('data/forum.json').catch(() => null),
-      ]);
-      state.config = config;
-      state.types = ev.types;
-      state.events = ev.events.slice().sort((a, b) => evDate(a) - evDate(b));
-      state.forum = forum;
-    } catch (err) {
-      $('#eventList').innerHTML = `<li class="empty">שגיאה בטעינת הנתונים. <a href="https://nivut.org.il/calendar.aspx">ללוח האירועים באתר האיגוד</a></li>`;
-      console.error(err);
+    const [links, events, forum] = await Promise.all([
+      loadJson('api/links').catch(() => ({})),
+      loadJson('api/events').catch((err) => ({ error: err.message })),
+      loadJson('api/forum').catch((err) => ({ error: err.message })),
+    ]);
+    state.links = links;
+    state.forum = forum;
+
+    const footer = [['לוח אירועים רשמי', links.calendar], ['מפות ניווט', links.maps], ['ליגת בתי ספר', links.school], ['הנהלת האיגוד', links.council], ['English', links.english], ['צור קשר', links.contact]];
+    $('#footerLinks').innerHTML = footer.filter(([, h]) => h).map(([t, h]) => `<li><a href="${esc(h)}" rel="noopener">${esc(t)}</a></li>`).join('');
+    if (links.home) $('#footSource').href = links.home;
+
+    if (events.error || !events.events) {
+      const off = esc(links.calendar || 'https://nivut.org.il/calendar.aspx');
+      $('#nextEvent').innerHTML = `<p>לא ניתן לקרוא כרגע את לוח האירועים מאתר האיגוד.</p><a class="btn" href="${off}" rel="noopener">ללוח האירועים הרשמי ↗</a>`;
+      $('#eventList').innerHTML = `<li class="empty">לא ניתן לטעון את האירועים. <a href="${off}" rel="noopener">ללוח הרשמי</a></li>`;
+      $('#yearView').innerHTML = '';
+      $('#filters').hidden = true;
+      initForum();
       return;
     }
-    const L = state.config.links;
-    $('#sampleBanner').hidden = !state.config.sampleData;
-    $('#sourceLink').href = L.calendar;
-    $('#footSource').href = state.config.sourceSite;
-    const footer = [['לוח אירועים רשמי', L.calendar], ['מפות ניווט', L.maps], ['ליגת בתי ספר', L.school], ['הנהלת האיגוד', L.council], ['English', L.english], ['צור קשר', L.contact]];
-    $('#footerLinks').innerHTML = footer.map(([t, h]) => `<li><a href="${esc(h)}" rel="noopener">${esc(t)}</a></li>`).join('');
+    state.meta = events;
+    state.events = events.events.slice().sort((a, b) => evDate(a) - evDate(b));
+    const status = $('#liveStatus');
+    status.textContent = statusText(events);
+    status.classList.toggle('warn', !!events.stale);
+    status.hidden = false;
 
     renderNext();
     renderFilters();

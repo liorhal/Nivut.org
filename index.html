@@ -37,12 +37,6 @@
     </div>
   </header>
 
-  <div id="sampleBanner" class="sample-banner" hidden role="note">
-    <div class="container">
-      מוצגים <strong>נתוני דוגמה</strong>. הנתונים הרשמיים נמצאים ב<a id="sourceLink" href="https://www.nivut.org.il/" rel="noopener">אתר איגוד הניווט</a>.
-    </div>
-  </div>
-
   <main id="main" tabindex="-1">
     <!-- ניווטים קרובים -->
     <section id="view-upcoming" class="view" aria-labelledby="upcoming-title">
@@ -51,7 +45,7 @@
           <div>
             <p class="eyebrow">האירוע הבא</p>
             <h1 id="upcoming-title" class="hero-title">ניווטים קרובים</h1>
-            <div id="nextEvent" class="next-event" aria-live="polite"></div>
+            <div id="nextEvent" class="next-event" aria-live="polite"><p>טוען מאתר האיגוד…</p></div>
           </div>
           <svg class="hero-contours" viewBox="0 0 200 200" aria-hidden="true">
             <g fill="none" stroke="currentColor" stroke-width="1.5">
@@ -70,17 +64,18 @@
             <label for="q">חיפוש</label>
             <input id="q" type="search" placeholder="שם אירוע, מקום או מועדון" autocomplete="off">
           </div>
-          <div class="field">
-            <label for="region">אזור</label>
-            <select id="region"><option value="">כל האזורים</option></select>
+          <div class="field" id="clubField" hidden>
+            <label for="club">מועדון / מארגן</label>
+            <select id="club"><option value="">כולם</option></select>
           </div>
           <fieldset class="chips" id="typeChips">
             <legend>סוג אירוע</legend>
           </fieldset>
         </form>
 
+        <p class="live-status" id="liveStatus" hidden></p>
         <p class="result-count" id="resultCount" aria-live="polite"></p>
-        <ol class="event-list" id="eventList"></ol>
+        <ol class="event-list" id="eventList" aria-busy="false"></ol>
       </div>
     </section>
 
@@ -115,7 +110,11 @@
           <h1 id="forum-title">פורום הנווטים</h1>
           <a class="btn" id="forumLink" href="#" rel="noopener">לפורום המלא באתר האיגוד ↗</a>
         </div>
-        <div class="chips" id="forumChips" role="group" aria-label="סינון לפי קטגוריה"></div>
+        <div class="field forum-search">
+          <label for="forumQ">חיפוש בנושאים</label>
+          <input id="forumQ" type="search" autocomplete="off">
+        </div>
+        <p class="live-status" id="forumStatus"></p>
         <ul class="topic-list" id="topicList"></ul>
       </div>
     </section>

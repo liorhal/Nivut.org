@@ -83,8 +83,6 @@ nav { flex: 1; }
 .site-header .icon-btn { border-color: rgb(255 255 255 / .4); }
 .icon-btn[aria-pressed="true"] { background: var(--brand-ink); color: var(--brand); }
 
-.sample-banner { background: #fef3c7; color: #713f12; font-size: .9rem; padding-block: 6px; }
-.sample-banner a { color: inherit; font-weight: 700; }
 
 /* Hero */
 .hero { background: linear-gradient(135deg, var(--brand), #14532d); color: #fff; overflow: hidden; }
@@ -246,3 +244,8 @@ main:focus { outline: none; }
   .tabs a { white-space: nowrap; padding: 6px 12px; }
   .a11y-tools .icon-btn { min-width: 36px; min-height: 36px; }
 }
+.live-status { margin: 20px 0 0; font-size: .85rem; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.live-status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #16a34a; }
+.live-status:empty { display: none; }
+.live-status.warn::before { background: #d97706; }
+.forum-search { max-width: 420px; }
