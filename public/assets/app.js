@@ -536,7 +536,7 @@
     if (!e.details && e.nivutId) {
       try {
         e.details = await loadJson(`api/event?id=${encodeURIComponent(e.nivutId)}`);
-        if (e.details.startFrom && !e.time) e.time = e.details.startFrom;
+        if (e.details.startFrom && e.details.startFrom !== '00:00' && !e.time) e.time = e.details.startFrom;
       } catch { e.details = null; e.nivutId = null; }
       if (location.hash === `#event/${id}`) { box.innerHTML = eventPageHtml(e); tickCountdowns(); renderMyPeople(id); }
     }
@@ -989,7 +989,7 @@
       return;
     }
     state.meta = events;
-    state.events = events.events.slice().sort((a, b) => evDate(a) - evDate(b));
+    state.events = events.events.map((e) => (e.time === '00:00' ? { ...e, time: '' } : e)).sort((a, b) => evDate(a) - evDate(b));
     const status = $('#liveStatus');
     status.textContent = statusText(events);
     status.classList.toggle('warn', !!events.stale);

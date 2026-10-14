@@ -168,3 +168,22 @@ test('parseParticipants reads the table by its headings, ignoring layout tables'
   assert.equal(L.parseParticipants(split)[0].name, 'רפי הימן');
   assert.deepEqual(L.parseParticipants('<table><tr><td>אין משתתפים</td></tr></table>'), []);
 });
+
+test('start time comes from the start row, never from a midnight datetime', () => {
+  const base = fx('event.html');
+  // label "שעת זינוק" instead of "זינוקים", and a date-only datetime
+  const other = base.replace('<tr><td>זינוקים\n</td><td colspan="2"><time itemprop="startDate" datetime="2026-10-17T09:00">09:00</time> עד 11:00</td></tr>',
+    '<tr><td>שעת זינוק</td><td colspan="2"><time itemprop="startDate" datetime="2026-10-17T00:00">08:30</time> עד 10:30</td></tr>');
+  assert.notEqual(other, base);
+  let d = L.parseEventPage(other, 'https://nivut.org.il/3379/Info');
+  assert.equal(d.startFrom, '08:30');
+  assert.equal(d.startTo, '10:30');
+  // no start row at all, only the <time> element in some cell
+  const noLabel = base.replace(/<tr><td>זינוקים\n<\/td><td colspan="2">([\s\S]*?)<\/td><\/tr>/, '<tr><td>מועד</td><td colspan="2">$1</td></tr>');
+  d = L.parseEventPage(noLabel, 'https://nivut.org.il/3379/Info');
+  assert.equal(d.startFrom, '09:00');
+  // only a date-only datetime: no time rather than 00:00
+  const dateOnly = base.replace(/<tr><td>זינוקים\n<\/td>[\s\S]*?<\/tr>/, '<tr><td colspan="3"><meta itemprop="startDate" datetime="2026-10-17T00:00"></td></tr>');
+  d = L.parseEventPage(dateOnly, 'https://nivut.org.il/3379/Info');
+  assert.equal(d.startFrom, '');
+});
