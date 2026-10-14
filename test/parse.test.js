@@ -275,3 +275,15 @@ test('event page: "מידע נוסף", closed-event note and "אין מידע" f
   assert.deepEqual(d.directions, []);
   assert.equal(d.map, null);
 });
+
+test('event page: coordinates from the map script when there is no geo markup', () => {
+  const html = fx('event.html')
+    .replace(/<span itemprop="geo">[\s\S]*?<\/span>/, '')
+    .replace(/<a href="waze:[^"]*">Waze<\/a>/, '')
+    .replace('</body>', `<script>function initialize(){ var myMapLocation = [32.2654914855957,34.9321823120117,17];
+var eMarkers = [\n['כינוס',32.2655410766602,34.932056427002,false,1],]; }</script></body>`);
+  const d = L.parseEventPage(html, 'https://nivut.org.il/3400/Info');
+  assert.equal(d.lat, 32.265541);
+  assert.equal(d.lng, 34.932056);
+  assert.equal(d.wazeLL, '32.265541,34.932056');
+});
