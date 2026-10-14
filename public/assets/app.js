@@ -133,6 +133,33 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  /* ---------- Early-registration countdown ---------- */
+  const regDeadline = (e) => (e.details?.registrationDeadline ? parseDate(e.details.registrationDeadline) : null);
+
+  /** Live countdown markup; refreshed by tickCountdowns(). */
+  function countdownHtml(until, size = '') {
+    return `<div class="cd ${size}" data-until="${until.toISOString()}" role="timer"></div>`;
+  }
+  function tickCountdowns() {
+    const now = Date.now();
+    $$('.cd[data-until]').forEach((el) => {
+      const ms = new Date(el.dataset.until) - now;
+      if (ms <= 0) { el.innerHTML = '<span class="cd-done">ההרשמה המוקדמת נסגרה</span>'; el.removeAttribute('aria-label'); return; }
+      el.setAttribute('aria-label', `ההרשמה המוקדמת נסגרת בעוד ${spokenCountdown(ms)}`);
+      el.innerHTML = countdownParts(ms).map(([n, l]) => `<div aria-hidden="true"><strong>${n}</strong><span>${l}</span></div>`).join('');
+    });
+  }
+  setInterval(tickCountdowns, 30000);
+
+  /** Registration block for cards: countdown when open, otherwise a short status line. */
+  function regBlock(e, size) {
+    const dl = regDeadline(e);
+    if (e.source === 'closed-area') return '<p class="reg-line muted">הרשמה טרם נפתחה</p>';
+    if (!dl) return e.details ? '<p class="reg-line muted">הרשמה באתר האיגוד</p>' : '';
+    if (dl <= new Date()) return `<p class="reg-line muted">ההרשמה המוקדמת נסגרה${e.details.onsite ? ' · אפשר להירשם במקום' : ''}</p>`;
+    return `<div class="reg-cd"><p class="reg-cd-label">הרשמה מוקדמת נסגרת בעוד</p>${countdownHtml(dl, size)}</div>`;
+  }
+
   /* ---------- Event page (#event/<id>) ---------- */
   const toMin = (t) => { const m = /(\d{1,2}):(\d{2})/.exec(t || ''); return m ? +m[1] * 60 + +m[2] : null; };
   const fromMin = (n) => `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
@@ -195,11 +222,6 @@
         </div>
         <ol class="tl-points">${points.map((p) => `<li class="${p.cls}" style="--pos:${pos(p.at)}"><time>${fromMin(p.at)}</time><span>${p.label}</span></li>`).join('')}</ol>
       </div>
-      <ul class="tl-legend">
-        ${t !== null ? `<li><span class="sw start"></span><span>חלון הזינוקים: אפשר לצאת לדרך בכל רגע בין ${fromMin(s)} ל-${fromMin(t)}</span></li>` : ''}
-        ${c !== null && t !== null ? `<li><span class="sw run"></span><span>מהזינוק האחרון ועד שעת הגג: הזמן שנותר לנווטים האחרונים בשטח</span></li>` : ''}
-        ${c !== null ? `<li><span class="sw cutoff"></span><span><strong>שעת גג ${fromMin(c)}:</strong> כל המשתתפים חייבים לחזור לנקודת הסיום עד השעה הזו, גם אם לא סיימו את המסלול</span></li>` : ''}
-      </ul>
     </section>`;
   }
 
@@ -221,7 +243,6 @@
         <div class="cv-bar" aria-hidden="true"><span style="width:${c.km ? Math.max(6, (c.km / maxKm) * 100) : 4}%"></span></div>
         <div class="cv-km">${c.km ? `${c.km} ק"מ` : '<span class="muted">קצר מאוד</span>'}</div>
       </li>`).join('')}</ul>
-      <p class="muted small">הקושי מדורג לפי רמות האיגוד: רמה נמוכה = ניווט על שבילים וקווים ברורים, רמה גבוהה = ניווט בשטח פתוח ובחירת מסלול עצמאית.</p>
     </section>`;
   }
 
@@ -268,10 +289,10 @@
             ${d.eventType || d.note ? `<p class="ev-sub">${[d.eventType, d.note].filter(Boolean).map(esc).join(' · ')}</p>` : ''}
             <p class="sr-only">${fmtLong(date)}${e.location ? `, ${esc(e.location)}` : ''}</p>
           </div>
-          <div class="ev-count" ${left >= 0 ? 'role="timer"' : ''} aria-label="${left < 0 ? 'האירוע התקיים' : left === 0 ? 'האירוע היום' : `האירוע בעוד ${spokenCountdown(date - now)}`}">
+          <div class="ev-count">
             ${left < 0 ? '<span class="ev-count-big">✓</span><span>התקיים</span>'
-              : left === 0 ? '<span class="ev-count-big">היום!</span>'
-              : `<span class="ev-count-big">${left}</span><span>${left === 1 ? 'יום' : 'ימים'} לזינוק</span>`}
+              : reg.state === 'open' && reg.deadline ? `<span class="ev-count-label">הרשמה מוקדמת נסגרת בעוד</span>${countdownHtml(reg.deadline, 'cd-hero')}`
+              : `<span class="ev-count-label">${esc(reg.title)}</span>`}
           </div>
         </div>
       </div>
@@ -283,8 +304,8 @@
     <div class="container ev-body">
       <ul class="ev-facts" aria-label="עיקרי האירוע">
         <li><span class="ev-ico" aria-hidden="true">🕘</span><span class="k">מתי</span>
-          <strong>${d.startFrom ? `${esc(d.startFrom)}${d.startTo ? `–${esc(d.startTo)}` : ''}` : fmtShort(date)}</strong>
-          <span>${d.startFrom ? 'חלון זינוקים · ' : ''}${DAYS[date.getDay()]} ${date.getDate()}.${date.getMonth() + 1}</span></li>
+          <strong>${d.startFrom ? esc(d.startFrom) : fmtShort(date)}</strong>
+          <span>${d.startFrom ? 'תחילת זינוקים · ' : ''}${DAYS[date.getDay()]} ${date.getDate()}.${date.getMonth() + 1}${left >= 0 ? ` · ${inDays(left)}` : ''}</span></li>
         <li><span class="ev-ico" aria-hidden="true">📍</span><span class="k">איפה</span>
           <strong>${esc(e.location || d.name || 'יפורסם')}</strong>
           ${canNavigate(e) ? `<a href="${esc(wazeUrl(e))}" target="_blank" rel="noopener">ניווט לכינוס ב-Waze</a>` : '<span>&nbsp;</span>'}</li>
@@ -292,8 +313,8 @@
           <strong class="${price || d.price ? '' : 'tbd'}">${price ? `${price} ₪` : d.price ? esc(d.price) : 'יפורסם'}</strong>
           <span>${price ? `לחברי איגוד${priceOut ? ` · ${priceOut} ₪ לחיצוניים` : ''}` : '&nbsp;'}</span></li>
         <li class="reg-${reg.state}"><span class="ev-ico" aria-hidden="true">${reg.state === 'open' ? '✍️' : reg.state === 'past' ? '🏁' : '⏳'}</span><span class="k">הרשמה</span>
-          <strong>${reg.state === 'open' && reg.ms ? `נסגרת בעוד ${spokenCountdown(reg.ms)}` : esc(reg.title)}</strong>
-          <span>${reg.state === 'open' && reg.ms ? 'הרשמה מוקדמת' : '&nbsp;'}</span></li>
+          <strong>${reg.state === 'open' && reg.deadline ? `עד ${DAYS[reg.deadline.getDay()]} ${reg.deadline.getDate()}.${reg.deadline.getMonth() + 1}` : esc(reg.title)}</strong>
+          <span>${reg.state === 'open' && reg.deadline ? `הרשמה מוקדמת${d.registrationDeadline.length > 10 ? ` · עד ${esc(d.registrationDeadline.slice(11, 16))}` : ''}` : '&nbsp;'}</span></li>
       </ul>
 
       <div class="ev-grid">
@@ -313,7 +334,6 @@
         <aside class="ev-side" aria-label="הרשמה ופרטים נוספים">
           <section class="ev-card ev-reg reg-${reg.state}" aria-labelledby="rg-h">
             <h2 id="rg-h">${esc(reg.title)}</h2>
-            ${reg.ms ? `<div class="reg-count" role="timer" aria-label="ההרשמה המוקדמת נסגרת בעוד ${spokenCountdown(reg.ms)}">${countdownParts(reg.ms).map(([n, l]) => `<div><strong>${n}</strong><span>${l}</span></div>`).join('')}</div>` : ''}
             ${reg.text ? `<p>${esc(reg.text)}</p>` : ''}
             ${d.onsite && reg.state === 'open' ? `<p class="muted small">הרשמה במקום: ${esc(d.onsite)}</p>` : ''}
             <a class="btn btn-xl" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(reg.cta)} ↗</a>
@@ -364,13 +384,14 @@
     }
     document.title = `${e.title} – ניווט ישראל`;
     box.innerHTML = eventPageHtml(e);
+    tickCountdowns();
     $('#evTitle')?.focus({ preventScroll: true });
     if (!e.details && e.nivutId) {
       try {
         e.details = await loadJson(`api/event?id=${encodeURIComponent(e.nivutId)}`);
         if (e.details.startFrom && !e.time) e.time = e.details.startFrom;
       } catch { e.details = null; e.nivutId = null; }
-      if (location.hash === `#event/${id}`) box.innerHTML = eventPageHtml(e);
+      if (location.hash === `#event/${id}`) { box.innerHTML = eventPageHtml(e); tickCountdowns(); }
     }
   }
 
@@ -414,27 +435,35 @@
     return state.events.filter((e) => parseDate(e.date) >= today);
   }
 
-  function renderNext() {
-    const next = upcoming().find((e) => e.source !== 'closed-area') || upcoming()[0];
-    const box = $('#nextEvent');
-    if (!next) { box.innerHTML = '<p>אין אירועים מתוכננים כרגע.</p>'; return; }
-    const d = evDate(next);
-    box.innerHTML = `
-      <div style="flex:1 1 260px">
-        <h2>${esc(next.title)}</h2>
-        <p>${fmtLong(d)}${next.time ? `, ${esc(next.time)}` : ''}${next.location ? ` · ${esc(next.location)}` : ''}</p>
-      </div>
-      <div class="countdown" role="timer" aria-label="זמן שנותר לאירוע"></div>
-      <button type="button" class="btn" data-open="${esc(next.id)}">לפרטים</button>`;
-    const cd = $('.countdown', box);
-    const tick = () => {
-      const ms = Math.max(0, d - new Date());
-      const parts = [[Math.floor(ms / 864e5), 'ימים'], [Math.floor(ms / 36e5) % 24, 'שעות'], [Math.floor(ms / 6e4) % 60, 'דקות']];
-      cd.innerHTML = parts.map(([n, l]) => `<div><strong>${n}</strong><span>${l}</span></div>`).join('');
-    };
-    tick();
-    clearInterval(renderNext.timer);
-    renderNext.timer = setInterval(tick, 30000);
+  /** The nearest published events (closed-area placeholders only fill gaps). */
+  function topEvents(n = 4) {
+    const up = upcoming();
+    const real = up.filter((e) => e.source !== 'closed-area');
+    return [...real, ...up.filter((e) => e.source === 'closed-area')].slice(0, n).sort((a, b) => evDate(a) - evDate(b));
+  }
+
+  function renderTop4() {
+    const box = $('#top4');
+    const list = topEvents();
+    if (!list.length) { box.innerHTML = '<li class="top4-loading">אין אירועים מתוכננים כרגע.</li>'; return; }
+    const now = new Date();
+    box.innerHTML = list.map((e) => {
+      const d = evDate(e);
+      const left = daysBetween(now, d);
+      return `<li class="top-card" style="--c:${disc(e).color}">
+        <div class="top-head">
+          <div class="top-date" aria-hidden="true"><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span></div>
+          <div class="top-meta">
+            <div class="badges">${discBadges(e)}</div>
+            <h2><a href="#event/${encodeURIComponent(e.id)}">${esc(e.title)}</a></h2>
+            <p>${DAYS[d.getDay()]}${e.time ? ` · ${esc(e.time)}` : ''}${e.location && e.location !== e.title ? ` · ${esc(e.location)}` : ''}<span class="sr-only">, ${fmtLong(d)}</span></p>
+          </div>
+        </div>
+        ${regBlock(e, 'cd-card')}
+        <p class="top-foot"><span>${inDays(left)}</span><a class="top-cta" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד">הרשמה ↗</a></p>
+      </li>`;
+    }).join('');
+    tickCountdowns();
   }
 
   function chipGroup(container, entries, set) {
@@ -465,6 +494,27 @@
     $('#clubField').hidden = clubs.length < 2;
     $('#club').insertAdjacentHTML('beforeend', clubs.map((r) => `<option>${esc(r)}</option>`).join(''));
     $('#q').addEventListener('input', (e) => { state.filter.q = e.target.value.trim(); renderList(); });
+    const toggle = $('#searchToggle');
+    const setOpen = (open) => {
+      $('#filters').hidden = !open;
+      toggle.setAttribute('aria-expanded', String(open));
+      if (open) $('#q').focus();
+    };
+    toggle.addEventListener('click', () => setOpen($('#filters').hidden));
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key === '/' && !/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName) && !$('#view-upcoming').hidden) {
+        ev.preventDefault(); setOpen(true);
+      }
+      if (ev.key === 'Escape' && !$('#filters').hidden && $('#filters').contains(document.activeElement)) { setOpen(false); toggle.focus(); }
+    });
+    $('#clearFilters').addEventListener('click', () => {
+      state.filter.q = ''; state.filter.club = '';
+      state.filter.disciplines.clear(); state.filter.tags.clear();
+      $('#q').value = ''; $('#club').value = '';
+      $$('#filters .chip').forEach((b) => b.setAttribute('aria-pressed', 'false'));
+      renderList();
+      $('#q').focus();
+    });
     $('#club').addEventListener('change', (e) => { state.filter.club = e.target.value; renderList(); });
   }
 
@@ -472,24 +522,23 @@
     const d = evDate(e);
     const left = daysBetween(now, d);
     const det = e.details;
-    const dl = det?.registrationDeadline ? daysBetween(now, parseDate(det.registrationDeadline)) : null;
-    const when = det?.startFrom ? `זינוקים ${esc(det.startFrom)}${det.startTo ? `–${esc(det.startTo)}` : ''}` : '';
+    const when = det?.startFrom ? `תחילת זינוקים ${esc(det.startFrom)}` : '';
     const closed = e.source === 'closed-area';
     return `<li>
       <article class="event-card${closed ? ' compact' : ''}" style="--c:${disc(e).color}" aria-labelledby="t-${esc(e.id)}">
         <div class="date-badge" aria-hidden="true"><span class="d">${d.getDate()}</span><span class="m">${MONTHS[d.getMonth()]}</span><span class="w">יום ${DAYS_SHORT[d.getDay()]}</span></div>
         <div class="card-main">
-          <div class="badges">${discBadges(e)}${tagBadges(e)}${left <= 7 ? `<span class="soon">${inDays(left)}</span>` : ''}</div>
+          <div class="badges">${discBadges(e)}${tagBadges(e)}</div>
           <h3 id="t-${esc(e.id)}"><button type="button" data-open="${esc(e.id)}">${esc(e.title)}</button></h3>
           <ul class="meta">
             <li><span class="sr-only">מועד: </span>${fmtLong(d)}</li>
             ${when ? `<li>⏱ ${when}</li>` : ''}
             ${e.location && e.location !== e.title ? `<li>📍 ${esc(e.location)}</li>` : ''}
             ${e.clubName ? `<li>מועדון ${esc(e.clubName)}</li>` : ''}
-            ${dl !== null && dl >= 0 ? `<li><strong class="deadline">הרשמה מוקדמת נסגרת ${inDays(dl)}</strong></li>` : ''}
             ${closed ? '<li class="muted">שטח סגור לקראת תחרות · פרטים בקרוב</li>' : ''}
           </ul>
           ${e.summary ? `<p class="summary">${esc(e.summary)}</p>` : ''}
+          ${regDeadline(e) && regDeadline(e) > now ? regBlock(e, 'cd-inline') : ''}
         </div>
         ${e.image ? `<img class="thumb" src="${esc(e.image)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
         <div class="card-actions">
@@ -500,15 +549,22 @@
       </article></li>`;
   }
 
+  const filtering = () => !!(state.filter.q || state.filter.club || state.filter.disciplines.size || state.filter.tags.size);
+
   function renderList() {
     const { q, club, disciplines, tags } = state.filter;
     const ql = q.toLowerCase();
-    const list = upcoming().filter((e) =>
+    const active = [q, club].filter(Boolean).length + disciplines.size + tags.size;
+    $('#filterCount').hidden = !active;
+    $('#filterCount').textContent = active ? `(${active})` : '';
+    const top = filtering() ? new Set() : new Set(topEvents().map((e) => e.id));
+    $('#all-title').textContent = filtering() ? 'תוצאות חיפוש' : 'עוד ניווטים';
+    const list = upcoming().filter((e) => !top.has(e.id)).filter((e) =>
       (!disciplines.size || (e.disciplines || []).some((k) => disciplines.has(k))) &&
       (!tags.size || (e.tags || []).some((k) => tags.has(k))) &&
       (!club || e.clubName === club) &&
       (!ql || [e.fullTitle, e.title, e.location, e.clubName, e.eventType, e.summary].join(' ').toLowerCase().includes(ql)));
-    $('#resultCount').textContent = `${list.length} אירועים קרובים`;
+    $('#resultCount').textContent = filtering() ? `${list.length} אירועים נמצאו` : '';
     const el = $('#eventList');
     if (!list.length) { el.innerHTML = '<li class="empty">לא נמצאו אירועים התואמים לסינון.</li>'; return; }
     const now = new Date();
@@ -520,6 +576,7 @@
       lastMonth = mKey;
       return sep + eventCard(e, now);
     }).join('');
+    tickCountdowns();
   }
 
   function renderNews() {
@@ -720,7 +777,8 @@
 
     if (events.error || !events.events) {
       const off = esc(links.calendar || 'https://nivut.org.il/calendar.aspx');
-      $('#nextEvent').innerHTML = `<p>לא ניתן לקרוא כרגע את האירועים מאתר האיגוד.</p><a class="btn" href="${off}" rel="noopener">ללוח האירועים הרשמי ↗</a>`;
+      $('#top4').innerHTML = `<li class="top4-loading">לא ניתן לקרוא כרגע את האירועים מאתר האיגוד. <a href="${off}" rel="noopener">ללוח האירועים הרשמי ↗</a></li>`;
+      $('#searchToggle').hidden = true;
       $('#eventList').innerHTML = `<li class="empty">לא ניתן לטעון את האירועים. <a href="${off}" rel="noopener">ללוח הרשמי</a></li>`;
       $('#filters').hidden = true;
       $('#yearView').innerHTML = '';
@@ -737,7 +795,7 @@
     status.classList.toggle('warn', !!events.stale);
     status.hidden = false;
 
-    renderNext();
+    renderTop4();
     renderFilters();
     renderList();
     initAnnual();

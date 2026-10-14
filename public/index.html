@@ -41,25 +41,20 @@
     <!-- ניווטים קרובים -->
     <section id="view-upcoming" class="view" aria-labelledby="upcoming-title">
       <div class="hero">
-        <div class="container hero-inner">
-          <div>
-            <p class="eyebrow">האירוע הבא</p>
-            <h1 id="upcoming-title" class="hero-title">ניווטים קרובים</h1>
-            <div id="nextEvent" class="next-event" aria-live="polite"><p>טוען מאתר האיגוד…</p></div>
-          </div>
-          <svg class="hero-contours" viewBox="0 0 200 200" aria-hidden="true">
-            <g fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M100 20c45 0 80 30 80 75s-40 85-85 85-75-35-75-80 35-80 80-80z"/>
-              <path d="M100 45c32 0 58 22 58 52s-28 60-60 60-52-25-52-56 24-56 54-56z"/>
-              <path d="M102 70c18 0 34 12 34 30s-16 34-34 34-30-14-30-32 12-32 30-32z"/>
-              <path d="M104 92c6 0 11 4 11 10s-5 11-11 11-10-5-10-10 4-11 10-11z"/>
-            </g>
-          </svg>
+        <div class="container">
+          <h1 id="upcoming-title" class="hero-title">ניווטים קרובים</h1>
+          <ol class="top4" id="top4" aria-label="ארבעת הניווטים הקרובים"><li class="top4-loading">טוען מאתר האיגוד…</li></ol>
         </div>
       </div>
 
       <div class="container">
-        <form class="filters" id="filters" role="search" aria-label="סינון אירועים" onsubmit="return false">
+        <div class="list-head">
+          <h2 id="all-title">כל הניווטים</h2>
+          <button type="button" class="btn ghost search-toggle" id="searchToggle" aria-expanded="false" aria-controls="filters">
+            🔍 חיפוש וסינון <span class="filter-count" id="filterCount" hidden></span>
+          </button>
+        </div>
+        <form class="filters" id="filters" role="search" aria-label="חיפוש וסינון אירועים" onsubmit="return false" hidden>
           <div class="field grow">
             <label for="q">חיפוש</label>
             <input id="q" type="search" placeholder="שם אירוע, מקום או מועדון" autocomplete="off">
@@ -74,6 +69,7 @@
           <fieldset class="chips" id="tagChips">
             <legend>אופי האירוע</legend>
           </fieldset>
+          <button type="button" class="btn ghost" id="clearFilters">ניקוי</button>
         </form>
 
         <p class="live-status" id="liveStatus" hidden></p>
