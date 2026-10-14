@@ -231,7 +231,7 @@
   const eventLogo = (e, cls) => logoHtml({ id: eventClubId(e), name: e.clubName, fallback: e.details?.club?.pageLogo }, cls);
   const isMine = (e) => !!state.myClub && eventClubId(e) === state.myClub;
   const isLeague = (e) => (e.tags || []).includes('league');
-  const mineBadge = (e) => (isMine(e) ? '<span class="pill mine-pill">★ המועדון שלי</span>' : '');
+  const mineBadge = (e) => (isMine(e) ? '<span class="pill mine-pill">⚑ המועדון שלי</span>' : '');
   const leagueBadge = (e) => (isLeague(e) ? '<span class="pill league-pill"><span aria-hidden="true">🏆</span> ליגה</span>' : '');
   /** Participant's club name matches my club. */
   const inMyClub = (p) => { const c = clubOf(state.myClub); return !!c && !!p.club && clubByName(p.club)?.id === c.id; };
@@ -380,6 +380,46 @@
     return `<div class="people-chip"><span class="pc-ico" aria-hidden="true">👥</span><span class="sr-only">רשומים מהאנשים שלי: </span>
       ${hits.map((p) => `<span class="pc-person"><strong>${esc(p.name)}</strong>${p.start ? ` <span class="pstart">${esc(p.start)}</span><span class="sr-only"> זינוק</span>` : ''}</span>`).join('')}</div>`;
   }
+  /** Gold star with the number of my registered people; the tooltip lists them with start times. */
+  function peopleStarHtml(hits) {
+    const lines = hits.map((p) => `${p.name}${p.start ? ` · זינוק ${p.start}` : ''}`);
+    const label = `${hits.length === 1 ? 'אחד מהאנשים שלך רשום' : `${hits.length} מהאנשים שלך רשומים`}: ${lines.join(', ')}`;
+    return `<button type="button" class="ppl-star" data-tip-title="${esc(hits.length === 1 ? 'רשום מהאנשים שלך' : `${hits.length} רשומים מהאנשים שלך`)}"
+      data-tip="${esc(lines.join('\n'))}" aria-label="${esc(label)}">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.4l-6.1 3.4 1.4-6.8-5.1-4.7 6.9-.8z"/></svg>
+      <span class="n" aria-hidden="true">${hits.length}</span></button>`;
+  }
+
+  /* One floating tooltip for [data-tip] (outside the cards, so it is never clipped). */
+  function initTooltip() {
+    const tip = $('#tip');
+    let owner = null;
+    let shownAt = 0;
+    const show = (el) => {
+      if (owner !== el) shownAt = Date.now();
+      owner = el;
+      tip.innerHTML = `${el.dataset.tipTitle ? `<strong>${esc(el.dataset.tipTitle)}</strong>` : ''}${el.dataset.tip.split('\n').map((l) => `<span>${esc(l)}</span>`).join('')}`;
+      tip.hidden = false;
+      const r = el.getBoundingClientRect(), t = tip.getBoundingClientRect();
+      const left = Math.min(Math.max(8, r.left + r.width / 2 - t.width / 2), innerWidth - t.width - 8);
+      const below = r.bottom + 8 + t.height < innerHeight;
+      tip.style.left = `${left}px`;
+      tip.style.top = `${below ? r.bottom + 8 : r.top - t.height - 8}px`;
+      tip.dataset.side = below ? 'below' : 'above';
+    };
+    const hide = () => { tip.hidden = true; owner = null; };
+    document.addEventListener('mouseover', (e) => { const el = e.target.closest('[data-tip]'); if (el && el !== owner) show(el); else if (!el && owner && !owner.matches(':focus')) hide(); });
+    document.addEventListener('focusin', (e) => { const el = e.target.closest('[data-tip]'); if (el) show(el); else if (owner) hide(); });
+    document.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-tip]');
+      // A tap focuses (which shows the tip) and then clicks: only a later click on the same star closes it.
+      if (el) { e.preventDefault(); e.stopPropagation(); if (owner === el && !tip.hidden && Date.now() - shownAt > 400) hide(); else show(el); }
+      else if (owner) hide();
+    }, true);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && owner) hide(); });
+    addEventListener('scroll', () => owner && hide(), { passive: true });
+  }
+
   /** Marks my registered people on the home page cards (top four and the list). */
   function decorateTopPeople() {
     if (!state.people.length) return;
@@ -390,8 +430,11 @@
       participantsOf(e).then((data) => {
         const hits = registeredPeople(data?.participants);
         if (!hits.length) return;
-        cards.filter(([c, cid]) => cid === id && c.isConnected && !c.querySelector('.people-chip'))
-          .forEach(([c]) => c.querySelector('.top-meta').insertAdjacentHTML('beforeend', peopleChipHtml(hits)));
+        cards.filter(([c, cid]) => cid === id && c.isConnected && !c.querySelector('.people-chip')).forEach(([c]) => {
+          c.classList.add('has-people');
+          c.querySelector('.top-meta').insertAdjacentHTML('beforeend', peopleChipHtml(hits));
+          c.querySelector('.top-date')?.insertAdjacentHTML('beforeend', peopleStarHtml(hits));
+        });
       });
     }
   }
@@ -636,7 +679,7 @@
           </section>` : ''}
 
           ${d.club || d.planner || d.director || d.contact ? `<section class="ev-card" aria-labelledby="pp-h"><h2 id="pp-h">מי מארגן</h2><dl class="ev-people">
-            ${d.club ? `<dt>מועדון</dt><dd class="club-dd">${eventLogo(e, 'cl-md')}${d.club.url ? `<a href="${esc(d.club.url)}" target="_blank" rel="noopener">${esc(d.club.name)}</a>` : esc(d.club.name)}${isMine(e) ? ' <span class="pill mine-pill">★ המועדון שלי</span>' : ''}</dd>` : ''}
+            ${d.club ? `<dt>מועדון</dt><dd class="club-dd">${eventLogo(e, 'cl-md')}${d.club.url ? `<a href="${esc(d.club.url)}" target="_blank" rel="noopener">${esc(d.club.name)}</a>` : esc(d.club.name)}${isMine(e) ? ' <span class="pill mine-pill">⚑ המועדון שלי</span>' : ''}</dd>` : ''}
             ${d.director ? `<dt>ניהול</dt><dd>${esc(d.director)}</dd>` : ''}
             ${d.planner ? `<dt>תכנון מסלולים</dt><dd>${esc(d.planner)}</dd>` : ''}
             ${d.contact ? `<dt>יצירת קשר</dt><dd>${phoneLink(d.contact)}</dd>` : ''}
@@ -825,7 +868,7 @@
             <span class="top-di">${(e.disciplines || []).map((k) => discIcon(k, 'di-sm')).join('')}</span>
 </div>
           <div class="top-meta">
-            <${tag}><a href="#event/${encodeURIComponent(e.id)}"><span class="title-flags" aria-hidden="true">${isLeague(e) ? '🏆' : ''}${isMine(e) ? '★' : ''}</span>${esc(e.title)}</a></${tag}>
+            <${tag}><a href="#event/${encodeURIComponent(e.id)}"><span class="title-flags" aria-hidden="true">${isLeague(e) ? '🏆' : ''}${isMine(e) ? '⚑' : ''}</span>${esc(e.title)}</a></${tag}>
             <p class="top-when">${[e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`, e.location && e.location !== e.title && `<span class="top-loc">${esc(e.location)}</span>`, distHtml(e)].filter(Boolean).join(' · ')}<span class="sr-only">${e.time || e.location ? ', ' : ''}${fmtLong(d)}</span></p>
           </div>
         </div>
@@ -1141,6 +1184,7 @@
     initMyClub();
     initHome();
     initLightbox();
+    initTooltip();
     initPeople();
     initDiscFilter();
     window.addEventListener('hashchange', route);

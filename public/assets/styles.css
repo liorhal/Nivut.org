@@ -1073,3 +1073,28 @@ main:focus { outline: none; }
 .ev-files a[data-lightbox] { cursor: zoom-in; }
 .msg-img, .ev-mapimg { cursor: zoom-in; }
 @media (prefers-reduced-motion: no-preference) { .lightbox[open] { animation: lb-in .18s ease-out; } @keyframes lb-in { from { opacity: 0; transform: scale(.98); } } }
+
+/* ---------- My registered people: gold star with a count + tooltip ---------- */
+.top-card.has-people { box-shadow: 0 0 0 2px #f59e0b, 0 12px 30px rgb(245 158 11 / .25); }
+.hud-list .top-card.has-people { box-shadow: 0 0 0 2px #f59e0b, var(--shadow); }
+.ppl-star {
+  position: absolute; z-index: 3; top: -12px; inset-inline-start: -12px; width: 36px; height: 36px; padding: 0; border: 0;
+  background: none; cursor: pointer; display: grid; place-items: center; filter: drop-shadow(0 3px 6px rgb(0 0 0 / .3));
+}
+.ppl-star svg { position: absolute; inset: 0; width: 100%; height: 100%; fill: #f59e0b; stroke: #fff; stroke-width: 1.4; stroke-linejoin: round; }
+.ppl-star .n { position: relative; font-family: var(--num); font-weight: 900; font-size: .85rem; color: #3d2c00; transform: translateY(1px); }
+.ppl-star:hover svg, .ppl-star:focus-visible svg { fill: #fbbf24; }
+.ppl-star:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 50%; }
+@media (prefers-reduced-motion: no-preference) { .ppl-star { animation: star-pop .35s cubic-bezier(.3, 1.6, .5, 1); } @keyframes star-pop { from { transform: scale(.3); opacity: 0; } } }
+.tip {
+  position: fixed; z-index: 100; max-width: min(320px, calc(100vw - 16px)); padding: 10px 12px; border-radius: 12px;
+  background: #111; color: #fff; font-size: .88rem; line-height: 1.5; box-shadow: 0 10px 30px rgb(0 0 0 / .35); display: grid; gap: 2px; pointer-events: none;
+}
+.tip strong { color: #fbbf24; margin-bottom: 2px; }
+:root[data-contrast="high"] .ppl-star svg { fill: var(--text); stroke: var(--bg); }
+:root[data-contrast="high"] .ppl-star .n { color: var(--bg); }
+.top-card .top-date { overflow: visible; }
+@media (max-width: 560px) {
+  .top-card .people-chip { display: none; } /* phones: the star and its tooltip carry it */
+  .ppl-star { width: 30px; height: 30px; top: -10px; inset-inline-start: -10px; }
+}
