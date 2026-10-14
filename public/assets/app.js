@@ -798,12 +798,14 @@
   }
 
   /* ---------- Upcoming ---------- */
+  /** Has an event page on the association site, where you register (closed areas and calendar-only items do not). */
+  const hasRegistration = (e) => !!e.nivutId && e.source !== 'closed-area';
+  /** Upcoming events you can register for; the annual plan still shows everything. */
   function upcoming() {
     const today = startOfDay(new Date());
-    return state.events.filter((e) => parseDate(e.date) >= today);
+    return state.events.filter((e) => hasRegistration(e) && parseDate(e.date) >= today);
   }
 
-  /** The nearest published events (closed-area placeholders only fill gaps). */
   /** The saved discipline filter; events of any selected discipline pass. */
   const discOk = (e) => !state.filter.disciplines.size || (e.disciplines || []).some((k) => state.filter.disciplines.has(k));
 
@@ -840,8 +842,7 @@
 
   function topEvents(n = 4) {
     const up = upcoming().filter(discOk);
-    const real = up.filter((e) => e.source !== 'closed-area');
-    return [...real, ...up.filter((e) => e.source === 'closed-area')].slice(0, n).sort((a, b) => evDate(a) - evDate(b));
+    return [...up].sort((a, b) => evDate(a) - evDate(b)).slice(0, n);
   }
 
   /** One event card (the "HUD"): attributes and club on top, date, title, start and place, registration. */
