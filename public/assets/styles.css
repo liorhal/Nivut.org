@@ -1379,3 +1379,28 @@ a.info-btn { text-decoration: none; }
 .tip-head { font-weight: 800; color: #fbbf24; margin-bottom: 2px; }
 /* Only the register button (no early-registration date): keep it at the end of the row */
 .top-foot:has(> .top-cta:only-child) { justify-content: flex-end; }
+
+/* Files on the event page */
+.ev-file { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); text-decoration: none; font-weight: 700; }
+.ev-file:hover { border-color: var(--brand); }
+.ev-file .fi { font-size: 1.2rem; flex: none; }
+.ev-file .fn { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ev-file .fk { flex: none; font-size: .75rem; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+.ev-file.key { border-width: 2px; border-color: color-mix(in srgb, var(--brand) 55%, var(--border)); background: color-mix(in srgb, var(--brand) 6%, var(--surface)); }
+.ev-file.key.kind-results, .ev-file.key.kind-analysis { border-color: color-mix(in srgb, var(--flag) 60%, var(--border)); background: color-mix(in srgb, var(--flag) 7%, var(--surface)); }
+
+/* Home: latest results */
+.recent-results { margin-top: 28px; }
+.recent-results h2 { font-family: var(--display); font-size: 2.2rem; line-height: 1; margin: 0 0 12px; }
+.rr-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.rr-card { display: flex; gap: 12px; padding: 14px 16px; border-radius: 18px; background: var(--surface); border: 1px solid var(--border); border-inline-start: 6px solid var(--c); box-shadow: var(--shadow); min-width: 0; }
+.rr-date { flex: none; display: grid; justify-items: center; align-content: start; min-width: 52px; padding: 6px; border-radius: 12px; background: var(--surface-2); }
+.rr-date .day { font-family: var(--num); font-weight: 900; font-size: 1.7rem; line-height: 1; }
+.rr-date .mon { font-size: .75rem; color: var(--muted); }
+.rr-main { min-width: 0; flex: 1; }
+.rr-main h3 { margin: 0 0 8px; font-size: 1.02rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rr-main h3 a { color: var(--text); text-decoration: none; }
+.rr-main h3 a:hover { text-decoration: underline; }
+.rr-files { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rr-files .ev-file { padding: 6px 10px; font-size: .9rem; }
+@media (max-width: 900px) { .rr-list { grid-template-columns: 1fr; } }

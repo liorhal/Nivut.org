@@ -306,3 +306,18 @@ test('event page: "מידע נוסף" found by its label when the cell has no it
   assert.deepEqual(d.description, ['מרכז מצוינות', '*אין הרשמה באתר*']);
   assert.equal(L.eventFlags({ details: d }).noSiteRegistration, true);
 });
+
+test('event page: "קבצים ונספחים" box, file kinds and the results page', () => {
+  const box = `<div id="ctl00_ContentPlaceHolder1_dvAttachments"><fieldset><h3 class="tight">קבצים ונספחים</h3><ul class="tight">
+    <li><a href="https://cdn.nivut.org.il/uploads/a_Planner%20Notes.pdf" target="_blank"> דבר המתכנן</a><br></li>
+    <li><a href="https://cdn.nivut.org.il/uploads/b_starts.pdf" target="_blank">זמני זינוק</a></li>
+    <li><a href="https://www.livelox.com/Viewer/x" target="_blank">Livelox</a></li></ul></fieldset></div>`;
+  // the fixture's results button is disabled; here the results are out
+  const html = fx('event.html').replace('class="RadButton rbDisabled" disabled="disabled">', 'class="RadButton">').replace('</body>', `${box}</body>`);
+  const d = L.parseEventPage(html, 'https://nivut.org.il/3110/Info');
+  assert.deepEqual(d.attachments.map((f) => [f.name, f.kind]), [['תוצאות', 'results'], ['דבר המתכנן', 'planner'], ['זמני זינוק', 'starts'], ['Livelox', 'analysis']]);
+  assert.equal(d.attachments[0].url, 'https://nivut.org.il/3110/Results');
+  assert.equal(L.fileKind('LIVE RESULTS', 'https://x'), 'results');
+  assert.equal(L.fileKind('LapCombat', 'x.html'), 'analysis');
+  assert.equal(L.fileKind('מפת הגעה', 'x.pdf'), 'other');
+});

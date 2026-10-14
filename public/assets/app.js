@@ -604,6 +604,56 @@
       .filter((x) => x.score > 0).sort((a, b) => b.score - a.score || (b.t.lastActivity > a.t.lastActivity ? 1 : -1)).slice(0, 4).map((x) => x.t);
   }
 
+  /* ---------- Files and results ---------- */
+  const FILE_KINDS = {
+    planner: { label: 'דבר המתכנן', icon: '📝' },
+    starts: { label: 'זמני זינוק', icon: '⏱️' },
+    results: { label: 'תוצאות', icon: '🏁' },
+    analysis: { label: 'ניתוח תוצאות', icon: '📈' },
+    other: { label: 'קובץ', icon: '📎' },
+  };
+  /** Before the event the planner's notes and start times lead; from the day itself, results and analysis. */
+  function fileOrder(e) {
+    const started = daysBetween(new Date(), evDate(e)) <= 0;
+    return started ? ['results', 'analysis', 'starts', 'planner', 'other'] : ['planner', 'starts', 'results', 'analysis', 'other'];
+  }
+  const fileLink = (f, key = false) => `<a class="ev-file kind-${f.kind}${key ? ' key' : ''}" href="${esc(f.url)}" target="_blank" rel="noopener"${isImageUrl(f.url) ? ` data-lightbox="${esc(f.name)}"` : ''}>
+      <span class="fi" aria-hidden="true">${FILE_KINDS[f.kind]?.icon || '📎'}</span><span class="fn">${esc(f.name)}</span>${f.kind !== 'other' && f.name !== FILE_KINDS[f.kind].label ? `<span class="fk">${FILE_KINDS[f.kind].label}</span>` : ''}</a>`;
+  function filesHtml(e) {
+    const files = e.details?.attachments || [];
+    if (!files.length) return '';
+    const order = fileOrder(e);
+    const sorted = [...files].sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
+    const lead = order.slice(0, 2); // what matters now
+    return `<section class="ev-card ev-files-card" id="ev-files" aria-labelledby="fl-h"><h2 id="fl-h">קבצים ונספחים</h2>
+      <ul class="ev-files">${sorted.map((f) => `<li>${fileLink(f, lead.includes(f.kind))}</li>`).join('')}</ul></section>`;
+  }
+
+  /** Home page: the three latest events (today included), with only their results and results analysis. */
+  async function renderRecentResults() {
+    const box = $('#recentResults');
+    const end = startOfDay(new Date()); end.setDate(end.getDate() + 1);
+    const recent = state.events.filter((e) => e.nivutId && e.source !== 'closed-area' && !isClosedEvent(e) && parseDate(e.date) < end)
+      .sort((a, b) => evDate(b) - evDate(a)).slice(0, 3);
+    if (!recent.length) { box.hidden = true; return; }
+    await Promise.all(recent.filter((e) => !e.details).map((e) => loadJson(`api/event?id=${encodeURIComponent(e.nivutId)}`)
+      .then((d) => applyDetails(e, d)).catch(() => {})));
+    box.hidden = false;
+    $('#rrList').innerHTML = recent.map((e) => {
+      const d = evDate(e);
+      const files = (e.details?.attachments || []).filter((f) => f.kind === 'results' || f.kind === 'analysis')
+        .sort((a, b) => (a.kind === 'results' ? 0 : 1) - (b.kind === 'results' ? 0 : 1));
+      return `<li class="rr-card" style="--c:${disc(e).color}">
+        <div class="rr-date" aria-hidden="true"><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span></div>
+        <div class="rr-main">
+          <h3><a href="#event/${encodeURIComponent(e.id)}" title="${esc(e.title)}">${esc(e.title)}</a></h3>
+          <p class="sr-only">${fmtLong(d)}</p>
+          ${files.length ? `<ul class="rr-files">${files.map((f) => `<li>${fileLink(f, true)}</li>`).join('')}</ul>`
+            : `<p class="muted small">${daysBetween(new Date(), d) === 0 ? 'האירוע מתקיים היום – התוצאות יופיעו כאן' : 'התוצאות טרם פורסמו'}</p>`}
+        </div></li>`;
+    }).join('');
+  }
+
   /** Top of the event page: just the countdown, the register button and my registrations. */
   function regTopHtml(e, reg) {
     const dl = reg.deadline;
@@ -693,6 +743,7 @@
           ${loading ? '<section class="ev-card" role="status"><p class="muted">טוען את פרטי התחרות מאתר האיגוד…</p></section>' : ''}
           ${moreInfo(e).length ? `<section class="ev-card ev-info" id="ev-info" aria-labelledby="ab-h"><h2 id="ab-h" tabindex="-1">מידע נוסף</h2>
             ${moreInfo(e).map((p) => `<p>${linkify(p)}</p>`).join('')}</section>` : ''}
+          ${filesHtml(e)}
           ${regFullHtml(e, reg)}
           ${coursesHtml(d.courses)}
           ${hasGeo || d.directions?.length ? `<section class="ev-card" aria-labelledby="go-h"><h2 id="go-h">איך מגיעים</h2>
@@ -718,8 +769,6 @@
             ${d.contact ? `<dt>יצירת קשר</dt><dd>${phoneLink(d.contact)}</dd>` : ''}
           </dl></section>` : ''}
 
-          ${d.attachments?.length ? `<section class="ev-card" aria-labelledby="fl-h"><h2 id="fl-h">קבצים</h2><ul class="ev-files">
-            ${d.attachments.map((a) => `<li><a href="${esc(a.url)}" target="_blank" rel="noopener"${isImageUrl(a.url) ? ` data-lightbox="${esc(a.name)}"` : ''}>${isImageUrl(a.url) ? '🖼' : '📎'} ${esc(a.name)}</a></li>`).join('')}</ul></section>` : ''}
 
           ${threads.length ? `<section class="ev-card" aria-labelledby="fr-h"><h2 id="fr-h">מדברים על זה בפורום</h2><ul class="ev-threads">
             ${threads.map((t) => `<li><a href="#forum/${esc(t.id)}">${esc(t.title)}</a><span class="muted small">${esc(t.author)} · ${t.replyCount} תגובות · ${relTime(t.lastActivity)}</span></li>`).join('')}</ul></section>` : ''}
@@ -1482,6 +1531,7 @@
     renderList();
     initAnnual();
     initForum();
+    renderRecentResults();
     if (/^#(event|forum)\//.test(location.hash)) route();
     checkInView();
   }
