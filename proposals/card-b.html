@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8"><title>Card B</title>
+<style>
+:root{--forest:#0b3d2e;--flag:#f26a1b;--flag-ink:#b93f06;--text:#17201b;--muted:#5b665f;--line:#e3e8e2;--soft:#f1f4ef;--gold:#f5b301;--bg:#0f4a36}
+*{box-sizing:border-box}
+body{margin:0;padding:28px;background:var(--bg);font-family:Heebo,system-ui,sans-serif;color:var(--text)}
+h1{color:#fff;margin:0 0 4px;font-size:24px}.sub{color:#cfe3d8;margin:0 0 20px;font-size:14px}
+.row{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap}
+.col p.t{color:#fff;font-size:13px;font-weight:800;opacity:.85;margin:0 0 8px}
+.num{font-family:Heebo;font-weight:900;font-variant-numeric:tabular-nums}
+
+.card{--c:#15803d;--stub:96px;position:relative;width:440px;display:grid;grid-template-columns:var(--stub) minmax(0,1fr);background:#fff;border-radius:20px;box-shadow:0 14px 30px rgb(0 0 0/.25);overflow:hidden}
+.card.m{width:360px;--stub:74px}
+/* date stub */
+.stub{position:relative;background:var(--c);color:#fff;display:grid;align-content:space-between;justify-items:center;padding:16px 6px 14px}
+.stub .di{width:30px;height:30px;border-radius:50%;background:#fff;display:grid;place-items:center;margin:8px auto 0;font-size:16px}
+.stub .dw{font-weight:800;font-size:14px;text-align:center}.stub .dd{font-size:42px;line-height:1;text-align:center}.stub .mm{font-size:13px;text-align:center}
+.m .stub .dd{font-size:34px}
+.m .mine .tx{display:none}
+/* perforation on the seam between stub and card: dashed line + two notches */
+.card::before{content:"";position:absolute;inset-block:14px;inset-inline-start:var(--stub);border-inline-start:2px dashed rgb(0 0 0/.18);z-index:2}
+.notch{position:absolute;inset-inline-start:calc(var(--stub) - 9px);width:18px;height:18px;border-radius:50%;background:var(--bg);z-index:3}
+.notch.t{top:-9px}.notch.b{bottom:-9px}
+/* star */
+.star{position:relative;width:48px;height:48px;display:grid;place-items:center;filter:drop-shadow(0 2px 4px rgb(0 0 0/.3))}
+.m .star{width:40px;height:40px}
+.star svg{position:absolute;inset:0;fill:var(--gold);stroke:#fff;stroke-width:1.4}
+.star b{position:relative;font-weight:900;font-size:17px;color:#3d2c00;transform:translateY(1px)}
+/* body */
+.body{position:relative;padding:14px 16px 14px 14px;display:grid;gap:10px;min-width:0;overflow:hidden}
+.wm{position:absolute;inset-inline-end:-46px;top:26px;width:150px;height:150px;border-radius:50%;opacity:.13;transform:rotate(-16deg);
+  background:conic-gradient(var(--flag) 0 25%,#fff 0 50%,var(--forest) 0 75%,#9ab 0);pointer-events:none}
+.top{position:relative;display:flex;align-items:center;gap:6px;min-width:0}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:800;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.league{background:var(--gold);color:#3d2c00}.mine{border:1.5px solid var(--forest);color:var(--forest)}
+.disc{color:var(--forest);font-weight:800;font-size:12.5px;display:inline-flex;gap:5px;align-items:center;white-space:nowrap}
+.dot{width:20px;height:20px;border-radius:50%;background:var(--c)}
+.club{margin-inline-start:auto;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:800;white-space:nowrap;min-width:0}
+.club .lg{width:22px;height:22px;border-radius:50%;flex:none;background:conic-gradient(var(--flag) 0 25%,#fff 0 50%,var(--forest) 0)}
+.club span{overflow:hidden;text-overflow:ellipsis}
+.title{position:relative;font-size:19px;font-weight:800;margin:0;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m .title{font-size:17px}
+.where{position:relative;display:flex;align-items:center;gap:8px}
+.km{color:#2e7d16;font-weight:900;font-size:14.5px;display:inline-flex;align-items:center;gap:5px}.km::before{content:"";width:9px;height:9px;border-radius:50%;background:#35b311}
+.waze{background:#33ccff;color:#062a3a;font-weight:800;font-size:12px;padding:2px 9px;border-radius:999px}
+.tl{position:relative;height:28px}
+.tl .track{position:absolute;top:2px;inset-inline:0;height:7px;border-radius:9px;background:#eef1ec;border:1px solid var(--line)}
+.tl .win{position:absolute;top:0;bottom:0;right:14%;width:36%;border-radius:9px;background:repeating-linear-gradient(45deg,#16a34a 0 4px,#22c55e 4px 8px)}
+.tl .run{position:absolute;top:2px;bottom:2px;right:50%;width:36%;background:#f6c66a}
+.tl i{position:absolute;top:-2px;width:2px;height:14px;background:var(--text)}
+.tl span{position:absolute;top:14px;transform:translateX(50%);font-weight:900;font-size:11.5px}
+.tl .cut{color:#dc2626}.tl i.cut{background:#dc2626}
+/* compact registration */
+.reg{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px dashed #f0b590;padding-top:9px;margin-top:2px}
+.reg .lbl{font-size:11px;font-weight:800;color:var(--flag-ink)}
+.cd{display:flex;gap:4px;align-items:baseline}
+.cd b{background:var(--flag);color:#fff;border-radius:6px;padding:0 6px;font-weight:900;font-size:14px;line-height:1.5}
+.cd small{font-size:10.5px;font-weight:700;color:var(--flag-ink);margin-inline-end:3px}
+.cta{background:var(--forest);color:#fff;font-weight:800;border-radius:999px;padding:5px 12px;font-size:13px;white-space:nowrap}
+.reg.plain{justify-content:flex-end}
+</style></head><body>
+<h1>פריסה ב – כרטיס כניסה (לאישור)</h1>
+<p class="sub">קו תלישה מקווקו עם חריצים על התפר בין התאריך לכרטיס · הרשמה קומפקטית · מועדון ולוגו למעלה משמאל, ולוגו שקוף ברקע · בלי שם המקום, רק מרחק ו־Waze · סוג הניווט: צבע ואייקון בעמודת התאריך</p>
+<div class="row" id="r"></div>
+<script>
+const star='<span class="star"><svg viewBox="0 0 24 24"><path d="M12 2.2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.4l-6.1 3.4 1.4-6.8-5.1-4.7 6.9-.8z"/></svg><b>2</b></span>';
+const tl='<div class="tl"><div class="track"><div class="win"></div><div class="run"></div></div><i style="right:14%"></i><i style="right:50%"></i><i class="cut" style="right:86%"></i><span style="right:14%">09:00</span><span style="right:50%">11:00</span><span class="cut" style="right:86%">13:30</span></div>';
+const card=({m=false,league=true,mine=true,people=true,cd=true,title='ליגת ניווט – יער בן שמן',club='מועדון לדוגמה',color='#15803d'})=>`
+<div class="card${m?' m':''}" style="--c:${color}">
+  <span class="notch t"></span><span class="notch b"></span>
+  <div class="stub"><div><div class="dw">שישי</div><div class="dd num">23</div><div class="mm">אוקטובר</div><div class="di" title="ניווט רגלי">🏃</div></div>${people?star:''}</div>
+  <div class="body"><span class="wm"></span>
+    <div class="top">${league?'<span class="pill league">🏆 ליגה</span>':''}${mine?'<span class="pill mine">⚑<span class="tx"> המועדון שלי</span></span>':''}
+      <span class="club"><span class="lg"></span><span>${club}</span></span></div>
+    <h3 class="title">${title}</h3>
+    <div class="where"><span class="km">31 ק"מ</span><span class="waze">Waze</span></div>
+    ${tl}
+    ${cd?`<div class="reg"><div><div class="lbl">הרשמה מוקדמת נסגרת בעוד</div><div class="cd"><b>3</b><small>ימים</small><b>7</b><small>שעות</small><b>18</b><small>דק׳</small></div></div><span class="cta">הרשמה ↗</span></div>`
+        :`<div class="reg plain"><span class="cta">הרשמה ↗</span></div>`}
+  </div></div>`;
+document.getElementById('r').innerHTML=
+ `<div class="col"><p class="t">מחשב · עם כוכב, ליגה והמועדון שלי</p>${card({})}</div>`+
+ `<div class="col"><p class="t">מחשב · בלי מועד הרשמה מוקדמת</p>${card({league:false,mine:false,people:false,cd:false,title:'ניווט ספרינט חולון',club:'תל אביב',color:'#15803d'})}</div>`+
+ `<div class="col"><p class="t">מובייל 360</p>${card({m:true})}</div>`;
+</script></body></html>
