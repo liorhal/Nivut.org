@@ -1157,3 +1157,8 @@ main:focus { outline: none; }
   }
   .hh-card .top-card .top-bar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 8px; }
 }
+
+/* "Show more" under the list */
+.more-row { display: flex; justify-content: center; margin: 18px 0 6px; }
+.more-btn { font-weight: 800; padding: 10px 22px; }
+.more-row:has(.more-btn[hidden]) { display: none; }

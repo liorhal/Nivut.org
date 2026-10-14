@@ -59,6 +59,7 @@
   };
 
   const state = {
+    listMonths: 2, // "more navigations" window; grows by two months per "show more"
     links: {}, events: [], forum: null, news: null, meta: null,
     filter: { q: '', club: '', disciplines: new Set(), tags: new Set() },
     forumQ: '', annualMode: 'year', monthCursor: null,
@@ -1065,10 +1066,24 @@
     $('#resultCount').textContent = filtering()
       ? `${list.length} אירועים נמצאו${noPlace ? ` · ${noPlace} אירועים בלי מיקום ידוע לא נכללו` : ''}` : '';
     const el = $('#eventList');
+    const more = $('#moreEvents');
+    more.hidden = true;
     if (!list.length) { el.innerHTML = '<li class="empty">לא נמצאו אירועים התואמים לסינון.</li>'; return; }
+    // Without a search: the next two months, two more on each "show more".
+    let shown = list;
+    if (!filtering()) {
+      const until = (n) => { const d = startOfDay(new Date()); d.setMonth(d.getMonth() + n); return d; };
+      while (list.some((e) => evDate(e) >= until(state.listMonths)) && !list.some((e) => evDate(e) < until(state.listMonths))) state.listMonths += 2;
+      shown = list.filter((e) => evDate(e) < until(state.listMonths));
+      const rest = list.length - shown.length;
+      if (rest) {
+        more.hidden = false;
+        more.textContent = `הצג עוד – חודשיים נוספים (${rest} ניווטים עוד בהמשך)`;
+      }
+    }
     const now = new Date();
     let lastMonth = '';
-    el.innerHTML = list.map((e) => {
+    el.innerHTML = shown.map((e) => {
       const d = evDate(e);
       const mKey = `${d.getFullYear()}-${d.getMonth()}`;
       const sep = mKey !== lastMonth ? `<li class="month-sep" aria-hidden="true">${MONTHS[d.getMonth()]} ${d.getFullYear()}</li>` : '';
@@ -1077,6 +1092,18 @@
     }).join('');
     tickCountdowns();
     decorateTopPeople();
+  }
+
+  function initMoreEvents() {
+    $('#moreEvents').addEventListener('click', () => {
+      const before = $$('#eventList > .top-card').length;
+      state.listMonths += 2;
+      renderList();
+      // Keyboard and screen-reader users continue from the first newly added event.
+      const first = $$('#eventList > .top-card')[before];
+      first?.querySelector('a[href^="#event/"]')?.focus();
+      if (!first) $('#moreEvents').hidden || $('#moreEvents').focus();
+    });
   }
 
   function renderNews() {
@@ -1282,6 +1309,7 @@
     initTooltip();
     initPeople();
     initHelp();
+    initMoreEvents();
     initDiscFilter();
     window.addEventListener('hashchange', route);
     route();
