@@ -1532,3 +1532,18 @@ a.info-btn { text-decoration: none; }
   #top4 > .top-card.tk .waze-link svg { width: 16px; height: 16px; }
 }
 :is(#top4, #eventList, #hhCard) > .top-card.tk .tk-body > :is(.reg-cd, .reg-line, .top-foot) { align-self: stretch; width: auto; justify-self: auto; grid-column: auto; grid-row: auto; }
+/* "הרשמה מוקדמת עוד [3 ימים]" on one row */
+:is(#top4, #eventList, #hhCard) > .top-card.tk .reg-cd .reg-cd-main { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk .reg-cd .reg-cd-label { margin: 0; font-size: .8rem; display: block; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk .cd.cd-card strong { font-size: 1rem; padding: 0 7px; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk .cd.cd-card span { font-size: .78rem; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk .reg-cd .reg-cd-main { flex-wrap: nowrap; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk .reg-cd .reg-cd-label { white-space: nowrap; }
+@media (max-width: 560px) {
+  :is(#top4, #eventList, #hhCard) > .top-card.tk .reg-cd { gap: 6px; }
+  :is(#top4, #eventList, #hhCard) > .top-card.tk .reg-cd .reg-cd-main { gap: 4px; }
+  :is(#top4, #eventList, #hhCard) > .top-card.tk .reg-cd .reg-cd-label { font-size: .72rem; }
+  :is(#top4, #eventList, #hhCard) > .top-card.tk .cd.cd-card strong { font-size: .9rem; padding: 0 5px; }
+  :is(#top4, #eventList, #hhCard) > .top-card.tk .cd.cd-card span { font-size: .7rem; margin: 0; }
+  :is(#top4, #eventList, #hhCard) > .top-card.tk .top-cta { padding: 4px 10px; font-size: .78rem; }
+}

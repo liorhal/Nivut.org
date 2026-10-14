@@ -170,7 +170,7 @@
   const distHue = (km) => Math.round(120 * (1 - Math.min(km, 150) / 150));
   const distParen = (e) => {
     const km = distKm(e);
-    return km === null ? '' : ` <span class="dist" style="--dh:${distHue(km)}"><span class="dist-dot" aria-hidden="true"></span>(${fmtKm(km)}<span class="sr-only"> ממך בקו אווירי</span>)</span>`;
+    return km === null ? '' : ` <span class="dist" style="--dh:${distHue(km)}"><span class="dist-dot" aria-hidden="true"></span>${fmtKm(km)} ממך<span class="sr-only"> בקו אווירי</span></span>`;
   };
 
   function loadHome() {
@@ -455,7 +455,8 @@
 
   /** Live countdown markup; refreshed by tickCountdowns(). */
   function countdownHtml(until, size = '') {
-    return `<div class="cd ${size}" data-until="${until.toISOString()}" role="timer"></div>`;
+    // Cards show one unit only: days, or hours on the last day, or minutes in the last hour.
+    return `<div class="cd ${size}" data-until="${until.toISOString()}"${size === 'cd-card' ? ' data-one="1"' : ''} role="timer"></div>`;
   }
   function tickCountdowns() {
     const now = Date.now();
@@ -463,7 +464,8 @@
       const ms = new Date(el.dataset.until) - now;
       if (ms <= 0) { el.innerHTML = '<span class="cd-done">ההרשמה המוקדמת נסגרה</span>'; el.removeAttribute('aria-label'); return; }
       el.setAttribute('aria-label', `ההרשמה המוקדמת נסגרת בעוד ${spokenCountdown(ms)}`);
-      el.innerHTML = countdownParts(ms).map(([n, l]) => `<div aria-hidden="true"><strong>${n}</strong><span>${l}</span></div>`).join('');
+      const parts = el.dataset.one ? [oneUnit(ms)] : countdownParts(ms);
+      el.innerHTML = parts.map(([n, l]) => `<div aria-hidden="true"><strong>${n}</strong><span>${l}</span></div>`).join('');
     });
   }
   setInterval(tickCountdowns, 30000);
@@ -482,7 +484,8 @@
     if (e.source === 'closed-area') return '<p class="reg-line reg-soon"><span aria-hidden="true">⏳</span> הרשמה טרם נפתחה</p>';
     if (!dl) return ''; // no early-registration date: the card shows just the register button
     if (dl <= new Date()) return `<p class="reg-line reg-closed"><span aria-hidden="true">🔒</span> ההרשמה המוקדמת נסגרה${e.details.onsite ? ' · <strong>אפשר להירשם במקום</strong>' : ''}</p>`;
-    return `<div class="reg-cd${cta ? ' has-cta' : ''}"><div class="reg-cd-main"><p class="reg-cd-label">הרשמה מוקדמת נסגרת בעוד</p>${countdownHtml(dl, size)}</div>${cta}</div>`;
+    const label = size === 'cd-card' ? 'הרשמה מוקדמת עוד' : 'הרשמה מוקדמת נסגרת בעוד';
+    return `<div class="reg-cd${cta ? ' has-cta' : ''}"><div class="reg-cd-main"><p class="reg-cd-label">${label}</p>${countdownHtml(dl, size)}</div>${cta}</div>`;
   }
 
   /* ---------- Event page (#event/<id>) ---------- */
@@ -491,6 +494,13 @@
   const shekel = (s) => { const m = /(\d+(?:\.\d+)?)\s*(?:שח|ש"ח|₪)/.exec(s || ''); return m ? m[1] : null; };
   const phoneLink = (s) => esc(s).replace(/(0\d{1,2}-?\d{3}-?\d{4}|05\d-?\d{7})/g, (p) => `<a href="tel:${p.replace(/-/g, '')}">${p}</a>`);
 
+  /** The single largest unit: "3 ימים", or "5 שעות" on the last day, or "12 דקות" in the last hour. */
+  function oneUnit(ms) {
+    const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5), m = Math.max(1, Math.floor(ms / 6e4));
+    if (d >= 1) return [d, d === 1 ? 'יום' : 'ימים'];
+    if (h >= 1) return [h, h === 1 ? 'שעה' : 'שעות'];
+    return [m, m === 1 ? 'דקה' : 'דקות'];
+  }
   function countdownParts(ms) {
     const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60;
     return [[d, d === 1 ? 'יום' : 'ימים'], [h, 'שעות'], [m, 'דקות']];
