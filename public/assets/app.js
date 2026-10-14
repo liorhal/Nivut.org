@@ -1093,6 +1093,7 @@
     }
     const now = new Date();
     box.innerHTML = list.map((e) => hudCardHtml(e, { now })).join('');
+    box.removeAttribute('aria-busy');
     staggerNew(box);
     tickCountdowns();
     decorateTopPeople();
@@ -1299,6 +1300,7 @@
       return sep + hudCardHtml(e, { now, tag: 'h3' });
     }).join('');
     staggerNew(el);
+    el.removeAttribute('aria-busy');
     tickCountdowns();
     decorateTopPeople();
   }

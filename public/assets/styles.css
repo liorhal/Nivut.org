@@ -1635,3 +1635,33 @@ a.info-btn { text-decoration: none; }
   .filters { margin-bottom: 18px; }
   .list-head { margin-bottom: 12px; }
 }
+
+/* ---- Loading: skeleton tickets with a shimmer ---- */
+.top-card.tk.sk { pointer-events: none; }
+.top-card.tk.sk .tk-stub { background: color-mix(in srgb, var(--brand) 55%, var(--surface-2)); justify-content: flex-start; gap: 8px; padding-top: 20px; }
+.top-card.tk.sk .tk-body { gap: 12px; min-height: 150px; }
+.sk-line { display: block; height: 11px; border-radius: 6px; background: var(--surface-2); position: relative; overflow: hidden; }
+.sk-line.h { height: 18px; }
+.sk-line.thin { height: 8px; margin-top: 6px; }
+.sk-line.foot { height: 26px; border-radius: 999px; margin-top: auto; }
+.sk-line.inv { background: rgb(255 255 255 / .35); height: 10px; }
+.tk-stub .sk-line.h { height: 30px; }
+.w30 { width: 30%; } .w45 { width: 45%; } .w55 { width: 55%; } .w60 { width: 60%; } .w70 { width: 70%; } .w80 { width: 80%; } .w90 { width: 90%; }
+.tk-stub .sk-line { margin-inline: auto; }
+@media (prefers-reduced-motion: no-preference) {
+  .sk-line::after {
+    content: ""; position: absolute; inset: 0; transform: translateX(100%);
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / .55), transparent);
+    animation: sk-shimmer 1.3s ease-in-out infinite;
+  }
+  .sk-line.inv::after { background: linear-gradient(90deg, transparent, rgb(255 255 255 / .45), transparent); }
+  /* the shimmer sweeps right to left, the reading direction; cards start a beat apart */
+  @keyframes sk-shimmer { to { transform: translateX(-100%); } }
+  .top-card.tk.sk:nth-child(3) .sk-line::after { animation-delay: .12s; }
+  .top-card.tk.sk:nth-child(4) .sk-line::after { animation-delay: .24s; }
+  .top-card.tk.sk:nth-child(5) .sk-line::after { animation-delay: .36s; }
+  .top-card.tk.sk { animation: sk-breathe 2.6s ease-in-out infinite; }
+  @keyframes sk-breathe { 50% { opacity: .82; } }
+}
+:root[data-theme="dark"] .sk-line::after { background: linear-gradient(90deg, transparent, rgb(255 255 255 / .12), transparent); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sk-line::after { background: linear-gradient(90deg, transparent, rgb(255 255 255 / .12), transparent); } }

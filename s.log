@@ -159,3 +159,51 @@ Error: http://localhost:9001/3109/Info → HTTP 404
     at async /home/user/Nivut.org/lib/nivut.js:736:16
     at async /home/user/Nivut.org/lib/nivut.js:699:21
     at async Object./api/event (/home/user/Nivut.org/lib/http.js:18:20)
+Error: http://localhost:9001/3333/Info → HTTP 404
+    at fetchHtml (/home/user/Nivut.org/lib/nivut.js:684:52)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /home/user/Nivut.org/lib/nivut.js:736:16
+    at async /home/user/Nivut.org/lib/nivut.js:699:21
+    at async Object./api/event (/home/user/Nivut.org/lib/http.js:18:20)
+Error: http://localhost:9001/3437/Info → HTTP 404
+    at fetchHtml (/home/user/Nivut.org/lib/nivut.js:684:52)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /home/user/Nivut.org/lib/nivut.js:736:16
+    at async /home/user/Nivut.org/lib/nivut.js:699:21
+    at async Object./api/event (/home/user/Nivut.org/lib/http.js:18:20)
+Error: http://localhost:9001/3022/Info → HTTP 404
+    at fetchHtml (/home/user/Nivut.org/lib/nivut.js:684:52)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /home/user/Nivut.org/lib/nivut.js:736:16
+    at async /home/user/Nivut.org/lib/nivut.js:699:21
+    at async Object./api/event (/home/user/Nivut.org/lib/http.js:18:20)
+Error: http://localhost:9001/3109/Info → HTTP 404
+    at fetchHtml (/home/user/Nivut.org/lib/nivut.js:684:52)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /home/user/Nivut.org/lib/nivut.js:736:16
+    at async /home/user/Nivut.org/lib/nivut.js:699:21
+    at async Object./api/event (/home/user/Nivut.org/lib/http.js:18:20)
+Error: http://localhost:9001/3333/Info → HTTP 404
+    at fetchHtml (/home/user/Nivut.org/lib/nivut.js:684:52)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /home/user/Nivut.org/lib/nivut.js:736:16
+    at async /home/user/Nivut.org/lib/nivut.js:699:21
+    at async Object./api/event (/home/user/Nivut.org/lib/http.js:18:20)
+Error: http://localhost:9001/3437/Info → HTTP 404
+    at fetchHtml (/home/user/Nivut.org/lib/nivut.js:684:52)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /home/user/Nivut.org/lib/nivut.js:736:16
+    at async /home/user/Nivut.org/lib/nivut.js:699:21
+    at async Object./api/event (/home/user/Nivut.org/lib/http.js:18:20)
+Error: http://localhost:9001/3022/Info → HTTP 404
+    at fetchHtml (/home/user/Nivut.org/lib/nivut.js:684:52)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /home/user/Nivut.org/lib/nivut.js:736:16
+    at async /home/user/Nivut.org/lib/nivut.js:699:21
+    at async Object./api/event (/home/user/Nivut.org/lib/http.js:18:20)
+Error: http://localhost:9001/3109/Info → HTTP 404
+    at fetchHtml (/home/user/Nivut.org/lib/nivut.js:684:52)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /home/user/Nivut.org/lib/nivut.js:736:16
+    at async /home/user/Nivut.org/lib/nivut.js:699:21
+    at async Object./api/event (/home/user/Nivut.org/lib/http.js:18:20)
