@@ -1404,3 +1404,131 @@ a.info-btn { text-decoration: none; }
 .rr-files { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .rr-files .ev-file { padding: 6px 10px; font-size: .9rem; }
 @media (max-width: 900px) { .rr-list { grid-template-columns: 1fr; } }
+
+/* =====================================================================
+   Event card as a ticket (approved layout B)
+   ===================================================================== */
+:is(#top4, #eventList, #hhCard) > .top-card.tk {
+  --stub: 92px;
+  position: relative; display: grid; grid-template-columns: var(--stub) minmax(0, 1fr); grid-template-rows: none;
+  gap: 0; padding: 0; border: 0; border-radius: 20px; overflow: visible; background: var(--surface);
+  box-shadow: 0 10px 26px rgb(0 0 0 / .16); min-height: 0;
+}
+:is(#top4, #eventList, #hhCard) > .top-card.tk.lead { grid-row: auto; grid-column: auto; }
+#top4 > .top-card.tk.lead { grid-row: span 3; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk > :is(.tk-stub, .tk-body) { position: relative; z-index: auto; grid-row: 1; margin: 0; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk > .tk-stub { grid-column: 1; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk > .tk-body { grid-column: 2; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk > .tk-notch { position: absolute; }
+
+/* date stub, in the discipline's colour */
+.top-card.tk .tk-stub {
+  background: var(--c); color: #fff; border-radius: 0 20px 20px 0; /* RTL: the stub is on the right */
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 6px 14px;
+}
+.top-card.tk .tk-stub .top-date { display: grid; justify-items: center; background: none; box-shadow: none; padding: 0; min-width: 0; border-radius: 0; color: #fff; }
+.top-card.tk .tk-stub .top-date .dow { color: #fff; font-weight: 800; font-size: .9rem; opacity: .95; }
+.top-card.tk .tk-stub .top-date .day { color: #fff; font-family: var(--num); font-weight: 900; font-size: 2.6rem; line-height: 1; letter-spacing: -.03em; }
+.top-card.tk .tk-stub .top-date .mon { color: #fff; font-size: .82rem; opacity: .95; }
+.top-card.tk .tk-star:empty { display: none; }
+.top-card.tk .tk-star .ppl-star { position: relative; inset: auto; top: auto; width: 48px; height: 48px; margin: 0; }
+.top-card.tk .tk-star .ppl-star .n { font-size: 1.15rem; }
+
+/* perforation on the seam: a dashed line and two notches */
+.top-card.tk::before {
+  content: ""; position: absolute; z-index: 3; inset-block: 14px; inset-inline-start: var(--stub);
+  border-inline-start: 2px dashed rgb(0 0 0 / .16); pointer-events: none;
+}
+.top-card.tk .tk-notch { position: absolute; z-index: 3; inset-inline-start: calc(var(--stub) - 9px); width: 18px; height: 18px; border-radius: 50%; background: var(--notch-bg, var(--forest, #0b3d2e)); }
+.top-card.tk .tk-notch.t { top: -9px; } .top-card.tk .tk-notch.b { bottom: -9px; }
+#eventList > .top-card.tk { --notch-bg: var(--bg); }
+#hhCard > .top-card.tk { --notch-bg: var(--bg); }
+
+/* body */
+.top-card.tk .tk-body { position: relative; min-width: 0; overflow: hidden; border-radius: 20px 0 0 20px; display: flex; flex-direction: column; gap: 9px; padding: 14px 16px 14px 14px; }
+.top-card.tk .tk-body > * { position: relative; z-index: 1; }
+.top-card.tk .tk-body > .hud-logo { position: absolute; z-index: 0; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk .top-bar {
+  position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal;
+  display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; margin: 0; min-height: 26px;
+}
+.top-card.tk .top-bar .badges { display: flex; gap: 6px; flex: none; margin: 0; }
+.top-card.tk .top-bar .badges:empty { display: none; }
+.top-card.tk .top-bar .top-club { margin-inline-start: auto; display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: .84rem; font-weight: 800; color: var(--text); }
+.top-card.tk .top-bar .top-club > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top-card.tk .top-bar .top-club .club-logo { flex: none; }
+.top-card.tk :is(h2, h3) { margin: 0; font-size: 1.12rem; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0; }
+.top-card.tk :is(h2, h3) a { color: var(--text); text-decoration: none; }
+.top-card.tk :is(h2, h3) a::after { content: ""; position: absolute; inset: 0; z-index: 0; } /* the whole card opens the event */
+.top-card.tk :is(h2, h3) a:hover { text-decoration: underline; }
+.top-card.tk .top-when { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font-size: .9rem; color: var(--muted); }
+.top-card.tk .top-when:empty { display: none; }
+.top-card.tk .top-when .dist { font-family: var(--num); font-weight: 900; font-size: .95rem; }
+.top-card.tk .top-tl { margin: 0; }
+.top-card.tk .top-tl .tlm { width: min(220px, 100%); }
+.top-card.tk .lead-summary { margin: 2px 0 0; font-size: .92rem; color: var(--muted); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.top-card.tk .waze-link, .top-card.tk .top-cta, .top-card.tk .ppl-star { position: relative; z-index: 2; }
+
+/* compact registration: a dashed rule, the countdown and a small button on one row */
+:is(#top4, #eventList, #hhCard) > .top-card.tk .reg-cd {
+  margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 9px 0 0; border: 0; border-top: 1px dashed color-mix(in srgb, var(--flag) 45%, var(--border)); border-radius: 0; background: none; box-shadow: none;
+}
+.top-card.tk .reg-cd .reg-cd-label { margin: 0 0 3px; font-size: .72rem; font-weight: 800; color: var(--flag-ink); }
+:is(#top4, #eventList, #hhCard) > .top-card.tk .cd.cd-card { display: flex; gap: 4px; align-items: baseline; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk .cd.cd-card > div { display: inline-flex; align-items: baseline; gap: 3px; padding: 0; background: none; box-shadow: none; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk .cd.cd-card strong { background: var(--flag); color: #fff; border-radius: 6px; padding: 0 6px; font-size: .95rem; line-height: 1.5; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk .cd.cd-card span { font-size: .68rem; font-weight: 700; color: var(--flag-ink); margin-inline-end: 3px; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk .top-cta { padding: 5px 12px; font-size: .84rem; box-shadow: none; flex: none; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk .reg-line { margin: auto 0 0; padding: 8px 0 0; border-top: 1px dashed var(--border); background: none; border-radius: 0; font-size: .82rem; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk .top-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 8px; border-top: 1px dashed var(--border); font-size: .82rem; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk .top-foot:has(> .top-cta:only-child) { justify-content: flex-end; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk .reg-line + .top-foot { border-top: 0; padding-top: 0; margin-top: 4px; }
+
+/* league and "my club" accents */
+.top-card.tk.is-league { box-shadow: 0 0 0 2px #f5b301, 0 10px 26px rgb(0 0 0 / .16); }
+.top-card.tk.is-mine .tk-body { background: linear-gradient(180deg, color-mix(in srgb, var(--brand) 5%, var(--surface)), var(--surface) 60%); }
+
+/* the lead card: bigger name and its blurb */
+#top4 > .top-card.tk.lead { --stub: 120px; }
+#top4 > .top-card.tk.lead .tk-stub .top-date .day { font-size: 3.6rem; }
+#top4 > .top-card.tk.lead .tk-body { padding: 20px 22px 18px 18px; gap: 12px; }
+#top4 > .top-card.tk.lead h2 { font-size: clamp(1.3rem, 2.2vw, 1.75rem); white-space: normal; }
+
+/* phones */
+@media (max-width: 560px) {
+  :is(#top4, #eventList, #hhCard) > .top-card.tk, #top4 > .top-card.tk.lead { --stub: 70px; border-radius: 16px; }
+  #top4 > .top-card.tk.lead { grid-row: auto; }
+  .top-card.tk .tk-stub { padding: 10px 4px; border-radius: 0 16px 16px 0; gap: 6px; }
+  .top-card.tk .tk-body { border-radius: 16px 0 0 16px; padding: 10px 12px 10px 10px; gap: 6px; }
+  .top-card.tk .tk-stub .top-date .day, #top4 > .top-card.tk.lead .tk-stub .top-date .day { font-size: 2rem; }
+  .top-card.tk .tk-stub .top-date .dow { font-size: .78rem; }
+  .top-card.tk .tk-stub .top-date .mon { font-size: .72rem; }
+  .top-card.tk .tk-star .ppl-star { width: 36px; height: 36px; }
+  .top-card.tk .tk-star .ppl-star .n { font-size: .95rem; }
+  .top-card.tk :is(h2, h3), #top4 > .top-card.tk.lead h2 { font-size: 1rem; white-space: nowrap; }
+  .top-card.tk .mine-pill .mine-tx { display: none; }
+  .top-card.tk .top-bar .badges .pill { font-size: .72rem; padding: 2px 7px; }
+  .top-card.tk .lead-summary { display: none; }
+  #top4 > .top-card.tk .top-tl { display: none; } /* the four nearest must fit one screen */
+  :is(#top4, #eventList, #hhCard) > .top-card.tk .reg-cd, :is(#top4, #eventList, #hhCard) > .top-card.tk .top-foot { padding-top: 6px; }
+}
+:root[data-contrast="high"] .top-card.tk .tk-stub { background: var(--text); color: var(--bg); }
+:root[data-contrast="high"] .top-card.tk .tk-stub .top-date :is(.dow, .day, .mon) { color: var(--bg); }
+/* ticket fixes: full-height stub, one-row registration, no empty rows */
+:is(#top4, #eventList, #hhCard) > .top-card.tk { align-items: stretch; align-content: stretch; grid-template-rows: minmax(0, 1fr); }
+:is(#top4, #eventList, #hhCard) > .top-card.tk > :is(.tk-stub, .tk-body) { align-self: stretch; height: auto; }
+.top-card.tk .tk-body > :is(.reg-cd, .reg-line, .top-foot) { align-self: stretch; width: auto; max-width: none; justify-self: auto; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk .reg-cd { flex-wrap: nowrap; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk .reg-cd .reg-cd-main { min-width: 0; display: block; }
+:is(#top4, #eventList, #hhCard) > .top-card.tk .top-bar:not(:has(.pill, .top-club, .ppl-star)) { display: none; }
+@media (max-width: 560px) {
+  #top4 > .top-card.tk .tk-body { gap: 4px; padding-block: 8px; }
+  #top4 > .top-card.tk .tk-stub { padding-block: 8px; }
+  #top4 > .top-card.tk .tk-stub .top-date .day { font-size: 1.75rem; }
+  #top4 > .top-card.tk .top-bar { min-height: 0; }
+  #top4 > .top-card.tk .reg-cd .reg-cd-label { display: none; }
+  #top4 > .top-card.tk .waze-link { padding: 1px; }
+  #top4 > .top-card.tk .waze-link svg { width: 16px; height: 16px; }
+}
+:is(#top4, #eventList, #hhCard) > .top-card.tk .tk-body > :is(.reg-cd, .reg-line, .top-foot) { align-self: stretch; width: auto; justify-self: auto; grid-column: auto; grid-row: auto; }

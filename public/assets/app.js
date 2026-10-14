@@ -245,7 +245,7 @@
   const eventLogo = (e, cls) => logoHtml({ id: eventClubId(e), name: e.clubName, fallback: e.details?.club?.pageLogo }, cls);
   const isMine = (e) => !!state.myClub && eventClubId(e) === state.myClub;
   const isLeague = (e) => (e.tags || []).includes('league');
-  const mineBadge = (e) => (isMine(e) ? '<span class="pill mine-pill">⚑ המועדון שלי</span>' : '');
+  const mineBadge = (e) => (isMine(e) ? '<span class="pill mine-pill">⚑<span class="mine-tx"> המועדון שלי</span></span>' : '');
   const leagueBadge = (e) => (isLeague(e) ? '<span class="pill league-pill"><span aria-hidden="true">🏆</span> ליגה</span>' : '');
 
   function updateTrackButtons() {
@@ -444,7 +444,7 @@
         if (!hits.length) return;
         cards.filter(([c, cid]) => cid === id && c.isConnected && !c.querySelector('.ppl-star')).forEach(([c]) => {
           c.classList.add('has-people');
-          c.querySelector('.top-bar')?.insertAdjacentHTML('afterbegin', peopleStarHtml(hits));
+          (c.querySelector('.tk-star') || c.querySelector('.top-bar'))?.insertAdjacentHTML('afterbegin', peopleStarHtml(hits));
         });
       });
     }
@@ -1008,37 +1008,34 @@
   }
 
   /** One event card (the "HUD"): attributes and club on top, date, title, start and place, registration. */
+  /**
+   * One event card, a "ticket": a date stub in the discipline's colour (with the star for my people) and,
+   * past the perforation, tags and club, the name, distance + Waze, the start diagram and registration.
+   */
   function hudCardHtml(e, { lead = false, now = new Date(), tag = 'h2' } = {}) {
     const d = evDate(e);
     const tlMini = e.details && e.source !== 'closed-area' ? timelineHtml(e.details, e, { mini: true }) : '';
     const left = daysBetween(now, d);
-      return `<li class="top-card${lead ? ' lead' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}">
-        ${watermarkHtml(e)}
-        ${lead ? `<div class="lead-band" aria-hidden="true">
-          <span class="lb-day">${d.getDate()}</span>
-          <span class="lb-mon">${MONTHS[d.getMonth()]}<br>יום ${DAYS[d.getDay()]}</span>
-        </div>` : ''}
-        <div class="top-bar">
-          <div class="badges">${leagueBadge(e)}${mineBadge(e)}${discBadges(e)}</div>
-          ${e.clubName ? `<span class="top-club"><span>${esc(e.clubName)}</span></span>` : ''}
-        </div>
-        <div class="top-head">
-          <div class="top-date" aria-hidden="true"><span class="dow">${DAYS[d.getDay()]}</span><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span>
-            <span class="top-di">${(e.disciplines || []).map((k) => discIcon(k, 'di-sm')).join('')}</span>
-</div>
-          <div class="top-meta">
-            <${tag}><a href="#event/${encodeURIComponent(e.id)}" title="${esc(e.title)}"><span class="title-flags" aria-hidden="true">${isLeague(e) ? '🏆' : ''}${isMine(e) ? '⚑' : ''}</span>${esc(e.title)}</a></${tag}>
-            <p class="top-when">${[!tlMini && e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`, e.location && e.location !== e.title ? `<span class="top-loc">${esc(e.location)}${distParen(e)} ${wazeLink(e)}</span>` : `${distParen(e).trim()} ${wazeLink(e)}`.trim()].filter(Boolean).join(' · ')}<span class="sr-only">${e.time || e.location ? ', ' : ''}${fmtLong(d)}</span></p>
-            ${tlMini ? `<p class="top-tl">${tlMini}</p>` : ''}
+    const where = `${distParen(e).trim()} ${wazeLink(e)}`.trim();
+    const cta = `<a class="top-cta" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד">הרשמה ↗</a>`;
+    const counting = regDeadline(e) && regDeadline(e) > now;
+    const reg = counting ? regBlock(e, 'cd-card', cta)
+      : `${regBlock(e, 'cd-card')}${regOpen(e) ? `<p class="top-foot">${regDeadline(e) ? `<span>${inDays(left)}</span>` : ''}${cta}</p>` : ''}`;
+    return `<li class="top-card tk${lead ? ' lead' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}">
+        <div class="tk-stub"><div class="top-date" aria-hidden="true"><span class="dow">${DAYS[d.getDay()]}</span><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span></div><div class="tk-star"></div></div>
+        <span class="tk-notch t" aria-hidden="true"></span><span class="tk-notch b" aria-hidden="true"></span>
+        <div class="tk-body">
+          ${watermarkHtml(e)}
+          <div class="top-bar">
+            <div class="badges">${leagueBadge(e)}${mineBadge(e)}</div>
+            ${e.clubName ? `<span class="top-club">${eventLogo(e, 'cl-sm')}<span>${esc(e.clubName)}</span></span>` : ''}
           </div>
+          <${tag}><a href="#event/${encodeURIComponent(e.id)}" title="${esc(e.title)}">${esc(e.title)}</a></${tag}>
+          <p class="top-when">${[!tlMini && e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`, where].filter(Boolean).join(' · ')}<span class="sr-only">${e.time || where ? ', ' : ''}${fmtLong(d)}, ${esc(disc(e).label)}${e.location ? `, ${esc(e.location)}` : ''}</span></p>
+          ${tlMini ? `<p class="top-tl">${tlMini}</p>` : ''}
+          ${lead && e.summary ? `<p class="lead-summary">${esc(e.summary)}</p>` : ''}
+          ${reg}
         </div>
-        ${lead && e.summary ? `<p class="lead-summary">${esc(e.summary)}</p>` : ''}
-        ${(() => {
-          const cta = `<a class="top-cta" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד">הרשמה ↗</a>`;
-          const counting = regDeadline(e) && regDeadline(e) > new Date();
-          return counting ? regBlock(e, 'cd-card', cta)
-            : `${regBlock(e, 'cd-card')}${regOpen(e) ? `<p class="top-foot">${regDeadline(e) ? `<span>${inDays(left)}</span>` : ''}${cta}</p>` : ''}`;
-        })()}
       </li>`;
   }
 
@@ -1058,12 +1055,12 @@
   /* ---------- Help: a sample card with every field, explained with arrows ---------- */
   const SAMPLE_LOGO = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#0b3d2e"/><path d="M50 12 62 50 50 88 38 50z" fill="#f26a1b"/><path d="M50 12 62 50H38z" fill="#fff"/><circle cx="50" cy="50" r="6" fill="#0b3d2e"/></svg>');
   const HELP_NOTES = [
+    ['.top-date', 'התאריך. הצבע מסמן את סוג הניווט: ירוק רגלי, כחול רכוב.'],
     ['.ppl-star', 'כמה מהאנשים שלי רשומים (השמות בריחוף או בהקשה).'],
-    ['.badges', 'ליגה, המועדון שלי וסוג הניווט.'],
+    ['.badges', 'ליגה והמועדון שלי.'],
     ['.top-club', 'המועדון המארגן.'],
-    ['.top-date', 'התאריך.'],
+    ['.dist', 'המרחק ממך, ו־Waze לנקודת הכינוס.'],
     ['.tlm', 'זינוק ראשון, זינוק אחרון ושעת גג.'],
-    ['.top-loc', 'המקום והמרחק ממך.'],
     ['.reg-cd', 'הזמן שנשאר להרשמה מוקדמת, וכפתור הרשמה.'],
   ];
   function sampleEvent() {
@@ -1082,7 +1079,7 @@
     state.myClub = 'help-sample';
     state.home = state.home || { lat: 32.085, lng: 34.781 };
     try { $('#hhCard').innerHTML = hudCardHtml(sampleEvent(), { tag: 'h3' }); } finally { Object.assign(state, saved); }
-    $('#hhCard .top-bar').insertAdjacentHTML('afterbegin', peopleStarHtml([{ name: 'נועה כהן', start: '09:12' }, { name: 'דני לוי', start: '09:40' }]));
+    $('#hhCard .tk-star').insertAdjacentHTML('afterbegin', peopleStarHtml([{ name: 'נועה כהן', start: '09:12' }, { name: 'דני לוי', start: '09:40' }]));
     tickCountdowns();
     const card = $('#hhCard .top-card');
     card.classList.add('has-people');
