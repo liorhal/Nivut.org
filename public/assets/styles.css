@@ -491,8 +491,33 @@ main:focus { outline: none; }
 
 @media (max-width: 1000px) { .top4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) {
-  .top4 { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 84%; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; margin-inline: -16px; padding-inline: 16px; }
-  .top-card { scroll-snap-align: start; }
+  /* Mobile: all four as a compact list, visible without scrolling */
+  .hero { padding-block: 14px 18px; }
+  .hero .hero-title { font-size: 1.45rem; margin-bottom: 10px; }
+  .top4 { grid-template-columns: 1fr; gap: 8px; }
+  .top-card { grid-template-columns: 1fr auto; gap: 6px 8px; padding: 10px 12px; border-radius: 14px; border-top: 0; border-inline-start: 6px solid var(--c); box-shadow: 0 4px 14px rgb(0 0 0 / .18); }
+  .top-card .top-head { grid-column: 1 / -1; gap: 10px; align-items: center; }
+  .top-date { min-width: 46px; padding: 3px 6px; border-radius: 10px; }
+  .top-date .day { font-size: 1.3rem; }
+  .top-date .mon { font-size: .68rem; }
+  .top-meta .badges { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .top-meta h2 { font-size: .98rem; margin: 0; }
+  .top-meta p { font-size: .8rem; }
+  .top-card .reg-cd { grid-column: 1; display: flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 10px; min-width: 0; }
+  .top-card .reg-cd-label { margin: 0; font-size: .7rem; white-space: nowrap; }
+  .top-card .reg-line { grid-column: 1; align-self: center; font-size: .78rem; }
+  .cd.cd-card { display: flex; gap: 3px; }
+  .cd.cd-card > div { display: flex; gap: 2px; align-items: baseline; padding: 1px 5px; border-radius: 6px; }
+  .cd.cd-card strong { display: inline; font-size: .95rem; }
+  .cd.cd-card span { font-size: .62rem; }
+  .top-foot { grid-column: 2; margin: 0; }
+  .top-foot > span { display: none; }
+  .top-cta { padding: 5px 12px; font-size: .85rem; }
+  .top-card .reg-cd { flex-wrap: wrap; row-gap: 2px; }
+  .cd.cd-card > div:nth-child(3) { display: none; } /* days + hours are enough here */
+  /* No registration info yet: the button moves up beside the title */
+  .top-card:not(:has(.reg-cd, .reg-line)) .top-head { grid-column: 1; }
+  .top-card:not(:has(.reg-cd, .reg-line)) .top-foot { grid-row: 1; align-self: center; }
   .ev-count { min-width: 0; grid-column: 1 / -1; justify-items: stretch; }
   .ev-count-label { text-align: start; }
 }
