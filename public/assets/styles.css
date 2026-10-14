@@ -1112,3 +1112,7 @@ main:focus { outline: none; }
   .top-card.has-people .top-bar > :not(.ppl-star) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .top-bar .ppl-star { width: 28px; height: 28px; }
 }
+.top-loc .dist { color: var(--text); font-weight: 800; }
+.ev-facts strong .dist { font-family: var(--num); font-weight: 900; color: var(--brand); white-space: nowrap; }
+:root[data-theme="dark"] .ev-facts strong .dist { color: #4ade80; }
+.dist-set { font-size: .85rem; justify-self: start; }

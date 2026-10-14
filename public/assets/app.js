@@ -154,9 +154,10 @@
     return haversineKm(state.home, { lat: d.lat, lng: d.lng });
   };
   const fmtKm = (km) => (km < 10 ? km.toFixed(1) : Math.round(km)) + ' ק"מ';
-  const distHtml = (e) => {
+  /** " (26 ק"מ)" after a place name; empty when the distance is unknown. */
+  const distParen = (e) => {
     const km = distKm(e);
-    return km === null ? '' : `<span class="dist"><span aria-hidden="true">📍</span> ${fmtKm(km)}<span class="sr-only"> ממך בקו אווירי</span></span>`;
+    return km === null ? '' : ` <span class="dist">(${fmtKm(km)}<span class="sr-only"> ממך בקו אווירי</span>)</span>`;
   };
 
   function loadHome() {
@@ -621,8 +622,8 @@
           <span>${d.startFrom ? 'תחילת זינוקים · ' : ''}${DAYS[date.getDay()]} ${date.getDate()}.${date.getMonth() + 1}${left >= 0 ? ` · ${inDays(left)}` : ''}</span>
           ${tl}</li>
         <li><span class="ev-ico" aria-hidden="true">📍</span><span class="k">איפה</span>
-          <strong>${esc(e.location || d.name || 'יפורסם')}</strong>
-          ${distKm(e) !== null ? `<span class="dist-line">${fmtKm(distKm(e))} ממך בקו אווירי</span>` : ''}
+          <strong>${esc(e.location || d.name || 'יפורסם')}${distParen(e)}</strong>
+          ${!state.home && d.lat ? '<button type="button" class="linklike dist-set" data-open-people>📍 קבעו מיקום כדי לראות מרחק</button>' : ''}
           ${canNavigate(e) ? `<a href="${esc(wazeUrl(e))}" target="_blank" rel="noopener">ניווט לכינוס ב-Waze</a>` : '<span>&nbsp;</span>'}</li>
         <li><span class="ev-ico" aria-hidden="true">₪</span><span class="k">כמה</span>
           <strong class="${price || d.price ? '' : 'tbd'}">${price ? `${price} ₪` : d.price ? esc(d.price) : 'יפורסם'}</strong>
@@ -856,7 +857,7 @@
 </div>
           <div class="top-meta">
             <${tag}><a href="#event/${encodeURIComponent(e.id)}"><span class="title-flags" aria-hidden="true">${isLeague(e) ? '🏆' : ''}${isMine(e) ? '⚑' : ''}</span>${esc(e.title)}</a></${tag}>
-            <p class="top-when">${[e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`, e.location && e.location !== e.title && `<span class="top-loc">${esc(e.location)}</span>`, distHtml(e)].filter(Boolean).join(' · ')}<span class="sr-only">${e.time || e.location ? ', ' : ''}${fmtLong(d)}</span></p>
+            <p class="top-when">${[e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`, e.location && e.location !== e.title ? `<span class="top-loc">${esc(e.location)}${distParen(e)}</span>` : distParen(e).trim()].filter(Boolean).join(' · ')}<span class="sr-only">${e.time || e.location ? ', ' : ''}${fmtLong(d)}</span></p>
           </div>
         </div>
         ${lead && e.summary ? `<p class="lead-summary">${esc(e.summary)}</p>` : ''}
