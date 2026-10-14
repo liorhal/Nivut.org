@@ -124,3 +124,32 @@ test('parseCalendar ignores sidebar boxes and needs a header row', () => {
   assert.equal(ev[0].location, 'שער הכרמל');
   assert.deepEqual(ev[0].tags, ['league']);
 });
+
+test('parseForum tolerates single quotes, attribute order and plain age spans', () => {
+  const html = fx('forum.html')
+    .replace(/<div class="clsParent" style="padding-right: 12px" id="Parent(\d+)">/g, "<div id='Parent$1' class='clsParent'>")
+    .replace(/<span class="">/g, '<span>');
+  const t = L.parseForum(html, 'https://nivut.org.il/forums/', Date.parse('2026-10-14T08:00:00Z'));
+  assert.equal(t.length, 2);
+  assert.equal(t[0].title, 'אליפות ישראל ביער אודם');
+  assert.equal(t[0].ageText, '117 ימים');
+  assert.equal(t[0].replies.length, 1);
+  assert.deepEqual(t[0].body, ['בוקר טוב,', '• האליפות תתקיים ב-23.10']);
+});
+
+test('parseForumRss groups replies under their thread', () => {
+  const xml = `<rss><channel>
+    <item><title>לוח שנה</title><link>https://nivut.org.il/forums/?m=96191</link><pubDate>Tue, 13 Oct 2026 20:04:00 GMT</pubDate>
+      <dc:creator>משתמש א</dc:creator><description><![CDATA[<p>חברים</p><p>לוח חדש</p>]]></description></item>
+    <item><title>תגובה: לוח שנה</title><link>https://nivut.org.il/forums/?m=96194</link><pubDate>Wed, 14 Oct 2026 02:00:00 GMT</pubDate>
+      <description>&lt;p&gt;מעולה&lt;/p&gt;</description></item>
+  </channel></rss>`;
+  const t = L.parseForumRss(xml);
+  assert.equal(t.length, 1);
+  assert.equal(t[0].author, 'משתמש א');
+  assert.deepEqual(t[0].body, ['חברים', 'לוח חדש']);
+  assert.equal(t[0].replyCount, 1);
+  assert.deepEqual(t[0].replies[0].body, ['מעולה']);
+  assert.equal(t[0].lastActivity, '2026-10-14T02:00:00.000Z');
+  assert.equal(t[0].url, 'https://nivut.org.il/forums/?m=96191');
+});

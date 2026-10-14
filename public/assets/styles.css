@@ -764,3 +764,6 @@ main:focus { outline: none; }
 .top-card.lead > :not(.lead-band) { margin-inline: 22px; }
 @media (max-width: 1000px) { .top-card.lead > :not(.lead-band) { margin: 0 22px; } .top-card.lead .top-head { margin-top: 20px; } .top-card.lead .top-foot { margin-bottom: 16px; } }
 @media (max-width: 560px) { .top-card.lead > :not(.lead-band) { margin: 0; } .top-card.lead .top-head { margin-top: 0; } .top-card.lead .top-foot { margin-bottom: 0; } }
+.start-time { color: var(--text); font-weight: 800; }
+.diag { margin-top: 12px; text-align: start; }
+.diag pre { font-size: .75rem; overflow-x: auto; background: var(--surface-2); padding: 10px; border-radius: 8px; }

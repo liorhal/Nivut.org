@@ -212,8 +212,21 @@
   function timelineHtml(d, e) {
     const s = toMin(d.startFrom), t = toMin(d.startTo), c = toMin(d.cutoff);
     if (s === null) return '';
-    const lo = s - 30, hi = Math.max(c ?? 0, t ?? 0, s) + 30;
-    const pos = (n) => `${(((n - lo) / (hi - lo)) * 100).toFixed(1)}%`;
+    // Evenly spaced, not to scale, so labels never collide when times are close together.
+    const anchors = [[s, 0]];
+    if (t !== null) anchors.push([t, 0]);
+    if (c !== null) anchors.push([c, 0]);
+    const slots = { 1: [50], 2: [16, 84], 3: [14, 50, 86] }[anchors.length];
+    anchors.forEach((a, i) => { a[1] = slots[i]; });
+    const lo = s, hi = anchors[anchors.length - 1][0];
+    const at = (n) => {
+      for (let i = 1; i < anchors.length; i++) {
+        const [m0, p0] = anchors[i - 1], [m1, p1] = anchors[i];
+        if (n <= m1) return p0 + ((n - m0) / Math.max(1, m1 - m0)) * (p1 - p0);
+      }
+      return anchors[anchors.length - 1][1];
+    };
+    const pos = (n) => `${at(n).toFixed(1)}%`;
     const points = [
       { at: s, label: 'זינוק ראשון', cls: 'start' },
       t !== null && { at: t, label: 'זינוק אחרון', cls: 'start' },
@@ -471,7 +484,7 @@
           <div class="top-meta">
             <div class="badges">${discBadges(e)}</div>
             <h2><a href="#event/${encodeURIComponent(e.id)}">${esc(e.title)}</a></h2>
-            <p>${DAYS[d.getDay()]}${e.time ? ` · ${esc(e.time)}` : ''}${e.location && e.location !== e.title ? ` · ${esc(e.location)}` : ''}<span class="sr-only">, ${fmtLong(d)}</span></p>
+            <p>${DAYS[d.getDay()]}${e.time ? ` · <strong class="start-time">זינוק ${esc(e.time)}</strong>` : ''}${e.location && e.location !== e.title ? ` · ${esc(e.location)}` : ''}<span class="sr-only">, ${fmtLong(d)}</span></p>
           </div>
         </div>
         ${lead && e.summary ? `<p class="lead-summary">${esc(e.summary)}</p>` : ''}
@@ -713,6 +726,12 @@
     }
     const q = state.forumQ.toLowerCase();
     const threads = f.threads.filter((t) => !q || [t.title, t.author, ...t.body, ...t.replies.flatMap((r) => [r.author, ...r.body])].join(' ').toLowerCase().includes(q));
+    if (!f.threads.length) {
+      $('#topicList').innerHTML = `<li class="empty">לא נמצאו כרגע הודעות בפורום.
+        <a href="${esc(f.source || state.links.forum || '#')}" target="_blank" rel="noopener">לפורום באתר האיגוד ↗</a>
+        ${f.diag ? `<details class="diag"><summary>פרטים טכניים</summary><pre dir="ltr">${esc(JSON.stringify(f.diag, null, 2))}</pre></details>` : ''}</li>`;
+      return;
+    }
     $('#topicList').innerHTML = threads.length ? threads.map((t) => {
       const ev = matchEvent(t.title);
       return `<li class="topic${t.announcement || t.pinned ? ' featured' : ''}">
@@ -751,7 +770,7 @@
     $('#forumQ').addEventListener('input', (e) => { state.forumQ = e.target.value.trim(); renderForum(); });
     if (f && !f.error) {
       const s = $('#forumStatus');
-      s.textContent = `${statusText(f)} · ${f.threads.length} נושאים מהשבוע האחרון`;
+      s.textContent = !f.threads.length ? statusText(f) : `${statusText(f)} · ${f.threads.length} נושאים${f.via === 'rss' ? ' (מעדכוני ה-RSS של הפורום)' : ' מהשבוע האחרון'}`;
       s.classList.toggle('warn', !!f.stale);
     }
     renderForum();
