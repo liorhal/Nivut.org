@@ -625,9 +625,8 @@
     <div class="container ev-body">
       <ul class="ev-facts${tl ? ' has-tl' : ''}" aria-label="עיקרי האירוע">
         <li class="fact-when"><span class="ev-ico" aria-hidden="true">🕘</span><span class="k">מתי</span>
-          <strong>${d.startFrom ? esc(d.startFrom) : fmtShort(date)}</strong>
-          <span>${d.startFrom ? 'תחילת זינוקים · ' : ''}${DAYS[date.getDay()]} ${date.getDate()}.${date.getMonth() + 1}${left >= 0 ? ` · ${inDays(left)}` : ''}</span>
-          ${tl}</li>
+          <strong class="when-top">${DAYS[date.getDay()]} ${date.getDate()}.${date.getMonth() + 1}${left >= 0 ? ` <span class="when-in">${inDays(left)}</span>` : ''}</strong>
+          ${tl || (e.time ? `<span>זינוק ראשון ${esc(e.time)}</span>` : '')}</li>
         <li><span class="ev-ico" aria-hidden="true">📍</span><span class="k">איפה</span>
           <strong>${esc(e.location || d.name || 'יפורסם')}${distParen(e)}</strong>
           ${!state.home && d.lat ? '<button type="button" class="linklike dist-set" data-open-people>📍 קבעו מיקום כדי לראות מרחק</button>' : ''}

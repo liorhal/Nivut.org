@@ -1198,3 +1198,12 @@ main:focus { outline: none; }
 }
 .info-dialog h2 { margin-top: 0; }
 .info-body p { margin: 0 0 8px; line-height: 1.55; overflow-wrap: anywhere; }
+
+/* "When" tile: compact — date and "in X days" on top, then the diagram */
+.ev-facts strong.when-top { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 10px; }
+.ev-facts strong.when-top .when-in { font-family: inherit; font-size: .95rem; font-weight: 700; color: var(--muted); letter-spacing: 0; }
+.fact-when .tl { padding: 12px 2px 0; }
+.fact-when .tl-points { height: 34px; }
+.fact-when .tl-points li { padding-top: 4px; }
+.fact-when .tl-points time { line-height: 1.1; }
+.ev-facts .fact-when .tl-points span { font-size: .68rem; line-height: 1.1; }
