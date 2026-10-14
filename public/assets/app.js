@@ -494,6 +494,9 @@
     if (e.source === 'closed-area') {
       return { state: 'soon', title: 'ההרשמה טרם נפתחה', text: 'השטח סגור לנווטים עד יום התחרות. פרטים והרשמה יפורסמו באתר האיגוד.', cta: 'ללוח האירועים' };
     }
+    if (noSiteRegistration(e)) {
+      return { state: 'none', title: 'אין הרשמה באתר', text: 'פרטים במידע הנוסף של האירוע.', cta: 'לדף האירוע' };
+    }
     if (d.registrationDeadline) {
       const dl = parseDate(d.registrationDeadline);
       if (dl > now) {
@@ -582,6 +585,27 @@
       .filter((x) => x.score > 0).sort((a, b) => b.score - a.score || (b.t.lastActivity > a.t.lastActivity ? 1 : -1)).slice(0, 4).map((x) => x.t);
   }
 
+  /** Everything about registering, in one place: status, countdown, deadline, prices, on-site, button, participants. */
+  function regTileHtml(e, reg) {
+    const d = e.details || {};
+    const price = shekel(d.price), priceOut = shekel(d.priceNonMember);
+    const dl = reg.deadline;
+    const prices = price ? `<b>${price} ₪</b> לחברי איגוד${priceOut ? ` · <b>${priceOut} ₪</b> לחיצוניים` : ''}` : d.price ? esc(d.price) : '';
+    const showCta = reg.state !== 'none' || e.url;
+    return `<li class="fact-reg reg-${reg.state}" id="ev-reg"><span class="ev-ico" aria-hidden="true">${reg.state === 'open' ? '✍️' : reg.state === 'past' ? '🏁' : reg.state === 'none' ? 'ℹ️' : '⏳'}</span><span class="k">הרשמה</span>
+      <strong>${esc(reg.title)}</strong>
+      ${reg.state === 'open' && dl ? `<div class="reg-when"><span class="reg-cd-label">נסגרת בעוד</span>${countdownHtml(dl, 'cd-reg')}</div>
+        <span class="reg-dl">עד יום ${DAYS[dl.getDay()]} ${dl.getDate()}.${dl.getMonth() + 1}${d.registrationDeadline.length > 10 ? ` בשעה ${esc(d.registrationDeadline.slice(11, 16))}` : ''}</span>`
+        : reg.text ? `<span class="reg-dl">${esc(reg.text)}</span>` : ''}
+      ${prices && reg.state !== 'past' && reg.state !== 'none' ? `<span class="reg-price">${prices}</span>` : ''}
+      ${d.onsite && reg.state === 'open' ? `<span class="reg-onsite">הרשמה במקום: ${esc(d.onsite)}</span>` : ''}
+      <div class="reg-actions">
+        ${reg.state === 'none' ? (moreInfo(e).length ? '<button type="button" class="btn ghost" data-scroll="ev-info">למידע הנוסף</button>' : '')
+          : showCta ? `<a class="btn${reg.state === 'open' ? ' btn-xl' : ' ghost'}" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(reg.cta)} ↗</a>` : ''}
+        ${e.nivutId && reg.state !== 'none' ? `<a class="btn ghost" href="${esc(startListUrl(e))}" target="_blank" rel="noopener">👥 רשימת משתתפים</a>` : ''}
+      </div></li>`;
+  }
+
   function eventPageHtml(e) {
     const d = e.details || {};
     const date = evDate(e);
@@ -589,7 +613,6 @@
     const left = daysBetween(now, date);
     const reg = registration(e);
     const dc = disc(e);
-    const price = shekel(d.price), priceOut = shekel(d.priceNonMember);
     const loading = !e.details && e.nivutId;
     const threads = relatedThreads(e);
     const tl = timelineHtml(d, e);
@@ -612,11 +635,7 @@
             <h1 id="evTitle" tabindex="-1">${esc(e.title)}</h1>
             ${d.eventType || d.note ? `<p class="ev-sub">${[d.eventType, d.note].filter(Boolean).map(esc).join(' · ')}</p>` : ''}
             <p class="sr-only">${fmtLong(date)}${e.location ? `, ${esc(e.location)}` : ''}</p>
-          </div>
-          <div class="ev-count">
-            ${left < 0 ? '<span class="ev-count-big">✓</span><span>התקיים</span>'
-              : reg.state === 'open' && reg.deadline ? `<span class="ev-count-label">הרשמה מוקדמת נסגרת בעוד</span>${countdownHtml(reg.deadline, 'cd-hero')}`
-              : `<span class="ev-count-label">${esc(reg.title)}</span>`}
+            <button type="button" class="ev-share" data-share="${esc(e.id)}">🔗 שיתוף</button>
           </div>
         </div>
       </div>
@@ -626,7 +645,7 @@
     </header>
 
     <div class="container ev-body">
-      <ul class="ev-facts${tl ? ' has-tl' : ''}" aria-label="עיקרי האירוע">
+      <ul class="ev-facts ev-facts3" aria-label="עיקרי האירוע">
         <li class="fact-when"><span class="ev-ico" aria-hidden="true">🕘</span><span class="k">מתי</span>
           <strong class="when-top">${DAYS[date.getDay()]} ${date.getDate()}.${date.getMonth() + 1}${left >= 0 ? ` <span class="when-in">${inDays(left)}</span>` : ''}</strong>
           ${tl || (e.time ? `<span>זינוק ראשון ${esc(e.time)}</span>` : '')}</li>
@@ -634,12 +653,7 @@
           <strong>${esc(e.location || d.name || 'יפורסם')}${distParen(e)}</strong>
           ${!state.home && d.lat ? '<button type="button" class="linklike dist-set" data-open-people>📍 קבעו מיקום כדי לראות מרחק</button>' : ''}
           ${canNavigate(e) ? `<a href="${esc(wazeUrl(e))}" target="_blank" rel="noopener">ניווט לכינוס ב-Waze</a>` : '<span>&nbsp;</span>'}</li>
-        <li><span class="ev-ico" aria-hidden="true">₪</span><span class="k">כמה</span>
-          <strong class="${price || d.price ? '' : 'tbd'}">${price ? `${price} ₪` : d.price ? esc(d.price) : 'יפורסם'}</strong>
-          <span>${price ? `לחברי איגוד${priceOut ? ` · ${priceOut} ₪ לחיצוניים` : ''}` : '&nbsp;'}</span></li>
-        <li class="reg-${reg.state}"><span class="ev-ico" aria-hidden="true">${reg.state === 'open' ? '✍️' : reg.state === 'past' ? '🏁' : '⏳'}</span><span class="k">הרשמה</span>
-          <strong>${reg.state === 'open' && reg.deadline ? `עד ${DAYS[reg.deadline.getDay()]} ${reg.deadline.getDate()}.${reg.deadline.getMonth() + 1}` : esc(reg.title)}</strong>
-          <span>${reg.state === 'open' && reg.deadline ? `הרשמה מוקדמת${d.registrationDeadline.length > 10 ? ` · עד ${esc(d.registrationDeadline.slice(11, 16))}` : ''}` : '&nbsp;'}</span></li>
+        ${regTileHtml(e, reg)}
       </ul>
 
       <div class="ev-grid">
@@ -655,17 +669,7 @@
           </section>` : ''}
         </div>
 
-        <aside class="ev-side" aria-label="הרשמה ופרטים נוספים">
-          <section class="ev-card ev-reg reg-${reg.state}" aria-labelledby="rg-h">
-            <h2 id="rg-h">${esc(reg.title)}</h2>
-            ${reg.text ? `<p>${esc(reg.text)}</p>` : ''}
-            ${d.onsite && reg.state === 'open' ? `<p class="muted small">הרשמה במקום: ${esc(d.onsite)}</p>` : ''}
-            <a class="btn btn-xl" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(reg.cta)} ↗</a>
-            <div class="ev-actions">
-              <button type="button" class="btn ghost" data-share="${esc(e.id)}">🔗 שיתוף</button>
-              ${e.nivutId ? `<a class="btn ghost" href="${esc(startListUrl(e))}" target="_blank" rel="noopener">👥 רשימת משתתפים</a>` : ''}
-            </div>
-          </section>
+        <aside class="ev-side" aria-label="פרטים נוספים">
 
           ${e.nivutId ? '<section class="ev-card" id="myPeople" aria-labelledby="mypl-h" aria-live="polite"></section>' : ''}
 
@@ -816,7 +820,12 @@
   const infoBtnHtml = (e) => (moreInfo(e).length
     ? `<a class="info-btn" href="#event/${encodeURIComponent(e.id)}" data-goto="ev-info" aria-label="מידע נוסף על ${esc(e.title)}"><span aria-hidden="true">i</span><span class="info-text">מידע נוסף</span></a>` : '');
   function initInfo() {
-    document.addEventListener('click', (ev) => { const a = ev.target.closest('[data-goto]'); if (a) state.gotoSection = a.dataset.goto; });
+    document.addEventListener('click', (ev) => {
+      const a = ev.target.closest('[data-goto]');
+      if (a) state.gotoSection = a.dataset.goto;
+      const b = ev.target.closest('[data-scroll]');
+      if (b) gotoSection(b.dataset.scroll);
+    });
   }
   /** After the event page renders: jump to the section a card link asked for. */
   function gotoSection(id) {

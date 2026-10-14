@@ -1224,3 +1224,35 @@ a.info-btn { text-decoration: none; }
   .top-card:not(.lead) { grid-template-rows: auto auto 1fr; }
   .top-card:not(.lead) > :is(.reg-cd, .reg-line, .top-foot) { align-self: end; }
 }
+
+/* Event page: registration in one tile (status, countdown, deadline, prices, on-site, actions) */
+.ev-hero-grid { grid-template-columns: auto 1fr; }
+.ev-share { margin-top: 10px; font: inherit; font-size: .85rem; font-weight: 700; color: #fff; background: rgb(255 255 255 / .12); border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+.ev-share:hover { background: rgb(255 255 255 / .22); }
+:root[data-contrast="high"] .ev-share { color: var(--text); }
+.ev-facts.ev-facts3 { grid-template-columns: 1.5fr 1fr 1.7fr; }
+.ev-facts .fact-reg { gap: 6px; border-width: 2px; }
+.ev-facts .fact-reg.reg-open { border-color: color-mix(in srgb, var(--flag) 60%, var(--border)); background: color-mix(in srgb, var(--flag) 6%, var(--surface)); }
+.ev-facts .fact-reg.reg-open > strong { color: var(--flag-ink); }
+.fact-reg .reg-when { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
+.ev-facts .fact-reg .reg-cd-label { font-size: .8rem; font-weight: 800; color: var(--flag-ink); }
+.fact-reg .cd.cd-reg { display: flex; gap: 6px; }
+.fact-reg .cd.cd-reg > div { display: flex; align-items: baseline; gap: 4px; padding: 3px 9px; border-radius: 8px; background: var(--flag); color: #fff; }
+.fact-reg .cd.cd-reg strong { font-size: 1.35rem; color: #fff; }
+.ev-facts .fact-reg .cd.cd-reg span { font-size: .75rem; color: #fff; font-weight: 700; }
+.ev-facts .fact-reg .reg-dl, .ev-facts .fact-reg .reg-onsite { font-size: .88rem; color: var(--muted); }
+.ev-facts .fact-reg .reg-price { font-size: .92rem; color: var(--text); }
+.fact-reg .reg-price b { font-family: var(--num); font-weight: 900; }
+.fact-reg .reg-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.fact-reg .reg-actions .btn-xl { padding: 10px 22px; font-size: 1.05rem; }
+@media (max-width: 1000px) {
+  .ev-facts.ev-facts3 { grid-template-columns: repeat(2, 1fr); }
+  .ev-facts.ev-facts3 .fact-reg { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+  .ev-facts.ev-facts3 { grid-template-columns: 1fr; }
+  .ev-facts.ev-facts3 > li { grid-column: auto; }
+}
+.ev-facts .fact-reg .reg-actions .btn { font-size: .95rem; color: var(--brand-ink); text-decoration: none; }
+.ev-facts .fact-reg .reg-actions .btn.ghost { color: var(--brand); }
+.ev-facts .fact-reg .reg-actions .btn-xl { font-size: 1.05rem; background: var(--flag-ink, #b93f06); }
