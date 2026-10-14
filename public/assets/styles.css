@@ -559,3 +559,220 @@ main:focus { outline: none; }
 .month-card li button.tentative .di { background: transparent; color: var(--c); box-shadow: inset 0 0 0 1.5px var(--c); }
 .month-table button.tentative .di { background: transparent; color: var(--c); }
 :root[data-contrast="high"] .di { background: var(--text); color: var(--bg); }
+
+/* =====================================================================
+   BOLDER — orienteering-map identity, amplified
+   Forest green + control-flag orange, contour-line texture,
+   Karantina display type for headings, dates and countdown digits.
+   ===================================================================== */
+:root {
+  --display: "Karantina", "Heebo", system-ui, sans-serif;
+  --forest: #0b3d2e;
+  --forest-2: #06261d;
+  --flag: #f26a1b;
+  --flag-ink: #b93f06;
+  --contours: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='420' viewBox='0 0 640 420'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.09' stroke-width='1.4'%3E%3Cpath d='M118 210c0-74 58-128 136-128s150 46 150 122-70 140-152 140-134-60-134-134z'/%3E%3Cpath d='M152 212c0-54 44-94 102-94s112 34 112 90-52 104-114 104-100-44-100-100z'/%3E%3Cpath d='M186 214c0-34 30-60 68-60s74 22 74 58-34 66-74 66-68-28-68-64z'/%3E%3Cpath d='M218 214c0-16 16-28 36-28s38 10 38 28-18 32-38 32-36-14-36-32z'/%3E%3Cpath d='M470 60c50-10 120 14 140 60s-6 92-60 100-110-14-120-58 2-92 40-102z'/%3E%3Cpath d='M482 92c34-6 82 10 94 40s-4 62-40 66-74-10-80-38 0-62 26-68z'/%3E%3Cpath d='M496 122c18-2 40 6 44 20s-2 30-20 32-38-6-40-20 2-30 16-32z'/%3E%3Cpath d='M-20 380c90-40 170 10 260-10s170-60 250-40 120 40 170 30'/%3E%3Cpath d='M-20 404c90-36 170 14 262-6s172-56 252-36 118 40 168 28'/%3E%3Cpath d='M-20 30c70 20 120-10 180 0s90 40 150 30'/%3E%3C/g%3E%3C/svg%3E");
+}
+:root[data-theme="dark"] { --flag-ink: #fb8a4a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --flag-ink: #fb8a4a; } }
+
+/* Display typography */
+.hero-title, .section-head h1, .list-head h2, .ev-head h1, .news h2, .month-sep {
+  font-family: var(--display); font-weight: 700; letter-spacing: .005em;
+}
+.section-head h1 { font-size: clamp(2.4rem, 5vw, 3.4rem); line-height: 1; }
+.list-head h2, .news h2 { font-size: clamp(2rem, 4vw, 2.6rem); line-height: 1; }
+.month-sep { font-size: 1.6rem; color: var(--text); margin-top: 22px; border-bottom: 2px solid var(--text); padding-bottom: 2px; }
+
+/* Hero: deep forest with a contour-map texture */
+.hero {
+  background: var(--contours) center / 640px 420px, radial-gradient(120% 90% at 85% 0%, #14583f 0%, var(--forest) 45%, var(--forest-2) 100%);
+  padding-block: 30px 40px;
+}
+.hero .hero-title { font-size: clamp(3.4rem, 8vw, 6.2rem); line-height: .86; margin: 0 0 22px; display: flex; align-items: center; gap: 16px; }
+.hero .hero-title::before {
+  content: ""; flex: none; width: .62em; height: .62em; border-radius: 6px;
+  background: linear-gradient(135deg, #fff 50%, var(--flag) 50%); box-shadow: 0 6px 18px rgb(0 0 0 / .35);
+}
+
+/* Top four: one lead event, three on the side */
+.top4 { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); grid-auto-rows: auto; gap: 14px; }
+.top-card { border-top: 0; border-radius: 20px; overflow: hidden; box-shadow: 0 18px 40px rgb(0 0 0 / .28); }
+.top-card.lead { grid-row: span 3; padding: 0 0 18px; gap: 14px; }
+.top-card.lead > :not(.lead-img):not(.ctrl) { margin-inline: 22px; }
+.lead-img { position: relative; height: 190px; margin: 0; }
+.lead-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lead-img::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, var(--surface) 0%, transparent 55%); }
+.top-card.lead .top-head { margin-top: -54px; position: relative; z-index: 1; }
+.top-card.lead:not(:has(.lead-img)) .top-head { margin-top: 22px; }
+.top-card.lead .top-date { min-width: 92px; padding: 8px 14px; background: var(--surface); box-shadow: 0 8px 22px rgb(0 0 0 / .18); border-radius: 16px; }
+.top-card.lead .top-date .day { font-family: var(--display); font-size: 4.4rem; line-height: .85; }
+.top-card.lead .top-meta h2 { font-size: clamp(1.4rem, 2.4vw, 1.9rem); line-height: 1.15; margin-top: 30px; }
+.top-card.lead .top-meta p { font-size: .98rem; }
+.lead-summary { margin: 0; color: var(--muted); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* The three side cards: compact rows */
+.top-card:not(.lead) { grid-template-columns: 1fr auto; gap: 8px 12px; padding: 14px 16px; border-inline-start: 6px solid var(--c); }
+.top-card:not(.lead) .top-head { grid-column: 1 / -1; align-items: center; }
+.top-card:not(.lead) .top-date .day { font-family: var(--display); font-size: 2.3rem; line-height: .9; }
+.top-card:not(.lead) .top-meta h2 { font-size: 1.08rem; }
+.top-card:not(.lead) .reg-cd, .top-card:not(.lead) .reg-line { grid-column: 1; align-self: center; }
+.top-card:not(.lead) .top-foot { grid-column: 2; margin: 0; }
+.top-card:not(.lead) .top-foot > span { display: none; }
+.top-card:not(.lead):not(:has(.reg-cd, .reg-line)) .top-head { grid-column: 1; }
+.top-card:not(.lead):not(:has(.reg-cd, .reg-line)) .top-foot { grid-row: 1; align-self: center; }
+.top-card:not(.lead) .reg-cd { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; padding: 6px 10px; }
+.top-card:not(.lead) .reg-cd-label { margin: 0; }
+.top-card:not(.lead) .cd.cd-card { display: flex; gap: 4px; }
+.top-card:not(.lead) .cd.cd-card > div { display: flex; gap: 3px; align-items: baseline; padding: 1px 7px; }
+.top-card:not(.lead) .cd.cd-card strong { display: inline; font-size: 1.35rem; }
+
+/* Numbered control flags (1–4), like controls on a course */
+.ctrl {
+  position: absolute; z-index: 2; top: 0; inset-inline-end: 0; width: 46px; height: 46px; border-end-start-radius: 14px;
+  background: linear-gradient(135deg, #fff 50%, var(--flag) 50%); color: var(--forest);
+  font-family: var(--display); font-weight: 700; font-size: 1.7rem; line-height: 1;
+  display: grid; place-items: start end; padding: 5px 9px 0 0; box-shadow: -2px 2px 8px rgb(0 0 0 / .12);
+}
+.top-card:not(.lead) .ctrl { width: 34px; height: 34px; font-size: 1.25rem; padding: 3px 6px 0 0; border-end-start-radius: 10px; }
+
+/* Early registration: the urgent, orange thing on the page */
+.reg-cd { background: color-mix(in srgb, var(--flag) 10%, var(--surface)); border: 1.5px solid color-mix(in srgb, var(--flag) 55%, var(--border)); }
+.reg-cd-label { color: var(--flag-ink); letter-spacing: .01em; }
+.cd > div { background: var(--flag); color: #fff; }
+.cd strong { font-family: var(--display); font-weight: 700; font-size: 2.2rem; line-height: .95; color: #fff; }
+.cd span { color: rgb(255 255 255 / .9); font-weight: 700; }
+.top-card.lead .reg-cd { padding: 12px 14px; }
+.top-card.lead .reg-cd-label { font-size: .9rem; margin-bottom: 8px; }
+.top-card.lead .cd.cd-card > div { padding: 8px 4px 6px; border-radius: 12px; }
+.top-card.lead .cd.cd-card strong { font-size: 3.2rem; }
+.cd.cd-inline > div { background: var(--flag); }
+.cd.cd-inline strong { font-size: 1.35rem; }
+.ev-count-label { color: #fff; }
+.cd.cd-hero > div { background: var(--flag); box-shadow: 0 8px 22px rgb(0 0 0 / .3); }
+.cd.cd-hero strong { font-size: 3.4rem; }
+.cd.cd-hero span { color: #fff; }
+.ev-facts .reg-open { border-color: color-mix(in srgb, var(--flag) 60%, var(--border)); background: color-mix(in srgb, var(--flag) 8%, var(--surface)); }
+.ev-facts .reg-open strong { color: var(--flag-ink); }
+:root[data-theme="dark"] .ev-facts .reg-open strong { color: var(--flag-ink); }
+.ev-reg.reg-open { border-color: var(--flag); }
+.top-cta { background: var(--forest); }
+:root[data-theme="dark"] .top-cta { background: #2f8f5f; }
+
+/* Event page hero */
+.ev-hero { background: var(--contours) center / 640px 420px, linear-gradient(135deg, color-mix(in srgb, var(--c) 60%, var(--forest)) 0%, var(--forest-2) 100%); }
+.ev-contours { display: none; }
+.ev-head h1 { font-size: clamp(2.8rem, 6vw, 4.6rem); line-height: .92; }
+.ev-date .day { font-family: var(--display); font-size: 4.6rem; line-height: .85; }
+.ev-facts strong { font-family: var(--display); font-weight: 700; font-size: 2rem; line-height: 1; }
+.ev-facts .fact-when .tl-points time { font-family: var(--display); font-size: 1.4rem; }
+.cv-km, .tl-points time { font-family: var(--display); font-size: 1.35rem; }
+.date-badge .d { font-family: var(--display); font-size: 2.6rem; line-height: .9; }
+
+/* High contrast keeps flat, legible surfaces */
+:root[data-contrast="high"] .hero, :root[data-contrast="high"] .ev-hero { background: var(--surface); }
+:root[data-contrast="high"] .hero .hero-title { color: var(--text); }
+:root[data-contrast="high"] .cd > div { background: var(--text); }
+:root[data-contrast="high"] .cd strong, :root[data-contrast="high"] .cd span { color: var(--bg); }
+
+@media (max-width: 1000px) {
+  .top4 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .top-card.lead { grid-row: auto; grid-column: 1 / -1; display: grid; grid-template-columns: 300px 1fr; column-gap: 0; padding: 0; }
+  .top-card.lead .lead-img { grid-row: 1 / span 4; height: 100%; min-height: 220px; }
+  .top-card.lead .lead-img::after { background: linear-gradient(to left, var(--surface) 0%, transparent 40%); }
+  .top-card.lead > :not(.lead-img):not(.ctrl) { margin: 0 22px; }
+  .top-card.lead .top-head { margin-top: 18px; }
+  .top-card.lead .top-foot { margin-bottom: 16px; }
+  .top-card:not(.lead) { grid-template-columns: 1fr; }
+  .top-card:not(.lead) .reg-cd, .top-card:not(.lead) .reg-line, .top-card:not(.lead) .top-foot { grid-column: 1; grid-row: auto; }
+}
+@media (max-width: 560px) {
+  .hero { padding-block: 14px 18px; }
+  .hero .hero-title { font-size: 2.9rem; margin-bottom: 12px; gap: 10px; }
+  .top4 { grid-template-columns: 1fr; gap: 8px; }
+  .top-card.lead, .top-card:not(.lead) { grid-column: auto; grid-row: auto; display: grid; grid-template-columns: 1fr auto; gap: 6px 8px; padding: 10px 12px; border-radius: 14px; border-inline-start: 6px solid var(--c); }
+  .top-card.lead > :not(.lead-img):not(.ctrl) { margin: 0; }
+  .lead-img, .lead-summary { display: none; }
+  .top-card.lead .top-head { margin-top: 0; grid-column: 1 / -1; align-items: center; }
+  .top-card.lead .top-date { min-width: 46px; padding: 3px 6px; box-shadow: none; background: var(--surface-2); border-radius: 10px; }
+  .top-card .top-date .day, .top-card.lead .top-date .day { font-size: 2rem; line-height: .9; }
+  .top-card.lead .top-meta h2 { font-size: 1.05rem; margin-top: 0; }
+  .top-card.lead .top-meta p { font-size: .8rem; }
+  .top-card .reg-cd, .top-card.lead .reg-cd { grid-column: 1; display: flex; align-items: center; flex-wrap: wrap; gap: 2px 6px; padding: 3px 8px; }
+  .top-card.lead .reg-cd-label { font-size: .7rem; margin: 0; }
+  .top-card .cd.cd-card > div, .top-card.lead .cd.cd-card > div { display: flex; padding: 1px 6px; border-radius: 6px; }
+  .top-card .cd.cd-card strong, .top-card.lead .cd.cd-card strong { font-size: 1.2rem; }
+  .top-card.lead .top-foot { grid-column: 2; margin: 0; }
+  .top-card.lead .top-foot > span { display: none; }
+  .top-card.lead:not(:has(.reg-cd, .reg-line)) .top-head { grid-column: 1; }
+  .top-card.lead:not(:has(.reg-cd, .reg-line)) .top-foot { grid-row: 1; align-self: center; }
+  .ctrl, .top-card:not(.lead) .ctrl { width: 26px; height: 26px; font-size: 1rem; padding: 2px 5px 0 0; border-end-start-radius: 8px; }
+  .ev-head h1 { font-size: 2.6rem; }
+  .ev-facts strong { font-size: 1.7rem; }
+  .cd.cd-hero strong { font-size: 2.4rem; }
+}
+
+/* ---- Bolder, pass 2 ---- */
+/* Numerals: Heebo Black reads instantly; Karantina stays for Hebrew headings */
+:root { --num: "Heebo", system-ui, sans-serif; }
+.top-card .top-date .day, .top-card.lead .top-date .day, .top-card:not(.lead) .top-date .day, .ev-date .day, .date-badge .d,
+.cd strong, .ev-facts strong, .ev-facts .fact-when .tl-points time, .cv-km, .tl-points time, .lb-day {
+  font-family: var(--num); font-weight: 900; letter-spacing: -.03em;
+}
+.cd strong { font-size: 1.9rem; }
+.top-card.lead .cd.cd-card strong { font-size: 2.6rem; }
+.cd.cd-hero strong { font-size: 2.6rem; }
+.ev-facts strong { font-size: 1.55rem; line-height: 1.15; }
+.ev-date .day { font-size: 3.6rem; }
+.date-badge .d { font-size: 1.9rem; }
+.cv-km, .tl-points time, .ev-facts .fact-when .tl-points time { font-size: 1.05rem; }
+.top-card:not(.lead) .top-date .day { font-size: 1.9rem; }
+.top-card:not(.lead) .cd.cd-card strong { font-size: 1.15rem; }
+
+/* Control-flag numbers sit fully on the white half */
+.ctrl { direction: ltr; place-items: start; padding: 4px 0 0 7px; inset-inline-end: 0; }
+.top-card:not(.lead) .ctrl { padding: 3px 0 0 6px; }
+
+/* Lead card: a coloured contour band instead of a low-res photo */
+.lead-img { display: none; }
+.lead-band {
+  position: relative; display: flex; align-items: flex-end; gap: 14px; padding: 22px 22px 18px; min-height: 150px; color: #fff;
+  background: var(--contours) center / 520px 340px, linear-gradient(140deg, color-mix(in srgb, var(--c) 88%, #fff) 0%, color-mix(in srgb, var(--c) 70%, #000) 100%);
+}
+.lb-day { font-size: 6.4rem; line-height: .78; text-shadow: 0 6px 24px rgb(0 0 0 / .25); }
+.lb-mon { font-family: var(--display); font-size: 2rem; line-height: .95; padding-bottom: 4px; }
+.lb-icons { margin-inline-start: auto; display: flex; gap: 6px; align-self: flex-start; padding-top: 34px; }
+.di.di-xl { --s: 46px; background: rgb(255 255 255 / .18); box-shadow: inset 0 0 0 2px rgb(255 255 255 / .55); }
+.top-card.lead .top-head { margin-top: 0; }
+.top-card.lead .top-date { display: none; }
+.top-card.lead .top-meta h2 { margin-top: 0; }
+.top-card.lead .top-meta .badges { margin-bottom: 4px; }
+:root[data-contrast="high"] .lead-band { background: var(--text); color: var(--bg); }
+
+@media (max-width: 1000px) {
+  .top-card.lead { grid-template-columns: 260px 1fr; }
+  .top-card.lead .lead-band { grid-row: 1 / span 5; min-height: 100%; flex-direction: column; align-items: flex-start; justify-content: flex-end; }
+  .lb-icons { position: absolute; top: 18px; inset-inline-end: 18px; padding: 0; }
+  .top-card.lead .top-head { margin-top: 20px; }
+  .top-card:not(.lead):not(:has(.reg-cd, .reg-line)) .top-head { grid-column: 1; }
+  .top-card:not(.lead):not(:has(.reg-cd, .reg-line)) .top-foot { grid-row: auto; }
+}
+@media (max-width: 560px) {
+  .lead-band { display: none; }
+  .top-card.lead { grid-template-columns: 1fr auto; }
+  .top-card.lead .top-head { margin-top: 0; }
+  .top-card.lead .top-date { display: grid; }
+  .top-card .top-date .day, .top-card.lead .top-date .day, .top-card:not(.lead) .top-date .day { font-size: 1.45rem; }
+  .cd strong, .top-card .cd.cd-card strong, .top-card.lead .cd.cd-card strong, .top-card:not(.lead) .cd.cd-card strong { font-size: 1.05rem; }
+  /* restore the compact two-column row (the tablet rules stack it) */
+  .top-card:not(.lead) .top-head { grid-column: 1 / -1; }
+  .top-card:not(.lead) .reg-cd, .top-card:not(.lead) .reg-line { grid-column: 1; grid-row: auto; }
+  .top-card:not(.lead) .top-foot { grid-column: 2; grid-row: auto; align-self: center; }
+  .top-card:not(.lead):not(:has(.reg-cd, .reg-line)) .top-head { grid-column: 1; }
+  .top-card:not(.lead):not(:has(.reg-cd, .reg-line)) .top-foot { grid-row: 1; }
+  .top-card .reg-cd-label, .top-card:not(.lead) .reg-cd-label { font-size: .7rem; }
+  .ctrl, .top-card:not(.lead) .ctrl { padding: 2px 0 0 5px; }
+  .ev-date .day { font-size: 2.6rem; }
+  .ev-facts strong { font-size: 1.3rem; }
+  .cd.cd-hero strong { font-size: 2rem; }
+}

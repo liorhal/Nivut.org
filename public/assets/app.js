@@ -455,10 +455,17 @@
     const list = topEvents();
     if (!list.length) { box.innerHTML = '<li class="top4-loading">אין אירועים מתוכננים כרגע.</li>'; return; }
     const now = new Date();
-    box.innerHTML = list.map((e) => {
+    box.innerHTML = list.map((e, i) => {
       const d = evDate(e);
       const left = daysBetween(now, d);
-      return `<li class="top-card" style="--c:${disc(e).color}">
+      const lead = i === 0;
+      return `<li class="top-card${lead ? ' lead' : ''}" style="--c:${disc(e).color}">
+        <span class="ctrl" aria-hidden="true">${i + 1}</span>
+        ${lead ? `<div class="lead-band" aria-hidden="true">
+          <span class="lb-day">${d.getDate()}</span>
+          <span class="lb-mon">${MONTHS[d.getMonth()]}<br>יום ${DAYS[d.getDay()]}</span>
+          <span class="lb-icons">${(e.disciplines || []).map((k) => discIcon(k, 'di-xl')).join('')}</span>
+        </div>` : ''}
         <div class="top-head">
           <div class="top-date" aria-hidden="true"><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span>
             <span class="top-di">${(e.disciplines || []).map((k) => discIcon(k, 'di-sm')).join('')}</span></div>
@@ -468,6 +475,7 @@
             <p>${DAYS[d.getDay()]}${e.time ? ` · ${esc(e.time)}` : ''}${e.location && e.location !== e.title ? ` · ${esc(e.location)}` : ''}<span class="sr-only">, ${fmtLong(d)}</span></p>
           </div>
         </div>
+        ${lead && e.summary ? `<p class="lead-summary">${esc(e.summary)}</p>` : ''}
         ${regBlock(e, 'cd-card')}
         <p class="top-foot"><span>${inDays(left)}</span><a class="top-cta" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד">הרשמה ↗</a></p>
       </li>`;
