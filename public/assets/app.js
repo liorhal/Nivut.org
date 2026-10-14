@@ -62,7 +62,7 @@
     links: {}, events: [], forum: null, news: null, meta: null,
     filter: { q: '', club: '', disciplines: new Set(), tags: new Set() },
     forumQ: '', annualMode: 'year', monthCursor: null,
-    people: [], participants: new Map(), clubs: [], myClub: '',
+    people: [], participants: new Map(), clubs: [], myClub: '', home: null,
   };
 
   /* ---------- Accessibility & display preferences ---------- */
@@ -126,6 +126,77 @@
   }
   const canNavigate = (e) => !!(e.details?.wazeLL || e.location);
 
+
+  /* ---------- My location & distance (kept in this browser only) ---------- */
+  const CITIES = [
+    ['אופקים', 31.31, 34.62], ['אילת', 29.558, 34.952], ['אריאל', 32.104, 35.17], ['אשדוד', 31.804, 34.655], ['אשקלון', 31.669, 34.571],
+    ['באר שבע', 31.252, 34.791], ['בית שאן', 32.497, 35.497], ['בית שמש', 31.747, 34.988], ['בני ברק', 32.084, 34.834], ['בת ים', 32.017, 34.75],
+    ['גבעתיים', 32.072, 34.81], ['דימונה', 31.069, 35.033], ['הוד השרון', 32.15, 34.888], ['הרצליה', 32.166, 34.843], ['זכרון יעקב', 32.571, 34.952],
+    ['חדרה', 32.434, 34.919], ['חולון', 32.011, 34.774], ['חיפה', 32.794, 34.989], ['טבריה', 32.795, 35.531], ['יבנה', 31.877, 34.739],
+    ['יקנעם', 32.659, 35.11], ['ירושלים', 31.778, 35.235], ['כפר סבא', 32.175, 34.907], ['כרמיאל', 32.919, 35.296], ['לוד', 31.951, 34.895],
+    ['מגדל העמק', 32.676, 35.241], ['מודיעין', 31.899, 35.01], ['מעלה אדומים', 31.777, 35.298], ['מצפה רמון', 30.61, 34.8], ['נהריה', 33.006, 35.098],
+    ['נס ציונה', 31.929, 34.798], ['נצרת', 32.7, 35.3], ['נתניה', 32.321, 34.853], ['עכו', 32.927, 35.083], ['עפולה', 32.607, 35.289],
+    ['ערד', 31.258, 35.213], ['פתח תקווה', 32.087, 34.887], ['צפת', 32.965, 35.496], ['קצרין', 32.993, 35.69], ['קריית אתא', 32.809, 35.104],
+    ['קריית גת', 31.61, 34.764], ['קריית שמונה', 33.207, 35.571], ['ראש העין', 32.096, 34.957], ['ראשון לציון', 31.964, 34.804], ['רחובות', 31.894, 34.811],
+    ['רמלה', 31.929, 34.866], ['רמת גן', 32.068, 34.824], ['רעננה', 32.185, 34.871], ['שדרות', 31.524, 34.596], ['שוהם', 31.999, 34.946], ['תל אביב-יפו', 32.085, 34.781],
+  ];
+  const round2 = (n) => Math.round(n * 100) / 100; // ~1 km: enough for distances, kinder to privacy
+  function haversineKm(a, b) {
+    const R = 6371, rad = Math.PI / 180;
+    const dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+  /** Straight-line km from my location, or null when either end is unknown. */
+  const distKm = (e) => {
+    const d = e.details;
+    if (!state.home || !(d?.lat && d?.lng)) return null;
+    return haversineKm(state.home, { lat: d.lat, lng: d.lng });
+  };
+  const fmtKm = (km) => (km < 10 ? km.toFixed(1) : Math.round(km)) + ' ק"מ';
+  const distHtml = (e) => {
+    const km = distKm(e);
+    return km === null ? '' : `<span class="dist"><span aria-hidden="true">📍</span> ${fmtKm(km)}<span class="sr-only"> ממך בקו אווירי</span></span>`;
+  };
+
+  function loadHome() {
+    const h = store.get('home', null);
+    state.home = h && Number.isFinite(h.lat) && Number.isFinite(h.lng) ? h : null;
+  }
+  function renderHomePref() {
+    const sel = $('#homeCity');
+    sel.innerHTML = `<option value="">בחירת יישוב…</option>${CITIES.map(([n]) => `<option${state.home?.label === n ? ' selected' : ''}>${esc(n)}</option>`).join('')}`;
+    $('#homeNow').textContent = state.home ? `המיקום שלך: ${state.home.label}` : 'לא נקבע מיקום';
+    $('#homeClear').hidden = !state.home;
+    $('#distField').hidden = !state.home;
+  }
+  function setHome(h) {
+    state.home = h;
+    store.set('home', h);
+    renderHomePref();
+    if (!h) { state.filter.maxKm = 0; $('#maxKm').value = ''; }
+    if (state.events.length) { renderTop4(); renderList(); }
+    if (location.hash.startsWith('#event/')) showEvent(decodeURIComponent(location.hash.slice(7)));
+  }
+  function initHome() {
+    loadHome();
+    renderHomePref();
+    $('#homeCity').addEventListener('change', (ev) => {
+      const c = CITIES.find(([n]) => n === ev.target.value);
+      if (c) { setHome({ lat: c[1], lng: c[2], label: c[0] }); toast(`המיקום שלך: ${c[0]}`); }
+    });
+    $('#homeGeo').addEventListener('click', () => {
+      if (!navigator.geolocation) { toast('הדפדפן לא תומך באיתור מיקום'); return; }
+      $('#homeNow').textContent = 'מאתר מיקום…';
+      navigator.geolocation.getCurrentPosition(
+        (pos) => { setHome({ lat: round2(pos.coords.latitude), lng: round2(pos.coords.longitude), label: 'המיקום הנוכחי' }); toast('המיקום נשמר'); },
+        () => { renderHomePref(); toast('לא ניתן לאתר מיקום. אפשר לבחור יישוב מהרשימה.'); },
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 },
+      );
+    });
+    $('#homeClear').addEventListener('click', () => { setHome(null); toast('המיקום נמחק'); });
+    $('#maxKm').addEventListener('change', (ev) => { state.filter.maxKm = +ev.target.value || 0; renderList(); });
+  }
 
   /* ---------- Clubs: logos, "my club", league highlight ---------- */
   const clubOf = (id) => state.clubs.find((c) => c.id === String(id || ''));
@@ -265,10 +336,10 @@
     const e = state.events.find((x) => x.id === id);
     if (!box || !e) return;
     const club = clubOf(state.myClub);
-    const title = club ? 'המעקב שלי' : 'האנשים שלי';
+    const title = club ? 'ההגדרות שלי' : 'האנשים שלי';
     if (!state.people.length && !club) {
-      box.innerHTML = `<h2 id="mypl-h">המעקב שלי</h2><p class="muted">בחרו את המועדון שלכם והוסיפו אנשים שמעניינים אתכם, ונראה בכל אירוע מי רשום.</p>
-        <button type="button" class="btn ghost" data-open-people>👥 הגדרת המעקב</button>`;
+      box.innerHTML = `<h2 id="mypl-h">ההגדרות שלי</h2><p class="muted">בחרו את המועדון שלכם והוסיפו אנשים שמעניינים אתכם, ונראה בכל אירוע מי רשום.</p>
+        <button type="button" class="btn ghost" data-open-people>👥 להגדרות</button>`;
       return;
     }
     box.innerHTML = `<h2 id="mypl-h">${title}</h2><p class="muted" role="status">בודק את רשימת המשתתפים…</p>`;
@@ -300,7 +371,7 @@
           <span class="muted small">${[hit.club, hit.category, hit.course].filter(Boolean).map(esc).join(' · ')}</span></div></li>`).join('')}
       </ul>` : '<p class="muted">אף אחד מהאנשים שלך עדיין לא רשום.</p>'}`;
     }
-    html += `<p class="muted small">ברשימה כרגע <a href="${esc(startListUrl(e))}" target="_blank" rel="noopener">${data.count} משתתפים ↗</a> · <button type="button" class="linklike" data-open-people>עריכת המעקב</button></p>`;
+    html += `<p class="muted small">ברשימה כרגע <a href="${esc(startListUrl(e))}" target="_blank" rel="noopener">${data.count} משתתפים ↗</a> · <button type="button" class="linklike" data-open-people>עריכת ההגדרות</button></p>`;
     box.innerHTML = html;
   }
 
@@ -521,6 +592,7 @@
           ${tl}</li>
         <li><span class="ev-ico" aria-hidden="true">📍</span><span class="k">איפה</span>
           <strong>${esc(e.location || d.name || 'יפורסם')}</strong>
+          ${distKm(e) !== null ? `<span class="dist-line">${fmtKm(distKm(e))} ממך בקו אווירי</span>` : ''}
           ${canNavigate(e) ? `<a href="${esc(wazeUrl(e))}" target="_blank" rel="noopener">ניווט לכינוס ב-Waze</a>` : '<span>&nbsp;</span>'}</li>
         <li><span class="ev-ico" aria-hidden="true">₪</span><span class="k">כמה</span>
           <strong class="${price || d.price ? '' : 'tbd'}">${price ? `${price} ₪` : d.price ? esc(d.price) : 'יפורסם'}</strong>
@@ -704,7 +776,7 @@
 </div>
           <div class="top-meta">
             <${tag}><a href="#event/${encodeURIComponent(e.id)}"><span class="title-flags" aria-hidden="true">${isLeague(e) ? '🏆' : ''}${isMine(e) ? '★' : ''}</span>${esc(e.title)}</a></${tag}>
-            <p class="top-when">${[e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`, e.location && e.location !== e.title && `<span class="top-loc">${esc(e.location)}</span>`].filter(Boolean).join(' · ')}<span class="sr-only">${e.time || e.location ? ', ' : ''}${fmtLong(d)}</span></p>
+            <p class="top-when">${[e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`, e.location && e.location !== e.title && `<span class="top-loc">${esc(e.location)}</span>`, distHtml(e)].filter(Boolean).join(' · ')}<span class="sr-only">${e.time || e.location ? ', ' : ''}${fmtLong(d)}</span></p>
           </div>
         </div>
         ${lead && e.summary ? `<p class="lead-summary">${esc(e.summary)}</p>` : ''}
@@ -771,6 +843,7 @@
     });
     $('#clearFilters').addEventListener('click', () => {
       state.filter.q = ''; state.filter.club = ''; state.filter.mine = false; $('#mineOnly').checked = false;
+      state.filter.maxKm = 0; $('#maxKm').value = '';
       state.filter.disciplines.clear(); state.filter.tags.clear();
       $('#q').value = ''; $('#club').value = '';
       $$('#filters .chip').forEach((b) => b.setAttribute('aria-pressed', 'false'));
@@ -783,12 +856,12 @@
   }
 
   // The saved discipline filter is a preference, not a search: it does not count here.
-  const filtering = () => !!(state.filter.q || state.filter.club || state.filter.tags.size || state.filter.mine);
+  const filtering = () => !!(state.filter.q || state.filter.club || state.filter.tags.size || state.filter.mine || state.filter.maxKm);
 
   function renderList() {
     const { q, club, disciplines, tags } = state.filter;
     const ql = q.toLowerCase();
-    const active = [q, club].filter(Boolean).length + tags.size + (state.filter.mine ? 1 : 0);
+    const active = [q, club].filter(Boolean).length + tags.size + (state.filter.mine ? 1 : 0) + (state.filter.maxKm ? 1 : 0);
     $('#filterCount').hidden = !active;
     $('#filterCount').textContent = active ? `(${active})` : '';
     const top = filtering() ? new Set() : new Set(topEvents().map((e) => e.id));
@@ -798,8 +871,11 @@
       (!tags.size || (e.tags || []).some((k) => tags.has(k))) &&
       (!club || e.clubName === club) &&
       (!state.filter.mine || isMine(e)) &&
+      (!state.filter.maxKm || (distKm(e) !== null && distKm(e) <= state.filter.maxKm)) &&
       (!ql || [e.fullTitle, e.title, e.location, e.clubName, e.eventType, e.summary].join(' ').toLowerCase().includes(ql)));
-    $('#resultCount').textContent = filtering() ? `${list.length} אירועים נמצאו` : '';
+    const noPlace = state.filter.maxKm ? upcoming().filter((e) => distKm(e) === null).length : 0;
+    $('#resultCount').textContent = filtering()
+      ? `${list.length} אירועים נמצאו${noPlace ? ` · ${noPlace} אירועים בלי מיקום ידוע לא נכללו` : ''}` : '';
     const el = $('#eventList');
     if (!list.length) { el.innerHTML = '<li class="empty">לא נמצאו אירועים התואמים לסינון.</li>'; return; }
     const now = new Date();
@@ -1013,6 +1089,7 @@
   async function boot() {
     initPrefs();
     initMyClub();
+    initHome();
     initPeople();
     initDiscFilter();
     window.addEventListener('hashchange', route);

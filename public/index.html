@@ -29,7 +29,7 @@
         </ul>
       </nav>
       <button type="button" class="people-btn" id="peopleBtn" aria-haspopup="dialog">
-        <span class="track-ico" aria-hidden="true">👥</span><span class="people-label">המעקב שלי</span> <span class="people-count" id="peopleCount"></span>
+        <span class="track-ico" aria-hidden="true">👥</span><span class="people-label">ההגדרות שלי</span> <span class="people-count" id="peopleCount"></span>
       </button>
       <div class="a11y-tools" role="group" aria-label="הגדרות תצוגה ונגישות">
         <button type="button" class="icon-btn" id="fontDown" aria-label="הקטן גופן">א-</button>
@@ -49,7 +49,7 @@
             <h1 id="upcoming-title" class="hero-title">ניווטים קרובים</h1>
             <div class="disc-filter" id="discFilter" role="group" aria-label="סוגי ניווט להצגה (נשמר לפעם הבאה)"></div>
             <button type="button" class="people-btn hero-people" data-open-people aria-haspopup="dialog">
-              <span class="track-ico" aria-hidden="true">👥</span><span class="people-label">המעקב שלי</span> <span class="people-count"></span>
+              <span class="track-ico" aria-hidden="true">👥</span><span class="people-label">ההגדרות שלי</span> <span class="people-count"></span>
             </button>
           </div>
           <ol class="top4" id="top4" aria-label="ארבעת הניווטים הקרובים"><li class="top4-loading">טוען מאתר האיגוד…</li></ol>
@@ -74,6 +74,13 @@
           </div>
           <div class="field mine-field" id="mineField" hidden>
             <label class="check"><input type="checkbox" id="mineOnly"> רק אירועים של המועדון שלי</label>
+          </div>
+          <div class="field" id="distField" hidden>
+            <label for="maxKm">מרחק ממני</label>
+            <select id="maxKm">
+              <option value="">כל מרחק</option><option value="15">עד 15 ק"מ</option><option value="30">עד 30 ק"מ</option>
+              <option value="50">עד 50 ק"מ</option><option value="80">עד 80 ק"מ</option><option value="120">עד 120 ק"מ</option>
+            </select>
           </div>
           <fieldset class="chips" id="tagChips">
             <legend>אופי האירוע</legend>
@@ -140,7 +147,7 @@
   <div id="toast" class="toast" role="status" hidden></div>
   <dialog id="peopleDialog" class="people-dialog" aria-labelledby="peopleTitle">
     <form method="dialog" class="dlg-x"><button class="icon-btn" aria-label="סגירה">✕</button></form>
-    <h2 id="peopleTitle">המעקב שלי</h2>
+    <h2 id="peopleTitle">ההגדרות שלי</h2>
     <section class="pref" aria-labelledby="myClubTitle">
       <h3 id="myClubTitle">המועדון שלי</h3>
       <div class="myclub-pick">
@@ -149,6 +156,17 @@
         <select id="myClubSel"><option value="">ללא</option></select>
       </div>
       <p class="muted small">אירועים שהמועדון מארגן יסומנו, ובכל אירוע נראה כמה מהמועדון רשומים. הבחירה נשמרת בעוגייה.</p>
+    </section>
+    <section class="pref" aria-labelledby="homeTitle">
+      <h3 id="homeTitle">המיקום שלי</h3>
+      <p class="muted small" id="homeNow" aria-live="polite"></p>
+      <div class="home-pick">
+        <label for="homeCity" class="sr-only">יישוב</label>
+        <select id="homeCity"></select>
+        <button type="button" class="btn ghost" id="homeGeo">📍 לפי המיקום הנוכחי</button>
+        <button type="button" class="btn ghost" id="homeClear" hidden>מחיקה</button>
+      </div>
+      <p class="muted small">משמש להצגת מרחק לכל אירוע ולסינון לפי מרחק. נשמר רק בדפדפן הזה, מעוגל לכקילומטר, ולא נשלח לשרת.</p>
     </section>
     <h3>האנשים שלי</h3>
     <p class="muted small">הוסיפו נווטים שחשוב לכם לדעת אם הם רשומים לאירועים. נציג אותם בכל אירוע, לפי רשימת המשתתפים באתר האיגוד.

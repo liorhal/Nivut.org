@@ -1047,3 +1047,10 @@ main:focus { outline: none; }
 :root[data-theme="dark"] .top-date .dow { color: #fbbf24; }
 .top-meta .top-when:empty { display: none; }
 @media (max-width: 560px) { .top-date .dow { font-size: .66rem; } }
+
+/* ---------- Distance ---------- */
+.dist { display: inline-flex; align-items: center; gap: 3px; font-weight: 800; color: var(--text); white-space: nowrap; }
+.dist-line { font-size: .88rem; color: var(--muted); }
+.home-pick { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.home-pick select { flex: 1 1 160px; }
+.people-dialog { overflow-y: auto; overscroll-behavior: contain; }
