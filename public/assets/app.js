@@ -645,9 +645,9 @@
       <div class="ev-grid">
         <div class="ev-main">
           ${loading ? '<section class="ev-card" role="status"><p class="muted">טוען את פרטי התחרות מאתר האיגוד…</p></section>' : ''}
+          ${moreInfo(e).length ? `<section class="ev-card ev-info" id="ev-info" aria-labelledby="ab-h"><h2 id="ab-h" tabindex="-1">מידע נוסף</h2>
+            ${moreInfo(e).map((p) => `<p>${linkify(p)}</p>`).join('')}</section>` : ''}
           ${coursesHtml(d.courses)}
-          ${d.description?.length || e.summary ? `<section class="ev-card" aria-labelledby="ab-h"><h2 id="ab-h">על האירוע</h2>
-            ${(d.description?.length ? d.description : [e.summary]).map((p) => `<p>${linkify(p)}</p>`).join('')}</section>` : ''}
           ${hasGeo || d.directions?.length ? `<section class="ev-card" aria-labelledby="go-h"><h2 id="go-h">איך מגיעים</h2>
             ${hasGeo ? `<iframe class="ev-osm" title="מפת נקודת הכינוס של ${esc(e.title)}" loading="lazy" src="https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${d.lat},${d.lng}"></iframe>` : ''}
             ${(d.directions || []).map((p) => `<p>${linkify(p)}</p>`).join('')}
@@ -708,16 +708,19 @@
       return;
     }
     document.title = `${e.title} – ניווט ישראל`;
+    const goto = state.gotoSection; // e.g. "ev-info" from a card's "מידע נוסף"
+    state.gotoSection = null;
     box.innerHTML = eventPageHtml(e);
     tickCountdowns();
     renderMyPeople(id);
     $('#evTitle')?.focus({ preventScroll: true });
+    gotoSection(goto);
     if (!e.details && e.nivutId) {
       try {
         e.details = await loadJson(`api/event?id=${encodeURIComponent(e.nivutId)}`);
         if (e.details.startFrom && e.details.startFrom !== '00:00' && !e.time) e.time = e.details.startFrom;
       } catch { e.details = null; e.nivutId = null; }
-      if (location.hash === `#event/${id}`) { box.innerHTML = eventPageHtml(e); tickCountdowns(); renderMyPeople(id); }
+      if (location.hash === `#event/${id}`) { box.innerHTML = eventPageHtml(e); tickCountdowns(); renderMyPeople(id); gotoSection(goto); }
     }
   }
 
@@ -805,30 +808,22 @@
   /** The additional info says registration is not on the site ("*אין הרשמה באתר", "ללא הרשמה", "אין צורך בהרשמה"). */
   const noSiteRegistration = (e) => {
     if (e.noSiteRegistration) return true; // set by the server from all of the event's text
-    const t = [e.fullTitle, e.summary, e.details?.note, ...(e.details?.description || [])].join(' ');
+    const t = [e.fullTitle, e.summary, e.details?.note, e.details?.registerLabel, ...(e.details?.description || [])].join(' ');
     return /(?:אין|ללא)\s+(?:צורך\s+ב)?הרשמה(?!\s+(?:במקום|ביום))/.test(t)
       || /הרשמה\s+(?:אינה|לא)\s+(?:מתבצעת\s+|נעשית\s+)?(?:באתר|דרך\s+האתר)/.test(t);
   };
+  /** "ⓘ מידע נוסף": opens the event page at its "מידע נוסף" section. */
   const infoBtnHtml = (e) => (moreInfo(e).length
-    ? `<button type="button" class="info-btn" data-info="${esc(e.id)}" aria-haspopup="dialog" aria-label="מידע נוסף על ${esc(e.title)}"><span aria-hidden="true">i</span><span class="info-text">מידע נוסף</span></button>` : '');
+    ? `<a class="info-btn" href="#event/${encodeURIComponent(e.id)}" data-goto="ev-info" aria-label="מידע נוסף על ${esc(e.title)}"><span aria-hidden="true">i</span><span class="info-text">מידע נוסף</span></a>` : '');
   function initInfo() {
-    const dlg = $('#infoDialog');
-    let opener = null;
-    document.addEventListener('click', (ev) => {
-      const b = ev.target.closest('[data-info]');
-      if (!b) return;
-      const e = state.events.find((x) => x.id === b.dataset.info);
-      if (!e) return;
-      ev.preventDefault();
-      opener = b;
-      $('#infoTitle').textContent = e.title;
-      $('#infoBody').innerHTML = moreInfo(e).map((p) => `<p>${linkify(p)}</p>`).join('');
-      $('#infoLink').href = `#event/${encodeURIComponent(e.id)}`;
-      dlg.showModal();
-    });
-    $('#infoLink').addEventListener('click', () => dlg.close());
-    dlg.addEventListener('click', (ev) => { if (ev.target === dlg) dlg.close(); });
-    dlg.addEventListener('close', () => opener?.isConnected && !location.hash.startsWith('#event/') && opener.focus());
+    document.addEventListener('click', (ev) => { const a = ev.target.closest('[data-goto]'); if (a) state.gotoSection = a.dataset.goto; });
+  }
+  /** After the event page renders: jump to the section a card link asked for. */
+  function gotoSection(id) {
+    const el = id && document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ block: 'start' });
+    el.querySelector('h2')?.focus({ preventScroll: true });
   }
 
   /** Has an event page on the association site, where you register (closed areas and calendar-only items do not). */
@@ -864,13 +859,13 @@
       renderRegFilter();
       if (state.filter.registered && !state.regIds) {
         b.setAttribute('aria-busy', 'true');
-        toast('בודק ברשימות המשתתפים…');
+        toast('מחפש את הניווטים שלי ברשימות המשתתפים…');
         await findRegistered();
         b.removeAttribute('aria-busy');
       }
       renderTop4(); renderList();
       const n = upcoming().filter((e) => discOk(e) && regOk(e)).length;
-      toast(state.filter.registered ? (n === 1 ? 'ניווט אחד שהאנשים שלך רשומים אליו' : n ? `${n} ניווטים שהאנשים שלך רשומים אליהם` : 'האנשים שלך לא רשומים לאף ניווט קרוב') : 'מוצגים כל הניווטים');
+      toast(state.filter.registered ? (n === 1 ? 'הניווטים שלי: ניווט אחד' : n ? `הניווטים שלי: ${n} ניווטים` : 'האנשים שלי לא רשומים לאף ניווט קרוב') : 'מוצגים כל הניווטים');
     });
   }
   const discOk = (e) => !state.filter.disciplines.size || (e.disciplines || []).some((k) => state.filter.disciplines.has(k));
@@ -951,7 +946,7 @@
     const box = $('#top4');
     const list = topEvents();
     if (!list.length) {
-      box.innerHTML = `<li class="top4-loading">${state.filter.registered ? 'האנשים שלך לא רשומים לאף ניווט קרוב.' : state.filter.disciplines.size ? 'אין ניווטים קרובים מהסוגים שבחרת.' : 'אין אירועים מתוכננים כרגע.'}</li>`;
+      box.innerHTML = `<li class="top4-loading">${state.filter.registered ? 'אין ניווטים קרובים שהאנשים שלי רשומים אליהם.' : state.filter.disciplines.size ? 'אין ניווטים קרובים מהסוגים שבחרת.' : 'אין אירועים מתוכננים כרגע.'}</li>`;
       return;
     }
     const now = new Date();
@@ -1431,6 +1426,30 @@
     initAnnual();
     initForum();
     if (/^#(event|forum)\//.test(location.hash)) route();
+    hydrateDetails();
+  }
+
+  /**
+   * Fallback: upcoming events the server could not read a page for (a timeout on the association site)
+   * load it here, so closed events and ones without site registration still drop out of the lists.
+   */
+  async function hydrateDetails() {
+    const today = startOfDay(new Date());
+    const todo = state.events.filter((e) => e.nivutId && !e.details && e.source !== 'closed-area' && parseDate(e.date) >= today);
+    if (!todo.length) return;
+    const before = upcoming().map((e) => e.id).join();
+    let i = 0;
+    await Promise.all(Array.from({ length: Math.min(4, todo.length) }, async () => {
+      while (i < todo.length) {
+        const e = todo[i++];
+        try {
+          e.details = await loadJson(`api/event?id=${encodeURIComponent(e.nivutId)}`);
+          if (e.details?.startFrom && e.details.startFrom !== '00:00' && !e.time) e.time = e.details.startFrom;
+        } catch { /* keep it as is */ }
+      }
+    }));
+    if (upcoming().map((e) => e.id).join() !== before) { renderTop4(); renderList(); }
+    renderYear(); renderMonth();
   }
 
   boot();

@@ -1216,3 +1216,11 @@ main:focus { outline: none; }
 @keyframes rf-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .reg-filter[aria-busy="true"] .rf-star { animation: none; opacity: .5; } }
 @media (max-width: 640px) { .reg-filter { min-width: 38px; min-height: 38px; padding: 0; justify-content: center; } }
+a.info-btn { text-decoration: none; }
+.ev-info p { overflow-wrap: anywhere; }
+
+/* Early registration sits at the bottom of the card, even when the row makes the card taller */
+@media (min-width: 561px) {
+  .top-card:not(.lead) { grid-template-rows: auto auto 1fr; }
+  .top-card:not(.lead) > :is(.reg-cd, .reg-line, .top-foot) { align-self: end; }
+}

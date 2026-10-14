@@ -294,3 +294,10 @@ test('eventFlags: closed events and no site registration, from any of the event 
   assert.deepEqual(L.eventFlags({ title: 'אימון', summary: 'ללא הרשמה מראש' }), { closed: false, noSiteRegistration: true });
   assert.deepEqual(L.eventFlags({ title: 'ליגה', details: { description: ['אין הרשמה במקום'] } }), { closed: false, noSiteRegistration: false });
 });
+
+test('event page: the register button label ("אין הרשמה באתר") marks no site registration', () => {
+  const html = fx('event.html').replace('</body>', '<button type="submit" name="ctl00$ContentPlaceHolder1$rbRegister" value="אין הרשמה באתר" id="ctl00_ContentPlaceHolder1_rbRegister" class="RadButton rbDisabled" disabled="disabled"><span class="rbText" disabled="disabled">אין הרשמה באתר</span></button></body>');
+  const d = L.parseEventPage(html, 'https://nivut.org.il/3600/Info');
+  assert.equal(d.registerLabel, 'אין הרשמה באתר');
+  assert.equal(L.eventFlags({ title: 'אימון', details: d }).noSiteRegistration, true);
+});

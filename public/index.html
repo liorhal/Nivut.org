@@ -49,8 +49,8 @@
           <div class="hero-head">
             <h1 id="upcoming-title" class="hero-title">ניווטים קרובים</h1>
             <div class="disc-filter" id="discFilter" role="group" aria-label="סוגי ניווט להצגה (נשמר לפעם הבאה)"></div>
-            <button type="button" class="df-btn reg-filter" id="regFilter" aria-pressed="false" hidden>
-              <svg class="rf-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.4l-6.1 3.4 1.4-6.8-5.1-4.7 6.9-.8z"/></svg><span class="df-text">רק איפה שהאנשים שלי רשומים</span>
+            <button type="button" class="df-btn reg-filter" id="regFilter" aria-pressed="false" title="רק ניווטים שהאנשים שלי רשומים אליהם" hidden>
+              <svg class="rf-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.4l-6.1 3.4 1.4-6.8-5.1-4.7 6.9-.8z"/></svg><span class="df-text">הניווטים שלי</span>
             </button>
             <button type="button" class="people-btn hero-people" data-open-people aria-haspopup="dialog">
               <span class="track-ico" aria-hidden="true">👥</span><span class="people-label">ההגדרות שלי</span> <span class="people-count"></span>
@@ -162,13 +162,6 @@
       <span id="lbCount" aria-live="polite"></span>
       <button type="button" class="icon-btn" id="lbNext" aria-label="התמונה הבאה">‹</button>
     </div>
-  </dialog>
-  <dialog id="infoDialog" class="people-dialog info-dialog" aria-labelledby="infoTitle">
-    <form method="dialog" class="dlg-x"><button class="icon-btn" aria-label="סגירה">✕</button></form>
-    <p class="muted small">מידע נוסף</p>
-    <h2 id="infoTitle"></h2>
-    <div id="infoBody" class="info-body"></div>
-    <p><a id="infoLink" class="btn ghost" href="#">לעמוד הניווט</a></p>
   </dialog>
   <dialog id="helpDialog" class="help-dialog" aria-labelledby="helpTitle">
     <form method="dialog" class="dlg-x"><button class="icon-btn" aria-label="סגירה">✕</button></form>
