@@ -105,6 +105,9 @@
     const param = decodeURIComponent(rest.join('/'));
     const view = VIEWS.includes(name) ? name : 'upcoming';
     VIEWS.forEach((v) => { $(`#view-${v}`).hidden = v !== view; });
+    // Each screen fades in as it is opened (CSS skips it when motion is reduced).
+    const shown = $(`#view-${view}`);
+    shown.classList.remove('view-in'); void shown.offsetWidth; shown.classList.add('view-in');
     $$('.tabs a').forEach((a) => a.setAttribute('aria-selected', String(a.dataset.view === view)));
     const titles = { upcoming: 'ניווטים קרובים', annual: 'תוכנית שנתית', forum: 'פורום', event: 'אירוע' };
     document.title = `${titles[view]} – ניווט ישראל`;
@@ -464,6 +467,7 @@
       const ms = new Date(el.dataset.until) - now;
       if (ms <= 0) { el.innerHTML = '<span class="cd-done">ההרשמה המוקדמת נסגרה</span>'; el.removeAttribute('aria-label'); return; }
       el.setAttribute('aria-label', `ההרשמה המוקדמת נסגרת בעוד ${spokenCountdown(ms)}`);
+      el.classList.toggle('urgent', ms < 864e5); // the last day: the chip pulses
       const parts = el.dataset.one ? [oneUnit(ms)] : countdownParts(ms);
       el.innerHTML = parts.map(([n, l]) => `<div aria-hidden="true"><strong>${n}</strong><span>${l}</span></div>`).join('');
     });
@@ -1022,6 +1026,31 @@
    * One event card, a "ticket": a date stub in the discipline's colour (with the star for my people) and,
    * past the perforation, tags and club, the name, distance + Waze, the start diagram and registration.
    */
+  const seenCards = new Set(); // cards whose entrance has finished
+  const enterStart = new Map(); // card id -> when its entrance began
+  /**
+   * Staggers the entrance of the cards just drawn (capped, so a long list does not trickle in).
+   * A redraw in the middle of an entrance (details arriving) continues it instead of restarting.
+   */
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  function staggerNew(box) {
+    const now = performance.now();
+    if (reducedMotion.matches) {
+      $$('.top-card.is-new', box).forEach((c) => { c.classList.remove('is-new'); seenCards.add(decodeURIComponent(c.querySelector('a[href^="#event/"]')?.getAttribute('href').slice(7) || '')); });
+      return;
+    }
+    $$('.top-card.is-new', box).forEach((c, i) => {
+      const id = decodeURIComponent(c.querySelector('a[href^="#event/"]')?.getAttribute('href').slice(7) || '');
+      if (!enterStart.has(id)) enterStart.set(id, { t: now, i: Math.min(i, 8) });
+      const st = enterStart.get(id);
+      c.style.setProperty('--i', st.i);
+      c.style.setProperty('--t0', `${Math.round(now - st.t)}ms`);
+      c.addEventListener('animationend', (ev) => {
+        if (ev.target !== c) return;
+        seenCards.add(id); enterStart.delete(id); c.classList.remove('is-new');
+      });
+    });
+  }
   function hudCardHtml(e, { lead = false, now = new Date(), tag = 'h2' } = {}) {
     const d = evDate(e);
     const tlMini = e.details && e.source !== 'closed-area' ? timelineHtml(e.details, e, { mini: true }) : '';
@@ -1031,7 +1060,10 @@
     const counting = regDeadline(e) && regDeadline(e) > now;
     const reg = counting ? regBlock(e, 'cd-card', cta)
       : `${regBlock(e, 'cd-card')}${regOpen(e) ? `<p class="top-foot">${regDeadline(e) ? `<span>${inDays(left)}</span>` : ''}${cta}</p>` : ''}`;
-    return `<li class="top-card tk${lead ? ' lead' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}">
+    // A card rises in the first time it appears (load, "show more", a new filter result), not on redraws.
+    const fresh = !seenCards.has(e.id);
+    const enter = fresh ? ' is-new' : '';
+    return `<li class="top-card tk${enter}${lead ? ' lead' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}">
         <div class="tk-stub"><div class="top-date" aria-hidden="true"><span class="dow">${DAYS[d.getDay()]}</span><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span></div><div class="tk-star"></div></div>
         <span class="tk-notch t" aria-hidden="true"></span><span class="tk-notch b" aria-hidden="true"></span>
         <div class="tk-body">
@@ -1058,6 +1090,7 @@
     }
     const now = new Date();
     box.innerHTML = list.map((e, i) => hudCardHtml(e, { lead: i === 0, now })).join('');
+    staggerNew(box);
     tickCountdowns();
     decorateTopPeople();
   }
@@ -1262,6 +1295,7 @@
       lastMonth = mKey;
       return sep + hudCardHtml(e, { now, tag: 'h3' });
     }).join('');
+    staggerNew(el);
     tickCountdowns();
     decorateTopPeople();
   }

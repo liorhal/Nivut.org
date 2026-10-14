@@ -1557,3 +1557,64 @@ a.info-btn { text-decoration: none; }
   .reg-cd .reg-cd-main { flex-wrap: wrap !important; }
   .reg-cd .reg-cd-label { white-space: normal !important; }
 }
+
+/* =====================================================================
+   Motion. Everything here is off under prefers-reduced-motion
+   (the global rule near the top also stops all animation then).
+   ===================================================================== */
+:root { --ease-out: cubic-bezier(.22, 1, .36, 1); --ease-snap: cubic-bezier(.3, 1.4, .5, 1); }
+@media (prefers-reduced-motion: no-preference) {
+  /* Cards rise in, staggered, the first time they appear */
+  .top-card.tk.is-new { animation: tk-in .52s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 60ms - var(--t0, 0ms)); }
+  @keyframes tk-in { from { opacity: 0; transform: translateY(16px) scale(.985); } }
+  /* ...the date stub attaches from the outer edge (right, in RTL) */
+  .top-card.tk.is-new .tk-stub { animation: tk-stub .58s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 60ms + 70ms - var(--t0, 0ms)); }
+  @keyframes tk-stub { from { transform: translateX(14px); opacity: .3; } }
+  /* ...and the start window fills from the first start (right) */
+  .top-card.tk.is-new :is(.tlm-win, .tlm-run) { transform-origin: right center; animation: tl-fill .7s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 60ms + 220ms - var(--t0, 0ms)); }
+  .top-card.tk.is-new .tlm-run { animation-delay: calc(var(--i, 0) * 60ms + 380ms - var(--t0, 0ms)); }
+  @keyframes tl-fill { from { transform: scaleX(0); } }
+  /* the event page's race-day diagram fills the same way */
+  .view-in .fact-when :is(.tl-window, .tl-run) { transform-origin: right center; animation: tl-fill .8s var(--ease-out) both .15s; }
+  .view-in .fact-when .tl-run { animation-delay: .35s; }
+
+  /* A lift under the pointer (devices with hover only) */
+  @media (hover: hover) {
+    .top-card.tk { transition: transform .28s var(--ease-out), box-shadow .28s var(--ease-out); }
+    .top-card.tk:hover { transform: translateY(-3px); box-shadow: 0 18px 36px rgb(0 0 0 / .22); }
+    .top-card.tk.is-league:hover { box-shadow: 0 0 0 2px #f5b301, 0 18px 36px rgb(0 0 0 / .22); }
+    .top-card.tk:hover .tk-stub { filter: saturate(1.15) brightness(1.04); }
+    .top-card.tk .tk-stub { transition: filter .28s; }
+  }
+  /* Presses answer the finger */
+  :is(.top-cta, .btn, .waze-link, .df-btn, .chip, .icon-btn) { transition: transform .12s var(--ease-out), background-color .15s, border-color .15s, color .15s; }
+  :is(.top-cta, .btn, .waze-link, .df-btn, .chip, .icon-btn):active { transform: scale(.95); }
+
+  /* The last day of early registration: the countdown chip pulses */
+  .cd.urgent strong { animation: urgent 2.4s ease-in-out infinite; }
+  @keyframes urgent { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--flag) 55%, transparent); } 50% { box-shadow: 0 0 0 6px transparent; } }
+
+  /* Screens fade in when opened */
+  .view.view-in { animation: view-in .34s var(--ease-out); }
+  @keyframes view-in { from { opacity: 0; } } /* opacity only: a transform would unpin the fixed phone dock */
+
+  /* Dialogs lift in over a fading backdrop */
+  :is(.people-dialog, .help-dialog)[open] { animation: dlg-in .28s var(--ease-out); }
+  :is(.people-dialog, .help-dialog, .lightbox)[open]::backdrop { animation: fade-in .25s ease-out; }
+  @keyframes dlg-in { from { opacity: 0; transform: translateY(12px) scale(.985); } }
+  @keyframes fade-in { from { opacity: 0; } }
+
+  /* Search panel, tooltip, toast */
+  #filters:not([hidden]) { animation: drop-in .24s var(--ease-out); }
+  @keyframes drop-in { from { opacity: 0; transform: translateY(-6px); } }
+  .tip:not([hidden]) { animation: fade-in .12s ease-out; }
+  .a11y-tools:not([hidden]) { animation: drop-in .2s var(--ease-out); }
+
+  /* "Latest results" cards follow the same entrance */
+  .rr-card { animation: tk-in .5s var(--ease-out) both; }
+  .rr-card:nth-child(2) { animation-delay: 60ms; } .rr-card:nth-child(3) { animation-delay: 120ms; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .toast:not([hidden]) { animation: toast-in .26s var(--ease-out); }
+  @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 10px); } }
+}
