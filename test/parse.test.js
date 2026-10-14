@@ -153,3 +153,18 @@ test('parseForumRss groups replies under their thread', () => {
   assert.equal(t[0].lastActivity, '2026-10-14T02:00:00.000Z');
   assert.equal(t[0].url, 'https://nivut.org.il/forums/?m=96191');
 });
+
+test('parseParticipants reads the table by its headings, ignoring layout tables', () => {
+  const html = `<table><tr><td><table class="layout"><tr><td>תפריט</td></tr></table>
+    <table><tr><th>#</th><th>שם</th><th>מועדון</th><th>קטגוריה</th><th>מסלול</th><th>שעת זינוק</th></tr>
+      <tr><td>1</td><td>דנה כהן</td><td>השרון</td><td>D21</td><td>בינוני (רמה 5)</td><td>09:12</td></tr>
+      <tr><td>2</td><td>יואב לוי</td><td>כרמל</td><td>M35</td><td>ארוך</td><td>09:40</td></tr></table></td></tr></table>`;
+  const p = L.parseParticipants(html);
+  assert.deepEqual(p, [
+    { name: 'דנה כהן', club: 'השרון', category: 'D21', course: 'בינוני (רמה 5)', start: '09:12' },
+    { name: 'יואב לוי', club: 'כרמל', category: 'M35', course: 'ארוך', start: '09:40' },
+  ]);
+  const split = '<table><tr><td>שם פרטי</td><td>שם משפחה</td><td>מועדון</td></tr><tr><td>רפי</td><td>הימן</td><td>השרון</td></tr></table>';
+  assert.equal(L.parseParticipants(split)[0].name, 'רפי הימן');
+  assert.deepEqual(L.parseParticipants('<table><tr><td>אין משתתפים</td></tr></table>'), []);
+});

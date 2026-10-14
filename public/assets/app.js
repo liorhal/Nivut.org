@@ -53,6 +53,7 @@
     links: {}, events: [], forum: null, news: null, meta: null,
     filter: { q: '', club: '', disciplines: new Set(), tags: new Set() },
     forumQ: '', annualMode: 'year', monthCursor: null,
+    people: [], participants: new Map(),
   };
 
   /* ---------- Accessibility & display preferences ---------- */
@@ -141,6 +142,117 @@
     const a = Object.assign(document.createElement('a'), { href: url, download: name });
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  /* ---------- My people: who is registered (names stay in this browser) ---------- */
+  const FINALS = { 'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ' };
+  const nameTokens = (s) => String(s).normalize('NFKD').replace(/[\u0591-\u05C7]/g, '')
+    .replace(/[ךםןףץ]/g, (c) => FINALS[c]).toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  /** Every word of the followed name appears in the participant's name, in any order. */
+  const sameName = (person, participant) => {
+    const p = new Set(nameTokens(participant));
+    const want = nameTokens(person);
+    return want.length > 0 && want.every((t) => p.has(t));
+  };
+
+  function loadPeople() {
+    state.people = store.get('people', []).filter((x) => typeof x === 'string' && x.trim()).slice(0, 100);
+    $$('.people-count').forEach((el) => { el.textContent = state.people.length ? `(${state.people.length})` : ''; });
+  }
+  function savePeople() {
+    store.set('people', state.people);
+    loadPeople();
+    renderPeopleList();
+    renderTop4();
+    if (location.hash.startsWith('#event/')) renderMyPeople(decodeURIComponent(location.hash.slice(7)));
+  }
+  function renderPeopleList() {
+    $('#peopleList').innerHTML = state.people.length
+      ? state.people.map((n, i) => `<li><span>${esc(n)}</span><button type="button" class="icon-btn" data-remove-person="${i}" aria-label="הסרת ${esc(n)}">✕</button></li>`).join('')
+      : '<li class="muted">עדיין לא הוספתם אף אחד.</li>';
+  }
+  function initPeople() {
+    loadPeople();
+    const dlg = $('#peopleDialog');
+    let opener = null;
+    const open = (btn) => { opener = btn; renderPeopleList(); dlg.showModal(); $('#personName').focus(); };
+    $('#peopleBtn').addEventListener('click', (e) => open(e.currentTarget));
+    document.addEventListener('click', (e) => { const b = e.target.closest('[data-open-people]'); if (b) open(b); });
+    dlg.addEventListener('close', () => opener?.isConnected && opener.focus());
+    $('#peopleForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = $('#personName').value.trim().replace(/\s+/g, ' ');
+      if (!name) return;
+      if (!state.people.some((p) => nameTokens(p).join(' ') === nameTokens(name).join(' '))) state.people.push(name);
+      $('#personName').value = '';
+      savePeople();
+      toast(`${name} נוסף/ה לרשימה`);
+    });
+    $('#peopleList').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-remove-person]');
+      if (!b) return;
+      state.people.splice(+b.dataset.removePerson, 1);
+      savePeople();
+      $('#personName').focus();
+    });
+  }
+
+  /** Participants of an event, fetched once per page view. */
+  function participantsOf(e) {
+    if (!e.nivutId) return Promise.resolve(null);
+    if (!state.participants.has(e.nivutId)) {
+      state.participants.set(e.nivutId, loadJson(`api/participants?id=${encodeURIComponent(e.nivutId)}`).catch((err) => ({ error: err.message })));
+    }
+    return state.participants.get(e.nivutId);
+  }
+  const matchesIn = (list) => state.people.map((name) => ({ name, hit: (list || []).find((p) => sameName(name, p.name)) }));
+
+  async function renderMyPeople(id) {
+    const box = $('#myPeople');
+    const e = state.events.find((x) => x.id === id);
+    if (!box || !e) return;
+    if (!state.people.length) {
+      box.innerHTML = `<h2 id="mypl-h">האנשים שלי</h2><p class="muted">רוצים לדעת אם חברים שלכם רשומים? הוסיפו אותם, ונבדוק בכל אירוע.</p>
+        <button type="button" class="btn ghost" data-open-people>👥 הוספת אנשים</button>`;
+      return;
+    }
+    box.innerHTML = '<h2 id="mypl-h">האנשים שלי</h2><p class="muted" role="status">בודק את רשימת המשתתפים…</p>';
+    const data = await participantsOf(e);
+    if (!$('#myPeople')) return;
+    if (!data || data.error) {
+      box.innerHTML = `<h2 id="mypl-h">האנשים שלי</h2><p class="muted">לא ניתן לקרוא כרגע את רשימת המשתתפים. <a href="${esc(e.url)}" target="_blank" rel="noopener">לרשימה באתר האיגוד ↗</a></p>`;
+      return;
+    }
+    if (!data.participants.length) {
+      box.innerHTML = `<h2 id="mypl-h">האנשים שלי</h2><p class="muted">רשימת המשתתפים ריקה, או שלא הצלחנו לקרוא אותה. <a href="${esc(e.url)}" target="_blank" rel="noopener">לרשימה באתר האיגוד ↗</a></p>
+        ${data.diag ? `<details class="diag"><summary>פרטים טכניים</summary><pre dir="ltr">${esc(JSON.stringify(data.diag, null, 2))}</pre></details>` : ''}`;
+      return;
+    }
+    const m = matchesIn(data.participants);
+    const yes = m.filter((x) => x.hit), no = m.filter((x) => !x.hit);
+    box.innerHTML = `<h2 id="mypl-h">האנשים שלי <span class="muted">${yes.length} מתוך ${m.length} רשומים</span></h2>
+      <ul class="mypl">
+        ${yes.map(({ name, hit }) => `<li class="in"><span class="mark" aria-hidden="true">✓</span><div><strong>${esc(hit.name)}</strong><span class="sr-only"> – רשום/ה</span>
+          <span class="muted small">${[hit.category, hit.course, hit.start && `זינוק ${hit.start}`, hit.club].filter(Boolean).map(esc).join(' · ')}</span></div></li>`).join('')}
+        ${no.map(({ name }) => `<li class="out"><span class="mark" aria-hidden="true">–</span><div><span>${esc(name)}</span><span class="sr-only"> – </span><span class="muted small">לא ברשימה</span></div></li>`).join('')}
+      </ul>
+      <p class="muted small">ברשימה כרגע ${data.count} משתתפים · <button type="button" class="linklike" data-open-people>עריכת האנשים שלי</button></p>`;
+  }
+
+  /** "👥 registered: …" line on the top cards. */
+  async function decorateTopPeople() {
+    if (!state.people.length) return;
+    for (const e of topEvents()) {
+      if (!e.nivutId) continue;
+      participantsOf(e).then((data) => {
+        if (!data?.participants?.length) return;
+        const hits = matchesIn(data.participants).filter((x) => x.hit).map((x) => x.name);
+        const card = document.querySelector(`.top-card [href="#event/${CSS.escape(encodeURIComponent(e.id))}"]`)?.closest('.top-card');
+        if (!card || !hits.length || card.querySelector('.people-chip')) return;
+        const names = hits.length > 2 ? `${hits.slice(0, 2).join(', ')} ועוד ${hits.length - 2}` : hits.join(' ו');
+        card.querySelector('.top-meta').insertAdjacentHTML('beforeend', `<p class="people-chip"><span aria-hidden="true">👥</span> רשומים: ${esc(names)}</p>`);
+      });
+    }
   }
 
   /* ---------- Early-registration countdown ---------- */
@@ -364,6 +476,8 @@
             </div>
           </section>
 
+          ${e.nivutId ? '<section class="ev-card" id="myPeople" aria-labelledby="mypl-h" aria-live="polite"></section>' : ''}
+
           ${d.map ? `<section class="ev-card" aria-labelledby="mp-h"><h2 id="mp-h">מפת הניווט</h2>
             ${d.map.image ? `<a class="ev-mapimg" href="${esc(d.map.image)}" target="_blank" rel="noopener"><img src="${esc(d.map.image)}" alt="תצוגה מקדימה של מפת ${esc(d.map.name)}" loading="lazy" onerror="this.parentNode.remove()"></a>` : ''}
             <p><strong>${d.map.url ? `<a href="${esc(d.map.url)}" target="_blank" rel="noopener">${esc(d.map.name)}</a>` : esc(d.map.name)}</strong></p>
@@ -406,13 +520,14 @@
     document.title = `${e.title} – ניווט ישראל`;
     box.innerHTML = eventPageHtml(e);
     tickCountdowns();
+    renderMyPeople(id);
     $('#evTitle')?.focus({ preventScroll: true });
     if (!e.details && e.nivutId) {
       try {
         e.details = await loadJson(`api/event?id=${encodeURIComponent(e.nivutId)}`);
         if (e.details.startFrom && !e.time) e.time = e.details.startFrom;
       } catch { e.details = null; e.nivutId = null; }
-      if (location.hash === `#event/${id}`) { box.innerHTML = eventPageHtml(e); tickCountdowns(); }
+      if (location.hash === `#event/${id}`) { box.innerHTML = eventPageHtml(e); tickCountdowns(); renderMyPeople(id); }
     }
   }
 
@@ -493,6 +608,7 @@
       </li>`;
     }).join('');
     tickCountdowns();
+    decorateTopPeople();
   }
 
   function chipGroup(container, entries, set) {
@@ -792,6 +908,7 @@
 
   async function boot() {
     initPrefs();
+    initPeople();
     window.addEventListener('hashchange', route);
     route();
     const [links, events, forum, news] = await Promise.all([

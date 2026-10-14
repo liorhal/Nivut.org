@@ -28,6 +28,9 @@
           <li><a role="tab" href="#forum" data-view="forum">פורום</a></li>
         </ul>
       </nav>
+      <button type="button" class="people-btn" id="peopleBtn" aria-haspopup="dialog">
+        <span aria-hidden="true">👥</span><span class="people-label">האנשים שלי</span> <span class="people-count" id="peopleCount"></span>
+      </button>
       <div class="a11y-tools" role="group" aria-label="הגדרות תצוגה ונגישות">
         <button type="button" class="icon-btn" id="fontDown" aria-label="הקטן גופן">א-</button>
         <button type="button" class="icon-btn" id="fontUp" aria-label="הגדל גופן">א+</button>
@@ -42,7 +45,12 @@
     <section id="view-upcoming" class="view" aria-labelledby="upcoming-title">
       <div class="hero">
         <div class="container">
-          <h1 id="upcoming-title" class="hero-title">ניווטים קרובים</h1>
+          <div class="hero-head">
+            <h1 id="upcoming-title" class="hero-title">ניווטים קרובים</h1>
+            <button type="button" class="people-btn hero-people" data-open-people aria-haspopup="dialog">
+              <span aria-hidden="true">👥</span><span class="people-label">האנשים שלי</span> <span class="people-count"></span>
+            </button>
+          </div>
           <ol class="top4" id="top4" aria-label="ארבעת הניווטים הקרובים"><li class="top4-loading">טוען מאתר האיגוד…</li></ol>
         </div>
       </div>
@@ -129,6 +137,20 @@
   </main>
 
   <div id="toast" class="toast" role="status" hidden></div>
+  <dialog id="peopleDialog" class="people-dialog" aria-labelledby="peopleTitle">
+    <form method="dialog" class="dlg-x"><button class="icon-btn" aria-label="סגירה">✕</button></form>
+    <h2 id="peopleTitle">האנשים שלי</h2>
+    <p class="muted">הוסיפו נווטים שחשוב לכם לדעת אם הם רשומים לאירועים. נציג אותם בכל אירוע, לפי רשימת המשתתפים באתר האיגוד.
+      הרשימה נשמרת רק בדפדפן הזה ולא נשלחת לשום מקום.</p>
+    <form id="peopleForm" class="people-form">
+      <label for="personName">שם מלא, כפי שהוא מופיע ברשימות האיגוד</label>
+      <div class="people-row">
+        <input id="personName" autocomplete="off" required maxlength="60">
+        <button type="submit" class="btn">הוספה</button>
+      </div>
+    </form>
+    <ul class="people-list" id="peopleList" aria-label="האנשים שלי"></ul>
+  </dialog>
 
   <footer class="site-footer">
     <div class="container footer-inner">
