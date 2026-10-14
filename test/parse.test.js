@@ -259,3 +259,19 @@ test('forum: attached images and files', () => {
   t = L.parseForum(withFile, 'https://nivut.org.il/forums/');
   assert.deepEqual(t[0].files, [{ url: 'https://cdn.nivut.org.il/uploads/c22af5d5-4d48-4146-81b4-cb2b257593b1_TelMichal-results.html', name: 'תוצאות', file: 'TelMichal-results.html' }]);
 });
+
+test('event page: "מידע נוסף", closed-event note and "אין מידע" fields', () => {
+  // Modelled on the "פרדסי עין ורד" page: a closed event, empty fields read "אין מידע".
+  const html = fx('event.html')
+    .replace('<td colspan="3">אימון עם מסלולים כמו בליגה</td>', '<td colspan="3"> - אירוע סגור - </td>')
+    .replace('<td colspan="2">הרשמה מקוונת עד גמר המפות</td>', '<td colspan="2"> אין מידע </td>')
+    .replace('<td colspan="2">מכביש 1 במחלף ענבה.</td>', '<td colspan="2"> אין מידע </td>')
+    .replace(/<td>שם המפה\s*<\/td><td>[\s\S]*?<\/td>\s*<td rowspan="4">[\s\S]*?<\/td><\/tr>/, '<td>שם המפה</td><td> אין מידע </td></tr>')
+    .replace(/(itemprop="description">)[\s\S]*?(<\/td>)/, '$1<p>אירוע לתושבי היישוב, חברים ומשפחות.</p>\n<p>מסלול תחרותי למרחק 4 ק"מ</p>$2');
+  const d = L.parseEventPage(html, 'https://nivut.org.il/3400/Info');
+  assert.deepEqual(d.description, ['אירוע לתושבי היישוב, חברים ומשפחות.', 'מסלול תחרותי למרחק 4 ק"מ']);
+  assert.match(d.note, /אירוע סגור/);
+  assert.equal(d.onsite, '');
+  assert.deepEqual(d.directions, []);
+  assert.equal(d.map, null);
+});

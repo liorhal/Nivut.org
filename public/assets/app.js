@@ -828,8 +828,8 @@
   }
 
   /** Has an event page on the association site, where you register (closed areas and calendar-only items do not). */
-  /** "אירוע סגור" (a private event) in the title, category or additional info. */
-  const isClosedEvent = (e) => /(?:אירוע|ארוע)\s+סגור/.test([e.fullTitle, e.title, e.eventType, e.summary, e.details?.eventType, ...(e.details?.description || [])].join(' '));
+  /** "אירוע סגור" (a private event) in the title, category, the event-page note ("- אירוע סגור -") or additional info. */
+  const isClosedEvent = (e) => /(?:אירוע|ארוע)\s+סגור/.test([e.fullTitle, e.title, e.eventType, e.summary, e.details?.eventType, e.details?.note, ...(e.details?.description || [])].join(' '));
   const hasRegistration = (e) => !!e.nivutId && e.source !== 'closed-area' && !noSiteRegistration(e) && !isClosedEvent(e);
   /** Upcoming events you can register for; the annual plan still shows everything. */
   function upcoming() {
