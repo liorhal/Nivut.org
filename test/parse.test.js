@@ -45,7 +45,7 @@ test('parseHome reads featured events, closed areas and news', () => {
   assert.equal(mtbo.image, 'https://nivut.org.il/images/a.jpg');
   assert.equal(mtbo.nivutId, '3333');
   assert.equal(inbe.date, '2026-10-17');
-  assert.deepEqual(odem.disciplines, ['foot', 'ammi']);
+  assert.deepEqual(odem.disciplines, ['foot']); // popular (ammi) counts as foot
   assert.deepEqual(odem.tags, ['champ']);
   assert.deepEqual(h.closedAreas.map((a) => [a.date, a.discipline, a.name]), [
     ['2026-10-16', 'mtbo', 'בריכות מעגן מיכאל'], ['2026-10-17', 'foot', 'בית ענבה'], ['2026-11-14', 'foot', 'שער הכרמל']]);
@@ -240,4 +240,22 @@ test('early-registration deadline: meta, other labels, free text', () => {
   const sentence = noMeta.replace('<p>אימון ניווט מקומי.</p>', '<p>ההרשמה המוקדמת עד יום רביעי 14/10 בשעה 20:00.</p>');
   assert.equal(L.parseEventPage(sentence, 'https://nivut.org.il/3379/Info').registrationDeadline, '2026-10-14T20:00');
   assert.equal(L.parseEventPage(noMeta, 'https://nivut.org.il/3379/Info').registrationDeadline, '');
+});
+
+test('forum: attached images and files', () => {
+  const base = fx('forum.html');
+  // a lazy-image attribute on the message's image
+  const lazy = base.replace('<img id="Image_101" src="LoadImage.png" class="imgThumbnail">',
+    '<img id="Image_101" src="LoadImage.png" lsrc="https://cdn.nivut.org.il/uploads/64dddd82-45dc-4e47-9768-4bac6592ace5_calendar-mockup2.jpg" class="imgThumbnail">');
+  let t = L.parseForum(lazy, 'https://nivut.org.il/forums/');
+  assert.deepEqual(t[0].replies[0].images, ['https://cdn.nivut.org.il/uploads/64dddd82-45dc-4e47-9768-4bac6592ace5_calendar-mockup2.jpg']);
+  // only a script knows the image: found by the message id
+  const scripted = base.replace('</main>', `</main><script>var imgs = {"101": "https:\\/\\/cdn.nivut.org.il\\/uploads\\/abc_photo.png"};</script>`);
+  t = L.parseForum(scripted, 'https://nivut.org.il/forums/');
+  assert.deepEqual(t[0].replies[0].images, ['https://cdn.nivut.org.il/uploads/abc_photo.png']);
+  assert.deepEqual(t[0].images, []);
+  // linked files keep their address
+  const withFile = base.replace('<p>בוקר טוב,</p>', '<p>בוקר טוב, <a href="https://cdn.nivut.org.il/uploads/c22af5d5-4d48-4146-81b4-cb2b257593b1_TelMichal-results.html">תוצאות</a></p>');
+  t = L.parseForum(withFile, 'https://nivut.org.il/forums/');
+  assert.deepEqual(t[0].files, [{ url: 'https://cdn.nivut.org.il/uploads/c22af5d5-4d48-4146-81b4-cb2b257593b1_TelMichal-results.html', name: 'תוצאות', file: 'TelMichal-results.html' }]);
 });

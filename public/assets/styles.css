@@ -1030,3 +1030,20 @@ main:focus { outline: none; }
 @media (max-width: 1000px) and (min-width: 561px) {
   #eventList .top-card .top-foot { grid-row: auto; }
 }
+
+/* ---------- Forum attachments ---------- */
+.msg-images { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+.msg-img { position: relative; display: block; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: var(--surface-2); }
+.msg-img img { display: block; max-width: min(100%, 420px); max-height: 320px; object-fit: contain; }
+.msg-img-open { position: absolute; bottom: 8px; inset-inline-start: 8px; background: rgb(0 0 0 / .65); color: #fff; font-size: .78rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; opacity: 0; transition: opacity .15s; }
+.msg-img:hover .msg-img-open, .msg-img:focus-visible .msg-img-open { opacity: 1; }
+.msg-img-link { font-weight: 700; }
+.msg-files { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.msg-files a { display: inline-flex; gap: 4px; align-items: baseline; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); text-decoration: none; color: var(--text); font-weight: 600; font-size: .9rem; }
+.msg-files a:hover { border-color: var(--brand); }
+
+/* weekday in the date box */
+.top-date .dow { font-size: .72rem; font-weight: 800; color: #b45309; line-height: 1.2; }
+:root[data-theme="dark"] .top-date .dow { color: #fbbf24; }
+.top-meta .top-when:empty { display: none; }
+@media (max-width: 560px) { .top-date .dow { font-size: .66rem; } }

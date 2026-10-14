@@ -42,13 +42,11 @@
   const DISCIPLINES = {
     foot: { label: 'ניווט רגלי', color: '#15803d' },
     mtbo: { label: 'ניווט רכוב', color: '#1d6fd8' },
-    ammi: { label: 'ניווט עממי', color: '#c2410c' },
   };
   // Line icons (24×24, drawn with currentColor): runner, bicycle, adult and child walking.
   const ICONS = {
     foot: '<circle cx="15" cy="4" r="2.2" fill="currentColor" stroke="none"/><path d="M7.5 11.5 10.5 8l4 1 2 3h3M10.5 8 13 13l-1.2 3.5L9 20.5H5.5M13 13l3.5 2.5L15.5 21"/>',
     mtbo: '<circle cx="5.5" cy="16" r="3.8"/><circle cx="18.5" cy="16" r="3.8"/><path d="M5.5 16 9.3 9.5h5.9L18.5 16M5.5 16H11l4.2-6.5M11 16 8.8 7.2M7.4 7.2h3M15.2 9.5l-1-3h2.6"/>',
-    ammi: '<circle cx="8" cy="3.8" r="2" fill="currentColor" stroke="none"/><path d="M8 7v7.5M8 14.5 6 21M8 14.5l2 6.5M5 10.5l3-2 4.5 4"/><circle cx="17" cy="9.2" r="1.7" fill="currentColor" stroke="none"/><path d="M17 11.8v4.4M17 16.2 15.6 21M17 16.2l1.4 4.8M12.5 12.5l4.5 1.2 2.6-1"/>',
   };
   /** Discipline icon in a coloured disc (decorative: the label is always present as text). */
   const discIcon = (k, cls = '') => (ICONS[k]
@@ -701,12 +699,12 @@
           ${e.clubName ? `<span class="top-club"><span>${esc(e.clubName)}</span></span>` : ''}
         </div>
         <div class="top-head">
-          <div class="top-date" aria-hidden="true"><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span>
+          <div class="top-date" aria-hidden="true"><span class="dow">${DAYS[d.getDay()]}</span><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span>
             <span class="top-di">${(e.disciplines || []).map((k) => discIcon(k, 'di-sm')).join('')}</span>
 </div>
           <div class="top-meta">
             <${tag}><a href="#event/${encodeURIComponent(e.id)}"><span class="title-flags" aria-hidden="true">${isLeague(e) ? '🏆' : ''}${isMine(e) ? '★' : ''}</span>${esc(e.title)}</a></${tag}>
-            <p class="top-when">${DAYS[d.getDay()]}${e.time ? ` · <strong class="start-time">זינוק ${esc(e.time)}</strong>` : ''}${e.location && e.location !== e.title ? ` · <span class="top-loc">${esc(e.location)}</span>` : ''}<span class="sr-only">, ${fmtLong(d)}</span></p>
+            <p class="top-when">${[e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`, e.location && e.location !== e.title && `<span class="top-loc">${esc(e.location)}</span>`].filter(Boolean).join(' · ')}<span class="sr-only">${e.time || e.location ? ', ' : ''}${fmtLong(d)}</span></p>
           </div>
         </div>
         ${lead && e.summary ? `<p class="lead-summary">${esc(e.summary)}</p>` : ''}
@@ -923,8 +921,22 @@
     return best;
   }
 
-  const msgBody = (m) => (m.body.length ? m.body.map((p) => `<p>${linkify(p)}</p>`).join('') : '')
-    + (m.hasImage ? '<p class="muted">📷 מצורפת תמונה – לצפייה בפורום</p>' : '');
+  /** Message text, its attached images (open full size) and linked files. */
+  const msgBody = (m, threadUrl) => {
+    const images = m.images || [];
+    let html = m.body.length ? m.body.map((p) => `<p>${linkify(p)}</p>`).join('') : '';
+    if (images.length) {
+      html += `<div class="msg-images">${images.map((src, i) => `<a href="${esc(src)}" target="_blank" rel="noopener" class="msg-img">
+        <img src="${esc(src)}" alt="תמונה מצורפת${images.length > 1 ? ` ${i + 1}` : ''} להודעה של ${esc(m.author)}" loading="lazy">
+        <span class="msg-img-open" aria-hidden="true">פתיחה ↗</span></a>`).join('')}</div>`;
+    } else if (m.hasImage) {
+      html += `<p><a class="msg-img-link" href="${esc(threadUrl || state.links.forum || '#')}" target="_blank" rel="noopener">📷 מצורפת תמונה – לצפייה בפורום ↗</a></p>`;
+    }
+    if (m.files?.length) {
+      html += `<ul class="msg-files" aria-label="קבצים מצורפים">${m.files.map((f) => `<li><a href="${esc(f.url)}" target="_blank" rel="noopener">📎 ${esc(f.name)}${f.file && f.file !== f.name ? ` <span class="muted small">(${esc(f.file)})</span>` : ''}</a></li>`).join('')}</ul>`;
+    }
+    return html;
+  };
 
   function renderForum() {
     const f = state.forum;
@@ -953,10 +965,10 @@
             <div class="replies" aria-label="${t.replyCount} תגובות"><strong>${t.replyCount}</strong><span>תגובות</span></div>
           </summary>
           <div class="thread">
-            ${msgBody(t) || '<p class="muted">(הודעה ללא תוכן)</p>'}
+            ${msgBody(t, t.url) || '<p class="muted">(הודעה ללא תוכן)</p>'}
             ${ev ? `<p class="related">אירוע קשור: <button type="button" class="chip" data-open="${esc(ev.id)}">${esc(ev.title)} · ${fmtShort(evDate(ev))}</button></p>` : ''}
             ${t.replies.length ? `<ol class="reply-list" aria-label="תגובות">${t.replies.map((r) => `<li>
-              <p class="meta"><strong class="author${state.myClub && r.authorClubId === state.myClub ? ' mine-author' : ''}">${r.authorLogo || r.authorClubId ? logoHtml({ id: r.authorClubId, fallback: r.authorLogo }, 'cl-xs') : ''}${esc(r.author)}</strong><span>${relTime(r.postedAt)}</span></p>${msgBody(r) || `<p>${esc(r.title)}</p>`}</li>`).join('')}</ol>` : ''}
+              <p class="meta"><strong class="author${state.myClub && r.authorClubId === state.myClub ? ' mine-author' : ''}">${r.authorLogo || r.authorClubId ? logoHtml({ id: r.authorClubId, fallback: r.authorLogo }, 'cl-xs') : ''}${esc(r.author)}</strong><span>${relTime(r.postedAt)}</span></p>${msgBody(r, t.url) || `<p>${esc(r.title)}</p>`}</li>`).join('')}</ol>` : ''}
             <p><a class="btn ghost" href="${esc(t.url)}" target="_blank" rel="noopener">להגיב בפורום ↗</a></p>
           </div>
         </details>
