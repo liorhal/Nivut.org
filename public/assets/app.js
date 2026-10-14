@@ -72,15 +72,20 @@
   }
 
   /* ---------- Routing ---------- */
-  const VIEWS = ['upcoming', 'annual', 'forum'];
+  const VIEWS = ['upcoming', 'annual', 'forum', 'event'];
   function route() {
-    const hash = location.hash.slice(1);
-    const view = VIEWS.includes(hash) ? hash : 'upcoming';
+    const [name, ...rest] = location.hash.slice(1).split('/');
+    const param = decodeURIComponent(rest.join('/'));
+    const view = VIEWS.includes(name) ? name : 'upcoming';
     VIEWS.forEach((v) => { $(`#view-${v}`).hidden = v !== view; });
     $$('.tabs a').forEach((a) => a.setAttribute('aria-selected', String(a.dataset.view === view)));
-    const titles = { upcoming: 'ניווטים קרובים', annual: 'תוכנית שנתית', forum: 'פורום' };
+    const titles = { upcoming: 'ניווטים קרובים', annual: 'תוכנית שנתית', forum: 'פורום', event: 'אירוע' };
     document.title = `${titles[view]} – ניווט ישראל`;
-    if (hash && VIEWS.includes(hash)) { window.scrollTo(0, 0); $('#main').focus({ preventScroll: true }); }
+    if (view !== 'event') state.lastView = view;
+    window.scrollTo(0, 0);
+    if (view === 'event') { showEvent(param); return; }
+    if (view === 'forum' && param) { openThread(param); return; }
+    if (name) $('#main').focus({ preventScroll: true });
   }
 
   /* ---------- Shared bits ---------- */
@@ -128,92 +133,278 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  /* ---------- Event dialog ---------- */
-  function detailsHtml(d) {
-    const rows = [];
-    const row = (k, v) => { if (v) rows.push(`<dt>${k}</dt><dd>${v}</dd>`); };
-    row('זינוקים', d.startFrom ? `${esc(d.startFrom)}${d.startTo ? `–${esc(d.startTo)}` : ''}` : '');
-    row('שעת גג', esc(d.cutoff));
-    row('מחיר', [d.price, d.priceNonMember].filter(Boolean).map(esc).join('<br>'));
+  /* ---------- Event page (#event/<id>) ---------- */
+  const toMin = (t) => { const m = /(\d{1,2}):(\d{2})/.exec(t || ''); return m ? +m[1] * 60 + +m[2] : null; };
+  const fromMin = (n) => `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
+  const shekel = (s) => { const m = /(\d+(?:\.\d+)?)\s*(?:שח|ש"ח|₪)/.exec(s || ''); return m ? m[1] : null; };
+  const phoneLink = (s) => esc(s).replace(/(0\d{1,2}-?\d{3}-?\d{4}|05\d-?\d{7})/g, (p) => `<a href="tel:${p.replace(/-/g, '')}">${p}</a>`);
+
+  function countdownParts(ms) {
+    const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60;
+    return [[d, d === 1 ? 'יום' : 'ימים'], [h, 'שעות'], [m, 'דקות']];
+  }
+  function spokenCountdown(ms) {
+    const [[d], [h]] = countdownParts(ms);
+    if (d > 0) return `${d} ${d === 1 ? 'יום' : 'ימים'}${h ? ` ו-${h} שעות` : ''}`;
+    if (h > 0) return `${h} שעות`;
+    return `${Math.max(1, Math.floor(ms / 6e4))} דקות`;
+  }
+
+  /** Registration state, the single most important fact on the page. */
+  function registration(e) {
+    const d = e.details || {};
+    const now = new Date();
+    const end = evDate(e);
+    if (daysBetween(now, end) < 0) {
+      return { state: 'past', title: 'האירוע התקיים', text: d.resultsAvailable ? 'התוצאות פורסמו באתר האיגוד.' : 'התוצאות יפורסמו באתר האיגוד.', cta: d.resultsAvailable ? 'לתוצאות' : 'לדף האירוע' };
+    }
+    if (e.source === 'closed-area') {
+      return { state: 'soon', title: 'ההרשמה טרם נפתחה', text: 'השטח סגור לנווטים עד יום התחרות. פרטים והרשמה יפורסמו באתר האיגוד.', cta: 'ללוח האירועים' };
+    }
     if (d.registrationDeadline) {
       const dl = parseDate(d.registrationDeadline);
-      const left = daysBetween(new Date(), dl);
-      row('הרשמה מוקדמת עד', `${fmtLong(dl)}${d.registrationDeadline.length > 10 ? `, ${esc(d.registrationDeadline.slice(11, 16))}` : ''}${left >= 0 ? ` <strong class="deadline">(${inDays(left)})</strong>` : ' <span class="muted">(הסתיימה)</span>'}`);
+      if (dl > now) {
+        return { state: 'open', title: 'ההרשמה המוקדמת פתוחה', deadline: dl, ms: dl - now,
+          text: `נסגרת ${fmtLong(dl)}${d.registrationDeadline.length > 10 ? ` בשעה ${d.registrationDeadline.slice(11, 16)}` : ''}`, cta: 'להרשמה באתר האיגוד' };
+      }
+      return { state: d.onsite ? 'onsite' : 'closed', title: 'ההרשמה המוקדמת נסגרה', text: d.onsite ? `עדיין אפשר: ${d.onsite}` : 'אפשר לבדוק באתר האיגוד אם נותרו מקומות.', cta: 'לדף האירוע' };
     }
-    row('הרשמה במקום', esc(d.onsite));
-    row('מועדון מארגן', d.club ? (d.club.url ? `<a href="${esc(d.club.url)}" target="_blank" rel="noopener">${esc(d.club.name)}</a>` : esc(d.club.name)) : '');
-    row('תכנון מסלולים', esc(d.planner));
-    row('ניהול ארוע', esc(d.director));
-    row('יצירת קשר', esc(d.contact));
-    let html = rows.length ? `<dl>${rows.join('')}</dl>` : '';
-
-    if (d.courses?.length) {
-      html += `<h3>מסלולים</h3><table class="courses"><thead><tr><th scope="col">מסלול</th><th scope="col">אורך</th></tr></thead><tbody>${
-        d.courses.map((c) => `<tr><td>${esc(c.name)}</td><td>${esc(c.distance) || '—'}</td></tr>`).join('')}</tbody></table>`;
-    }
-    if (d.map) {
-      const m = d.map;
-      const facts = [m.terrain && `שטח: ${esc(m.terrain)}`, m.scale && `קנ"מ ${esc(m.scale)}`, m.year && `מופה ב-${esc(m.year)}`].filter(Boolean).join(' · ');
-      html += `<h3>מפה</h3><div class="map-info">${m.image ? `<a href="${esc(m.image)}" target="_blank" rel="noopener"><img src="${esc(m.image)}" alt="תצוגה מקדימה של מפת ${esc(m.name)}" loading="lazy" onerror="this.remove()"></a>` : ''}
-        <p>${m.url ? `<a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.name)}</a>` : esc(m.name)}<br><span class="muted">${facts}</span></p></div>`;
-    }
-    if (d.description?.length) html += `<h3>מידע נוסף</h3>${d.description.map((p) => `<p>${linkify(p)}</p>`).join('')}`;
-    if (d.directions?.length) html += `<h3>הוראות הגעה</h3>${d.directions.map((p) => `<p>${linkify(p)}</p>`).join('')}`;
-    if (d.attachments?.length) html += `<h3>קבצים</h3><ul>${d.attachments.map((a) => `<li><a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.name)}</a></li>`).join('')}</ul>`;
-    return html;
+    return { state: 'open', title: 'הרשמה באתר האיגוד', text: d.onsite || '', cta: 'להרשמה באתר האיגוד' };
   }
 
-  function renderDialog(e) {
-    const d = evDate(e);
-    const left = daysBetween(new Date(), d);
-    const det = e.details;
-    $('#dlgBody').innerHTML = `
-      <div class="dlg-badges">${discBadges(e)}${tagBadges(e)}</div>
-      <h2 id="dlgTitle">${esc(e.title)}</h2>
-      ${e.eventType ? `<p class="muted">${esc(e.eventType)}${det?.note ? ` · ${esc(det.note)}` : ''}</p>` : ''}
-      <dl>
-        <dt>מועד</dt><dd>${fmtLong(d)}${e.time ? `, ${esc(e.time)}` : ''}${left >= 0 ? ` <span class="muted">(${inDays(left)})</span>` : ''}</dd>
-        ${e.location ? `<dt>מקום</dt><dd>${esc(e.location)}</dd>` : ''}
-      </dl>
-      ${e.summary && !det?.description?.length ? `<p>${linkify(e.summary)}</p>` : ''}
-      <div class="dlg-actions">
-        <a class="btn" href="${esc(e.url)}" rel="noopener" target="_blank">${e.source === 'closed-area' ? 'ללוח האירועים באתר האיגוד ↗' : 'הרשמה ופרטים באתר האיגוד ↗'}</a>
-        ${det?.resultsAvailable ? `<a class="btn ghost" href="${esc(e.url)}" rel="noopener" target="_blank">תוצאות ↗</a>` : ''}
-        <button type="button" class="btn ghost" data-ics="${esc(e.id)}">הוסף ליומן</button>
-        ${canNavigate(e) ? `<a class="btn ghost" href="${esc(wazeUrl(e))}" rel="noopener" target="_blank">Waze</a>
-        <a class="btn ghost" href="${esc(mapsUrl(e))}" rel="noopener" target="_blank">מפה</a>` : ''}
+  function timelineHtml(d, e) {
+    const s = toMin(d.startFrom), t = toMin(d.startTo), c = toMin(d.cutoff);
+    if (s === null) return '';
+    const lo = s - 30, hi = Math.max(c ?? 0, t ?? 0, s) + 30;
+    const pos = (n) => `${(((n - lo) / (hi - lo)) * 100).toFixed(1)}%`;
+    const points = [
+      { at: s, label: 'זינוק ראשון', cls: 'start' },
+      t !== null && { at: t, label: 'זינוק אחרון', cls: 'start' },
+      c !== null && { at: c, label: 'שעת גג', cls: 'cutoff' },
+    ].filter(Boolean);
+    const now = new Date();
+    const isToday = daysBetween(now, evDate(e)) === 0;
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    return `<section class="ev-card ev-span" aria-labelledby="tl-h">
+      <h2 id="tl-h">יום התחרות</h2>
+      <div class="tl">
+        <div class="tl-track" aria-hidden="true">
+          ${t !== null ? `<div class="tl-window" style="inset-inline-start:${pos(s)};width:calc(${pos(t)} - ${pos(s)})"></div>` : ''}
+          ${c !== null ? `<div class="tl-run" style="inset-inline-start:${pos(t ?? s)};width:calc(${pos(c)} - ${pos(t ?? s)})"></div>` : ''}
+          ${isToday && nowMin > lo && nowMin < hi ? `<div class="tl-now" style="inset-inline-start:${pos(nowMin)}"><span>עכשיו</span></div>` : ''}
+        </div>
+        <ol class="tl-points">${points.map((p) => `<li class="${p.cls}" style="--pos:${pos(p.at)}"><time>${fromMin(p.at)}</time><span>${p.label}</span></li>`).join('')}</ol>
       </div>
-      <div id="dlgDetails">${det ? detailsHtml(det) : e.nivutId ? '<p class="muted" role="status">טוען פרטים מאתר האיגוד…</p>' : e.source === 'closed-area' ? '<p class="muted">השטח סגור לנווטים עד יום התחרות. פרטים מלאים יפורסמו בלוח האירועים של האיגוד.</p>' : ''}</div>`;
+      <ul class="tl-legend">
+        ${t !== null ? `<li><span class="sw start"></span><span>חלון הזינוקים: אפשר לצאת לדרך בכל רגע בין ${fromMin(s)} ל-${fromMin(t)}</span></li>` : ''}
+        ${c !== null && t !== null ? `<li><span class="sw run"></span><span>מהזינוק האחרון ועד שעת הגג: הזמן שנותר לנווטים האחרונים בשטח</span></li>` : ''}
+        ${c !== null ? `<li><span class="sw cutoff"></span><span><strong>שעת גג ${fromMin(c)}:</strong> כל המשתתפים חייבים לחזור לנקודת הסיום עד השעה הזו, גם אם לא סיימו את המסלול</span></li>` : ''}
+      </ul>
+    </section>`;
   }
 
-  async function openEvent(id, opener) {
+  function coursesHtml(courses) {
+    if (!courses?.length) return '';
+    const parsed = courses.map((c) => {
+      const level = +(/רמה\s*(\d+)/.exec(c.name)?.[1] || 0);
+      const km = parseFloat((c.distance || '').replace(',', '.')) || null;
+      return { name: c.name.replace(/\s*\(רמה\s*\d+\)\s*/, '').trim(), level, km };
+    });
+    const maxKm = Math.max(...parsed.map((c) => c.km || 0), 1);
+    const maxLevel = Math.max(5, ...parsed.map((c) => c.level));
+    const beginner = (c) => (c.level && c.level <= 2) || /קצרצר|משפחות|עממי|מתחילים/.test(c.name);
+    return `<section class="ev-card ev-span" aria-labelledby="co-h">
+      <h2 id="co-h">בחרו מסלול <span class="muted">${parsed.length} מסלולים</span></h2>
+      <ul class="courses-viz">${parsed.map((c) => `<li class="${beginner(c) ? 'easy' : ''}">
+        <div class="cv-name"><strong>${esc(c.name)}</strong>${beginner(c) ? '<span class="pill easy-pill">מתאים למתחילים</span>' : ''}</div>
+        <div class="cv-level" ${c.level ? `aria-label="רמת קושי ${c.level} מתוך ${maxLevel}"` : ''}>${c.level ? Array.from({ length: maxLevel }, (_, i) => `<span class="${i < c.level ? 'on' : ''}"></span>`).join('') : '<span class="muted small">—</span>'}</div>
+        <div class="cv-bar" aria-hidden="true"><span style="width:${c.km ? Math.max(6, (c.km / maxKm) * 100) : 4}%"></span></div>
+        <div class="cv-km">${c.km ? `${c.km} ק"מ` : '<span class="muted">קצר מאוד</span>'}</div>
+      </li>`).join('')}</ul>
+      <p class="muted small">הקושי מדורג לפי רמות האיגוד: רמה נמוכה = ניווט על שבילים וקווים ברורים, רמה גבוהה = ניווט בשטח פתוח ובחירת מסלול עצמאית.</p>
+    </section>`;
+  }
+
+  // Generic words that would link unrelated threads (a thread needs a shared place or name).
+  const RELATED_STOP = new Set(['ניווט', 'ניווטי', 'נווט', 'אליפות', 'ישראל', 'יער', 'ביער', 'ליגה', 'ליגת', 'ליגה', 'מסלול', 'מסלולים',
+    'קטגוריות', 'כמו', 'רגלי', 'רכוב', 'עממי', 'אימון', 'מודל', 'ספרינט', 'היום', 'תחרות', 'אירוע', 'ארוע', 'אירועי', 'ארועי', '2026', '2027',
+    'יום', 'ביום', 'שבת', 'בשבת', 'שישי', 'בשישי', 'הקרובה', 'הקרוב', 'מזנקת', 'מזנק']);
+
+  function relatedThreads(e) {
+    const threads = state.forum?.threads;
+    if (!threads?.length) return [];
+    const words = (s) => new Set(String(s).split(/[\s\-–,|:()"'.]+/).map((w) => w.replace(/^[בהלמו](?=\S{3,})/, '')).filter((w) => w.length > 2 && !RELATED_STOP.has(w)));
+    const ew = words(`${e.title} ${e.location} ${e.details?.name || ''}`);
+    return threads.map((t) => ({ t, score: [...words(t.title)].filter((w) => ew.has(w)).length }))
+      .filter((x) => x.score > 0).sort((a, b) => b.score - a.score || (b.t.lastActivity > a.t.lastActivity ? 1 : -1)).slice(0, 4).map((x) => x.t);
+  }
+
+  function eventPageHtml(e) {
+    const d = e.details || {};
+    const date = evDate(e);
+    const now = new Date();
+    const left = daysBetween(now, date);
+    const reg = registration(e);
+    const dc = disc(e);
+    const price = shekel(d.price), priceOut = shekel(d.priceNonMember);
+    const loading = !e.details && e.nivutId;
+    const threads = relatedThreads(e);
+    const hasGeo = d.lat && d.lng;
+    const bbox = hasGeo ? [d.lng - 0.03, d.lat - 0.018, d.lng + 0.03, d.lat + 0.018].map((n) => n.toFixed(5)).join(',') : '';
+
+    return `
+    <header class="ev-hero" style="--c:${dc.color}">
+      <div class="container">
+        <a class="ev-back" href="#${esc(state.lastView || 'upcoming')}">→ חזרה</a>
+        <div class="ev-hero-grid">
+          <div class="ev-date" aria-hidden="true">
+            <span class="dow">יום ${DAYS[date.getDay()]}</span>
+            <span class="day">${date.getDate()}</span>
+            <span class="mon">${MONTHS[date.getMonth()]} ${date.getFullYear()}</span>
+          </div>
+          <div class="ev-head">
+            <div class="badges">${discBadges(e)}${tagBadges(e)}</div>
+            <h1 id="evTitle" tabindex="-1">${esc(e.title)}</h1>
+            ${d.eventType || d.note ? `<p class="ev-sub">${[d.eventType, d.note].filter(Boolean).map(esc).join(' · ')}</p>` : ''}
+            <p class="sr-only">${fmtLong(date)}${e.location ? `, ${esc(e.location)}` : ''}</p>
+          </div>
+          <div class="ev-count" ${left >= 0 ? 'role="timer"' : ''} aria-label="${left < 0 ? 'האירוע התקיים' : left === 0 ? 'האירוע היום' : `האירוע בעוד ${spokenCountdown(date - now)}`}">
+            ${left < 0 ? '<span class="ev-count-big">✓</span><span>התקיים</span>'
+              : left === 0 ? '<span class="ev-count-big">היום!</span>'
+              : `<span class="ev-count-big">${left}</span><span>${left === 1 ? 'יום' : 'ימים'} לזינוק</span>`}
+          </div>
+        </div>
+      </div>
+      <svg class="ev-contours" viewBox="0 0 400 200" preserveAspectRatio="none" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.2">
+        <path d="M-20 160 C60 120 120 180 200 140 S340 90 420 130"/><path d="M-20 130 C70 90 130 150 210 110 S330 60 420 100"/>
+        <path d="M-20 100 C80 60 140 120 220 80 S320 30 420 70"/><path d="M-20 70 C90 30 150 90 230 50 S310 0 420 40"/></g></svg>
+    </header>
+
+    <div class="container ev-body">
+      <ul class="ev-facts" aria-label="עיקרי האירוע">
+        <li><span class="ev-ico" aria-hidden="true">🕘</span><span class="k">מתי</span>
+          <strong>${d.startFrom ? `${esc(d.startFrom)}${d.startTo ? `–${esc(d.startTo)}` : ''}` : fmtShort(date)}</strong>
+          <span>${d.startFrom ? 'חלון זינוקים · ' : ''}${DAYS[date.getDay()]} ${date.getDate()}.${date.getMonth() + 1}</span></li>
+        <li><span class="ev-ico" aria-hidden="true">📍</span><span class="k">איפה</span>
+          <strong>${esc(e.location || d.name || 'יפורסם')}</strong>
+          ${canNavigate(e) ? `<a href="${esc(wazeUrl(e))}" target="_blank" rel="noopener">ניווט לכינוס ב-Waze</a>` : '<span>&nbsp;</span>'}</li>
+        <li><span class="ev-ico" aria-hidden="true">₪</span><span class="k">כמה</span>
+          <strong class="${price || d.price ? '' : 'tbd'}">${price ? `${price} ₪` : d.price ? esc(d.price) : 'יפורסם'}</strong>
+          <span>${price ? `לחברי איגוד${priceOut ? ` · ${priceOut} ₪ לחיצוניים` : ''}` : '&nbsp;'}</span></li>
+        <li class="reg-${reg.state}"><span class="ev-ico" aria-hidden="true">${reg.state === 'open' ? '✍️' : reg.state === 'past' ? '🏁' : '⏳'}</span><span class="k">הרשמה</span>
+          <strong>${reg.state === 'open' && reg.ms ? `נסגרת בעוד ${spokenCountdown(reg.ms)}` : esc(reg.title)}</strong>
+          <span>${reg.state === 'open' && reg.ms ? 'הרשמה מוקדמת' : '&nbsp;'}</span></li>
+      </ul>
+
+      <div class="ev-grid">
+        <div class="ev-main">
+          ${loading ? '<section class="ev-card" role="status"><p class="muted">טוען את פרטי התחרות מאתר האיגוד…</p></section>' : ''}
+          ${timelineHtml(d, e)}
+          ${coursesHtml(d.courses)}
+          ${d.description?.length || e.summary ? `<section class="ev-card" aria-labelledby="ab-h"><h2 id="ab-h">על האירוע</h2>
+            ${(d.description?.length ? d.description : [e.summary]).map((p) => `<p>${linkify(p)}</p>`).join('')}</section>` : ''}
+          ${hasGeo || d.directions?.length ? `<section class="ev-card" aria-labelledby="go-h"><h2 id="go-h">איך מגיעים</h2>
+            ${hasGeo ? `<iframe class="ev-osm" title="מפת נקודת הכינוס של ${esc(e.title)}" loading="lazy" src="https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${d.lat},${d.lng}"></iframe>` : ''}
+            ${(d.directions || []).map((p) => `<p>${linkify(p)}</p>`).join('')}
+            <div class="ev-actions">${canNavigate(e) ? `<a class="btn" href="${esc(wazeUrl(e))}" target="_blank" rel="noopener">🚗 Waze</a><a class="btn ghost" href="${esc(mapsUrl(e))}" target="_blank" rel="noopener">Google Maps</a>` : ''}</div>
+          </section>` : ''}
+        </div>
+
+        <aside class="ev-side" aria-label="הרשמה ופרטים נוספים">
+          <section class="ev-card ev-reg reg-${reg.state}" aria-labelledby="rg-h">
+            <h2 id="rg-h">${esc(reg.title)}</h2>
+            ${reg.ms ? `<div class="reg-count" role="timer" aria-label="ההרשמה המוקדמת נסגרת בעוד ${spokenCountdown(reg.ms)}">${countdownParts(reg.ms).map(([n, l]) => `<div><strong>${n}</strong><span>${l}</span></div>`).join('')}</div>` : ''}
+            ${reg.text ? `<p>${esc(reg.text)}</p>` : ''}
+            ${d.onsite && reg.state === 'open' ? `<p class="muted small">הרשמה במקום: ${esc(d.onsite)}</p>` : ''}
+            <a class="btn btn-xl" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(reg.cta)} ↗</a>
+            <div class="ev-actions">
+              <button type="button" class="btn ghost" data-ics="${esc(e.id)}">📅 ליומן</button>
+              <button type="button" class="btn ghost" data-share="${esc(e.id)}">🔗 שיתוף</button>
+            </div>
+          </section>
+
+          ${d.map ? `<section class="ev-card" aria-labelledby="mp-h"><h2 id="mp-h">מפת הניווט</h2>
+            ${d.map.image ? `<a class="ev-mapimg" href="${esc(d.map.image)}" target="_blank" rel="noopener"><img src="${esc(d.map.image)}" alt="תצוגה מקדימה של מפת ${esc(d.map.name)}" loading="lazy" onerror="this.parentNode.remove()"></a>` : ''}
+            <p><strong>${d.map.url ? `<a href="${esc(d.map.url)}" target="_blank" rel="noopener">${esc(d.map.name)}</a>` : esc(d.map.name)}</strong></p>
+            <ul class="chips-static">${[d.map.terrain && `שטח ${d.map.terrain}`, d.map.scale && `קנ"מ ${d.map.scale}`, d.map.year && `מופה ${d.map.year}`].filter(Boolean).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+          </section>` : ''}
+
+          ${d.club || d.planner || d.director || d.contact ? `<section class="ev-card" aria-labelledby="pp-h"><h2 id="pp-h">מי מארגן</h2><dl class="ev-people">
+            ${d.club ? `<dt>מועדון</dt><dd>${d.club.url ? `<a href="${esc(d.club.url)}" target="_blank" rel="noopener">${esc(d.club.name)}</a>` : esc(d.club.name)}</dd>` : ''}
+            ${d.director ? `<dt>ניהול</dt><dd>${esc(d.director)}</dd>` : ''}
+            ${d.planner ? `<dt>תכנון מסלולים</dt><dd>${esc(d.planner)}</dd>` : ''}
+            ${d.contact ? `<dt>יצירת קשר</dt><dd>${phoneLink(d.contact)}</dd>` : ''}
+          </dl></section>` : ''}
+
+          ${d.attachments?.length ? `<section class="ev-card" aria-labelledby="fl-h"><h2 id="fl-h">קבצים</h2><ul class="ev-files">
+            ${d.attachments.map((a) => `<li><a href="${esc(a.url)}" target="_blank" rel="noopener">📎 ${esc(a.name)}</a></li>`).join('')}</ul></section>` : ''}
+
+          ${threads.length ? `<section class="ev-card" aria-labelledby="fr-h"><h2 id="fr-h">מדברים על זה בפורום</h2><ul class="ev-threads">
+            ${threads.map((t) => `<li><a href="#forum/${esc(t.id)}">${esc(t.title)}</a><span class="muted small">${esc(t.author)} · ${t.replyCount} תגובות · ${relTime(t.lastActivity)}</span></li>`).join('')}</ul></section>` : ''}
+        </aside>
+      </div>
+    </div>
+
+    <nav class="ev-dock" aria-label="פעולות מהירות">
+      <a class="dock-main" href="${esc(e.url)}" target="_blank" rel="noopener">${reg.state === 'open' ? 'להרשמה' : 'לאתר האיגוד'}</a>
+      ${canNavigate(e) ? `<a href="${esc(wazeUrl(e))}" target="_blank" rel="noopener" aria-label="ניווט ב-Waze">🚗</a>` : ''}
+      <button type="button" data-ics="${esc(e.id)}" aria-label="הוסף ליומן">📅</button>
+      <button type="button" data-share="${esc(e.id)}" aria-label="שיתוף">🔗</button>
+    </nav>`;
+  }
+
+  async function showEvent(id) {
+    const box = $('#eventPage');
     const e = state.events.find((x) => x.id === id);
-    if (!e) return;
-    renderDialog(e);
-    const dlg = $('#eventDialog');
-    if (!dlg.open) {
-      dlg.showModal();
-      dlg.addEventListener('close', () => opener?.isConnected && opener.focus(), { once: true });
+    if (!e) {
+      box.innerHTML = state.events.length
+        ? '<div class="container"><p class="empty">האירוע לא נמצא. <a href="#upcoming">לכל האירועים</a></p></div>'
+        : '<div class="container"><p class="muted" role="status">טוען…</p></div>';
+      return;
     }
+    document.title = `${e.title} – ניווט ישראל`;
+    box.innerHTML = eventPageHtml(e);
+    $('#evTitle')?.focus({ preventScroll: true });
     if (!e.details && e.nivutId) {
       try {
         e.details = await loadJson(`api/event?id=${encodeURIComponent(e.nivutId)}`);
         if (e.details.startFrom && !e.time) e.time = e.details.startFrom;
-        if (dlg.open) renderDialog(e);
-      } catch {
-        const box = $('#dlgDetails');
-        if (box) box.innerHTML = '<p class="muted">לא ניתן לטעון כרגע את פרטי האירוע. אפשר לעבור לדף האירוע באתר האיגוד.</p>';
-      }
+      } catch { e.details = null; e.nivutId = null; }
+      if (location.hash === `#event/${id}`) box.innerHTML = eventPageHtml(e);
     }
+  }
+
+  async function shareEvent(e) {
+    const url = `${location.origin}${location.pathname}#event/${encodeURIComponent(e.id)}`;
+    const text = `${e.title} · ${fmtLong(evDate(e))}`;
+    try {
+      if (navigator.share) { await navigator.share({ title: e.title, text, url }); return; }
+      await navigator.clipboard.writeText(url);
+      toast('הקישור הועתק');
+    } catch { /* cancelled */ }
+  }
+
+  function toast(msg) {
+    const t = $('#toast');
+    t.textContent = msg;
+    t.hidden = false;
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => { t.hidden = true; }, 2500);
   }
 
   document.addEventListener('click', (ev) => {
     const openBtn = ev.target.closest('[data-open]');
-    if (openBtn) { openEvent(openBtn.dataset.open, openBtn); return; }
+    if (openBtn) { location.hash = `event/${encodeURIComponent(openBtn.dataset.open)}`; return; }
     const icsBtn = ev.target.closest('[data-ics]');
     if (icsBtn) {
       const e = state.events.find((x) => x.id === icsBtn.dataset.ics);
-      if (e) downloadIcs([e], `${e.date}-${e.id}.ics`);
+      if (e) { downloadIcs([e], `${e.date}-${e.id}.ics`); toast('קובץ היומן ירד'); }
+      return;
+    }
+    const shareBtn = ev.target.closest('[data-share]');
+    if (shareBtn) {
+      const e = state.events.find((x) => x.id === shareBtn.dataset.share);
+      if (e) shareEvent(e);
     }
   });
 
@@ -452,7 +643,7 @@
     $('#topicList').innerHTML = threads.length ? threads.map((t) => {
       const ev = matchEvent(t.title);
       return `<li class="topic${t.announcement || t.pinned ? ' featured' : ''}">
-        <details>
+        <details id="thread-${esc(t.id)}">
           <summary>
             <div class="topic-head">
               <div class="badges">${t.announcement ? '<span class="pill strong">הכרזה</span>' : ''}${t.pinned ? '<span class="pill">📌 נעוץ</span>' : ''}</div>
@@ -471,6 +662,14 @@
         </details>
       </li>`;
     }).join('') : `<li class="empty">${q ? 'לא נמצאו נושאים.' : 'אין נושאים להצגה.'}</li>`;
+  }
+
+  function openThread(id) {
+    const el = document.getElementById(`thread-${id}`);
+    if (!el) return;
+    el.open = true;
+    el.scrollIntoView({ block: 'start' });
+    el.querySelector('summary').focus({ preventScroll: true });
   }
 
   function initForum() {
@@ -526,6 +725,9 @@
       $('#filters').hidden = true;
       $('#yearView').innerHTML = '';
       initForum();
+      if (location.hash.startsWith('#event/')) {
+        $('#eventPage').innerHTML = `<div class="container"><p class="empty">לא ניתן לטעון כרגע את האירוע. <a href="${off}" rel="noopener">ללוח הרשמי</a></p></div>`;
+      }
       return;
     }
     state.meta = events;
@@ -540,6 +742,7 @@
     renderList();
     initAnnual();
     initForum();
+    if (/^#(event|forum)\//.test(location.hash)) route();
   }
 
   boot();
