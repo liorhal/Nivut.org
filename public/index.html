@@ -31,6 +31,7 @@
       <button type="button" class="people-btn" id="peopleBtn" aria-haspopup="dialog">
         <span class="track-ico" aria-hidden="true">👥</span><span class="people-label">ההגדרות שלי</span> <span class="people-count" id="peopleCount"></span>
       </button>
+      <button type="button" class="icon-btn help-btn" id="helpBtn" aria-haspopup="dialog" aria-label="עזרה: מה מופיע בכרטיס ניווט">?</button>
       <div class="a11y-tools" role="group" aria-label="הגדרות תצוגה ונגישות">
         <button type="button" class="icon-btn" id="fontDown" aria-label="הקטן גופן">א-</button>
         <button type="button" class="icon-btn" id="fontUp" aria-label="הגדל גופן">א+</button>
@@ -156,6 +157,16 @@
       <button type="button" class="icon-btn" id="lbPrev" aria-label="התמונה הקודמת">›</button>
       <span id="lbCount" aria-live="polite"></span>
       <button type="button" class="icon-btn" id="lbNext" aria-label="התמונה הבאה">‹</button>
+    </div>
+  </dialog>
+  <dialog id="helpDialog" class="help-dialog" aria-labelledby="helpTitle">
+    <form method="dialog" class="dlg-x"><button class="icon-btn" aria-label="סגירה">✕</button></form>
+    <h2 id="helpTitle">איך קוראים כרטיס ניווט</h2>
+    <p class="muted small">כרטיס לדוגמה עם כל הנתונים שיכולים להופיע בו. הפרטים בכרטיס מומצאים.</p>
+    <div class="hh-stage" id="hhStage">
+      <svg class="hh-arrows" id="hhArrows" aria-hidden="true"></svg>
+      <ol class="top4 hh-card" id="hhCard" inert aria-hidden="true"></ol>
+      <ol class="hh-notes" id="hhNotes"></ol>
     </div>
   </dialog>
   <dialog id="peopleDialog" class="people-dialog" aria-labelledby="peopleTitle">

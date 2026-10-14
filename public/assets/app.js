@@ -883,6 +883,113 @@
     decorateTopPeople();
   }
 
+  /* ---------- Help: a sample card with every field, explained with arrows ---------- */
+  const SAMPLE_LOGO = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#0b3d2e"/><path d="M50 12 62 50 50 88 38 50z" fill="#f26a1b"/><path d="M50 12 62 50H38z" fill="#fff"/><circle cx="50" cy="50" r="6" fill="#0b3d2e"/></svg>');
+  const HELP_NOTES = [
+    ['.ppl-star', 'כוכב: כמה מ"האנשים שלי" רשומים. מעבר או הקשה מציגים את השמות ושעות הזינוק.'],
+    ['.league-pill', 'אירוע ליגה (גם פס זהב בצד הכרטיס).'],
+    ['.mine-pill', 'המועדון שלי מארגן את האירוע.'],
+    ['.badges .tag', 'סוג הניווט: רגלי או רכוב.'],
+    ['.top-club', 'המועדון המארגן.'],
+    ['.hud-logo', 'לוגו המועדון המארגן.'],
+    ['.top-date', 'תאריך ויום בשבוע.'],
+    ['.top-meta a', 'שם האירוע. לחיצה פותחת את עמוד התחרות.'],
+    ['.start-time', 'שעת הזינוק הראשונה.'],
+    ['.top-loc', 'מקום הכינוס.'],
+    ['.dist', 'מרחק בקו אווירי מהמיקום שלי (נקבע ב"ההגדרות שלי").'],
+    ['.cd', 'ספירה לאחור עד סגירת ההרשמה המוקדמת.'],
+    ['.top-cta', 'הרשמה באתר האיגוד. לא מוצג כשההרשמה סגורה.'],
+  ];
+  function sampleEvent() {
+    const day = new Date(); day.setDate(day.getDate() + 9);
+    const reg = new Date(); reg.setDate(reg.getDate() + 4); reg.setHours(23, 59, 0, 0);
+    const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return {
+      id: 'help-sample', title: 'ליגת ניווט – יער בן שמן', location: 'יער בן שמן', time: '09:00', date: iso(day),
+      disciplines: ['foot'], tags: ['league'], clubName: 'מועדון לדוגמה', clubId: 'help-sample', url: '#',
+      details: { registrationDeadline: `${iso(reg)}T23:59`, lat: 31.95, lng: 34.93, club: { pageLogo: SAMPLE_LOGO } },
+    };
+  }
+  function renderHelpCard() {
+    // The sample shows every field, so it borrows "my club" and a location just for this render.
+    const saved = { myClub: state.myClub, home: state.home };
+    state.myClub = 'help-sample';
+    state.home = state.home || { lat: 32.085, lng: 34.781 };
+    try { $('#hhCard').innerHTML = hudCardHtml(sampleEvent(), { tag: 'h3' }); } finally { Object.assign(state, saved); }
+    $('#hhCard .top-bar').insertAdjacentHTML('afterbegin', peopleStarHtml([{ name: 'נועה כהן', start: '09:12' }, { name: 'דני לוי', start: '09:40' }]));
+    tickCountdowns();
+    const card = $('#hhCard .top-card');
+    card.classList.add('has-people');
+    $('#hhNotes').innerHTML = HELP_NOTES.map(([sel, text]) => ({ el: card.querySelector(sel), text }))
+      .filter((n) => n.el && n.el.offsetWidth > 2).map((n, i) => {
+        n.el.dataset.hhNum = i + 1;
+        return `<li data-n="${i + 1}"><span class="hh-num" aria-hidden="true">${i + 1}</span>${esc(n.text)}</li>`;
+      }).join('');
+    $$('#hhCard img').forEach((img) => img.addEventListener('load', layoutHelp));
+    layoutHelp();
+    requestAnimationFrame(layoutHelp);
+  }
+  /** Pins on the card; on wide screens the notes sit beside it with an arrow to each pin. */
+  function layoutHelp() {
+    const stage = $('#hhStage'), svg = $('#hhArrows');
+    if (!stage?.isConnected || !$('#helpDialog').open) return;
+    $$('.hh-pin', stage).forEach((p) => p.remove());
+    const sr = stage.getBoundingClientRect();
+    const wide = stage.clientWidth >= 820;
+    stage.classList.toggle('wide', wide);
+    const cardBox = $('#hhCard').getBoundingClientRect();
+    const items = $$('#hhNotes li').map((li) => {
+      const el = $(`#hhCard [data-hh-num="${li.dataset.n}"]`);
+      const r = el.getBoundingClientRect();
+      // The watermark logo is clipped by the card: aim at its visible part.
+      const b = el.matches('.hud-logo') ? { left: Math.max(r.left, cardBox.left), right: Math.min(r.right, cardBox.right), top: Math.max(r.top, cardBox.top), bottom: Math.min(r.bottom, cardBox.bottom) } : r;
+      const box = { left: b.left - sr.left, right: b.right - sr.left, top: b.top - sr.top, bottom: b.bottom - sr.top };
+      if (!wide) {
+        const pin = document.createElement('span');
+        pin.className = 'hh-pin'; pin.textContent = li.dataset.n; pin.setAttribute('aria-hidden', 'true');
+        pin.style.left = `${box.right}px`; pin.style.top = `${box.top}px`;
+        stage.append(pin);
+      }
+      return { li, box, x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 };
+    });
+    svg.innerHTML = '';
+    if (!wide) { items.forEach(({ li }) => { li.style.cssText = ''; }); return; }
+    const cx = (cardBox.left + cardBox.right) / 2 - sr.left;
+    const colW = Math.min(250, (stage.clientWidth - cardBox.width) / 2 - 36);
+    const sides = { right: [], left: [] };
+    items.forEach((it) => sides[it.x >= cx ? 'right' : 'left'].push(it));
+    let paths = '';
+    for (const [side, list] of Object.entries(sides)) {
+      list.sort((a, b) => a.y - b.y);
+      let bottom = -Infinity;
+      for (const it of list) {
+        it.li.style.width = `${colW}px`;
+        it.li.style[side === 'right' ? 'right' : 'left'] = '0px';
+        it.li.style[side === 'right' ? 'left' : 'right'] = 'auto';
+        const h = it.li.offsetHeight;
+        const top = Math.max(it.y - h / 2, bottom + 8, 0);
+        it.li.style.top = `${top}px`;
+        bottom = top + h;
+        const lx = side === 'right' ? stage.clientWidth - colW - 6 : colW + 6;
+        const ly = top + h / 2;
+        const tx = side === 'right' ? it.box.right + 2 : it.box.left - 2, ty = it.y; // the element's near edge
+        const mx = side === 'right' ? (cardBox.right - sr.left) + 14 : (cardBox.left - sr.left) - 14;
+        paths += `<path d="M${lx} ${ly} L${mx} ${ly} L${tx} ${ty}" marker-end="url(#hhHead)"/>`;
+      }
+    }
+    stage.style.minHeight = `${Math.max(cardBox.height, ...items.map((it) => it.li.offsetTop + it.li.offsetHeight))}px`;
+    svg.setAttribute('viewBox', `0 0 ${stage.clientWidth} ${stage.clientHeight}`);
+    svg.innerHTML = `<defs><marker id="hhHead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker></defs>${paths}`;
+  }
+  function initHelp() {
+    const dlg = $('#helpDialog');
+    let opener = null;
+    $('#helpBtn').addEventListener('click', (e) => { opener = e.currentTarget; dlg.showModal(); renderHelpCard(); });
+    dlg.addEventListener('close', () => opener?.isConnected && opener.focus());
+    dlg.addEventListener('click', (ev) => { if (ev.target === dlg) dlg.close(); });
+    addEventListener('resize', () => dlg.open && layoutHelp());
+  }
+
   function chipGroup(container, entries, set) {
     container.hidden = entries.length < 2;
     entries.forEach(([key, label, color]) => {
@@ -1174,6 +1281,7 @@
     initLightbox();
     initTooltip();
     initPeople();
+    initHelp();
     initDiscFilter();
     window.addEventListener('hashchange', route);
     route();
