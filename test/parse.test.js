@@ -228,3 +228,16 @@ test('club logos: from the club page, with known ids for the site logo files', (
   assert.equal(L.parseClubLogo("<img src='../images/clubs/tec.jpg'>", 'https://nivut.org.il/Club/7'), 'https://nivut.org.il/images/clubs/tec.jpg');
   assert.equal(L.parseClubLogo('<img src="/x.png">', 'https://nivut.org.il/Club/7'), '');
 });
+
+test('early-registration deadline: meta, other labels, free text', () => {
+  const base = fx('event.html');
+  assert.equal(L.parseEventPage(base, 'https://nivut.org.il/3379/Info').registrationDeadline, '2026-10-16T18:00');
+  const noMeta = base.replace(/<meta itemprop="availabilityEnds"[^>]*>/, '');
+  const withRow = noMeta.replace('<tr><td>הרשמה במקום', '<tr><td>סיום הרשמה מוקדמת</td><td colspan="2">15/10/2026 20:00</td></tr><tr><td>הרשמה במקום');
+  assert.equal(L.parseEventPage(withRow, 'https://nivut.org.il/3379/Info').registrationDeadline, '2026-10-15T20:00');
+  const dateOnly = noMeta.replace('<tr><td>הרשמה במקום', '<tr><td>הרשמה עד</td><td colspan="2">14/10/2026</td></tr><tr><td>הרשמה במקום');
+  assert.equal(L.parseEventPage(dateOnly, 'https://nivut.org.il/3379/Info').registrationDeadline, '2026-10-14T23:59');
+  const sentence = noMeta.replace('<p>אימון ניווט מקומי.</p>', '<p>ההרשמה המוקדמת עד יום רביעי 14/10 בשעה 20:00.</p>');
+  assert.equal(L.parseEventPage(sentence, 'https://nivut.org.il/3379/Info').registrationDeadline, '2026-10-14T20:00');
+  assert.equal(L.parseEventPage(noMeta, 'https://nivut.org.il/3379/Info').registrationDeadline, '');
+});

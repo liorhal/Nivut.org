@@ -371,12 +371,13 @@
     return dl ? dl > new Date() : true;
   };
 
-  function regBlock(e, size) {
+  /** Registration status; with a countdown, the register button (cta) sits inside it. */
+  function regBlock(e, size, cta = '') {
     const dl = regDeadline(e);
     if (e.source === 'closed-area') return '<p class="reg-line reg-soon"><span aria-hidden="true">⏳</span> הרשמה טרם נפתחה</p>';
     if (!dl) return e.details ? '<p class="reg-line">הרשמה באתר האיגוד</p>' : '';
     if (dl <= new Date()) return `<p class="reg-line reg-closed"><span aria-hidden="true">🔒</span> ההרשמה המוקדמת נסגרה${e.details.onsite ? ' · <strong>אפשר להירשם במקום</strong>' : ''}</p>`;
-    return `<div class="reg-cd"><p class="reg-cd-label">הרשמה מוקדמת נסגרת בעוד</p>${countdownHtml(dl, size)}</div>`;
+    return `<div class="reg-cd${cta ? ' has-cta' : ''}"><div class="reg-cd-main"><p class="reg-cd-label">הרשמה מוקדמת נסגרת בעוד</p>${countdownHtml(dl, size)}</div>${cta}</div>`;
   }
 
   /* ---------- Event page (#event/<id>) ---------- */
@@ -743,8 +744,12 @@
           </div>
         </div>
         ${lead && e.summary ? `<p class="lead-summary">${esc(e.summary)}</p>` : ''}
-        ${regBlock(e, 'cd-card')}
-        ${regOpen(e) ? `<p class="top-foot"><span>${inDays(left)}</span><a class="top-cta" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד">הרשמה ↗</a></p>` : ''}
+        ${(() => {
+          const cta = `<a class="top-cta" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד">הרשמה ↗</a>`;
+          const counting = regDeadline(e) && regDeadline(e) > new Date();
+          return counting ? regBlock(e, 'cd-card', cta)
+            : `${regBlock(e, 'cd-card')}${regOpen(e) ? `<p class="top-foot"><span>${inDays(left)}</span>${cta}</p>` : ''}`;
+        })()}
       </li>`;
     }).join('');
     tickCountdowns();
@@ -823,13 +828,13 @@
             ${closed ? '<li class="muted">שטח סגור לקראת תחרות · פרטים בקרוב</li>' : ''}
           </ul>
           ${e.summary ? `<p class="summary">${esc(e.summary)}</p>` : ''}
-          ${regDeadline(e) ? regBlock(e, 'cd-inline') : ''}
+          ${regDeadline(e) ? regBlock(e, 'cd-inline', regDeadline(e) > now ? `<a class="top-cta" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד">הרשמה ↗</a>` : '') : ''}
         </div>
         ${e.image ? `<img class="thumb" src="${esc(e.image)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
         <div class="card-actions">
           <button type="button" class="btn ghost" data-ics="${esc(e.id)}" aria-label="הוסף ליומן: ${esc(e.title)}">📅 ליומן</button>
           ${canNavigate(e) ? `<a class="btn ghost" href="${esc(wazeUrl(e))}" target="_blank" rel="noopener" aria-label="ניווט ב-Waze אל ${esc(e.location || e.title)}">🚗 Waze</a>` : ''}
-          ${regOpen(e) ? `<a class="btn ghost" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד">↗ הרשמה</a>` : ''}
+          ${regOpen(e) && !(regDeadline(e) && regDeadline(e) > now) ? `<a class="btn ghost" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד">↗ הרשמה</a>` : ''}
         </div>
       </article></li>`;
   }
