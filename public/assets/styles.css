@@ -552,7 +552,7 @@ main:focus { outline: none; }
 .legend .di { --s: 20px; }
 .ev-head .tag .di { box-shadow: 0 0 0 2px rgb(255 255 255 / .5); }
 .top-date { position: relative; }
-.top-di { display: none; position: absolute; inset-inline-start: -7px; bottom: -7px; display: flex; }
+.top-di { display: none; position: absolute; inset-inline-start: -7px; bottom: -7px; }
 .top-di .di { box-shadow: 0 0 0 2px var(--surface); }
 .top-di .di + .di { margin-inline-start: -5px; }
 .month-card li button { grid-template-columns: 28px 18px 1fr; }
@@ -941,4 +941,24 @@ main:focus { outline: none; }
 @media (max-width: 1000px) and (min-width: 561px) {
   .top4 .top-card:not(.lead) .top-foot { grid-row: auto; }
   .top4 .top-card:not(.lead) .top-bar { grid-row: auto; }
+}
+/* discipline icon on the date: phones only (elsewhere the attribute bar names the discipline) */
+@media (max-width: 560px) { .top-di { display: flex; } }
+
+/* ---------- Club logo watermark at the card's left edge ---------- */
+.hud-logo {
+  position: absolute; z-index: 0; inset-inline-end: 8px; bottom: 8px; width: 120px; height: 120px;
+  display: grid; place-items: center; pointer-events: none; opacity: .16;
+}
+.hud-logo img { max-width: 100%; max-height: 100%; object-fit: contain; mix-blend-mode: multiply; filter: saturate(.9); }
+:root[data-theme="dark"] .hud-logo img { filter: invert(1) hue-rotate(180deg); mix-blend-mode: screen; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hud-logo img { filter: invert(1) hue-rotate(180deg); mix-blend-mode: screen; } }
+:root[data-contrast="high"] .hud-logo { display: none; }
+.top-card > :not(.hud-logo):not(.top-bar) { position: relative; z-index: 1; }
+@media (min-width: 561px) { .top-card > .top-bar { position: relative; z-index: 1; } }
+.top-card.lead .hud-logo { width: 170px; height: 170px; bottom: 16px; inset-inline-end: 16px; opacity: .13; }
+.top-card:not(.lead) .hud-logo { top: 50%; bottom: auto; transform: translateY(-50%); width: 96px; height: 96px; }
+.top-club { font-weight: 800; }
+@media (max-width: 560px) {
+  .hud-logo, .top-card.lead .hud-logo, .top-card:not(.lead) .hud-logo { width: 76px; height: 76px; top: 50%; bottom: auto; transform: translateY(-50%); inset-inline-end: 6px; opacity: .14; }
 }

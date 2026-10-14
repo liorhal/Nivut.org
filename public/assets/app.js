@@ -167,16 +167,24 @@
     const club = clubOf(id) || (name ? clubByName(name) : null);
     const primary = src || club?.logo || fallback;
     fallback = fallback && fallback !== primary ? fallback : (club?.logoAlt && club.logoAlt !== primary ? club.logoAlt : '');
-    const label = name || club?.name || '';
-    const initial = label.replace(/^(מועדון|אס"?א|הפועל)\s+/, '').trim()[0] || '•';
+    if (!primary) return '';
     const alt = fallback && fallback !== primary ? ` data-fallback="${esc(fallback)}"` : '';
-    return `<span class="club-logo ${cls}" aria-hidden="true"><span class="mono">${esc(initial)}</span>${primary ? `<img src="${esc(primary)}" alt="" loading="lazy"${alt} onerror="nivutLogoFail(this)">` : ''}</span>`;
+    return `<span class="club-logo ${cls}" aria-hidden="true"><img src="${esc(primary)}" alt="" loading="lazy"${alt} onerror="nivutLogoFail(this)"></span>`;
   }
   window.nivutLogoFail = (img) => {
     const next = img.dataset.fallback;
-    if (next) { img.removeAttribute('data-fallback'); img.src = next; } else img.remove();
+    // No logo at all: remove the whole logo element (no placeholder).
+    if (next) { img.removeAttribute('data-fallback'); img.src = next; } else (img.closest('.club-logo, .hud-logo') || img).remove();
   };
   const eventClubId = (e) => e.clubId || e.details?.club?.id || clubByName(e.clubName || '')?.id || '';
+  /** Large faded club logo for the card's left edge; vanishes if no image loads. */
+  function watermarkHtml(e) {
+    const club = clubOf(eventClubId(e)) || clubByName(e.clubName || '');
+    const primary = club?.logo || e.details?.club?.pageLogo || '';
+    if (!primary) return '';
+    const alt = [e.details?.club?.pageLogo, club?.logoAlt].find((x) => x && x !== primary) || '';
+    return `<span class="hud-logo" aria-hidden="true"><img src="${esc(primary)}" alt="" loading="lazy"${alt ? ` data-fallback="${esc(alt)}"` : ''} onerror="nivutLogoFail(this)"></span>`;
+  }
   const eventLogo = (e, cls) => logoHtml({ id: eventClubId(e), name: e.clubName, fallback: e.details?.club?.pageLogo }, cls);
   const isMine = (e) => !!state.myClub && eventClubId(e) === state.myClub;
   const isLeague = (e) => (e.tags || []).includes('league');
@@ -716,19 +724,19 @@
       const left = daysBetween(now, d);
       const lead = i === 0;
       return `<li class="top-card${lead ? ' lead' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}">
+        ${watermarkHtml(e)}
         ${lead ? `<div class="lead-band" aria-hidden="true">
           <span class="lb-day">${d.getDate()}</span>
           <span class="lb-mon">${MONTHS[d.getMonth()]}<br>יום ${DAYS[d.getDay()]}</span>
-          <span class="lb-icons">${(e.disciplines || []).map((k) => discIcon(k, 'di-xl')).join('')}</span>
         </div>` : ''}
         <div class="top-bar">
           <div class="badges">${leagueBadge(e)}${mineBadge(e)}${discBadges(e)}</div>
-          ${e.clubName ? `<span class="top-club">${eventLogo(e, 'cl-sm')}<span>${esc(e.clubName)}</span></span>` : ''}
+          ${e.clubName ? `<span class="top-club"><span>${esc(e.clubName)}</span></span>` : ''}
         </div>
         <div class="top-head">
           <div class="top-date" aria-hidden="true"><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span>
             <span class="top-di">${(e.disciplines || []).map((k) => discIcon(k, 'di-sm')).join('')}</span>
-            ${e.clubName ? `<span class="date-club">${eventLogo(e, 'cl-xs')}</span>` : ''}</div>
+</div>
           <div class="top-meta">
             <h2><a href="#event/${encodeURIComponent(e.id)}"><span class="title-flags" aria-hidden="true">${isLeague(e) ? '🏆' : ''}${isMine(e) ? '★' : ''}</span>${esc(e.title)}</a></h2>
             <p class="top-when">${DAYS[d.getDay()]}${e.time ? ` · <strong class="start-time">זינוק ${esc(e.time)}</strong>` : ''}${e.location && e.location !== e.title ? ` · <span class="top-loc">${esc(e.location)}</span>` : ''}<span class="sr-only">, ${fmtLong(d)}</span></p>
