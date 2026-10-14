@@ -502,7 +502,8 @@
     return { state: 'open', title: 'הרשמה באתר האיגוד', text: d.onsite || '', cta: 'להרשמה באתר האיגוד' };
   }
 
-  function timelineHtml(d, e) {
+  /** Race-day diagram; mini = the card version: times only, no "now" marker. */
+  function timelineHtml(d, e, { mini = false } = {}) {
     const s = toMin(d.startFrom), t = toMin(d.startTo), c = toMin(d.cutoff);
     if (s === null) return '';
     // Evenly spaced, not to scale, so labels never collide when times are close together.
@@ -528,6 +529,11 @@
     const now = new Date();
     const isToday = daysBetween(now, evDate(e)) === 0;
     const nowMin = now.getHours() * 60 + now.getMinutes();
+    if (mini) {
+      const said = `זינוקים ${t !== null ? `בין ${fromMin(s)} ל-${fromMin(t)}` : `מ-${fromMin(s)}`}${c !== null ? `, שעת גג ${fromMin(c)}` : ''}`;
+      // Spans only: it sits inside the card's <p class="top-when">.
+      return `<span class="tlm" role="img" aria-label="${said}"><span class="tlm-track" aria-hidden="true">${t !== null ? `<span class="tlm-win" style="inset-inline-start:${pos(s)};width:calc(${pos(t)} - ${pos(s)})"></span>` : ''}${c !== null ? `<span class="tlm-run" style="inset-inline-start:${pos(t ?? s)};width:calc(${pos(c)} - ${pos(t ?? s)})"></span>` : ''}${points.map((p) => `<span class="tlm-tick ${p.cls}" style="inset-inline-start:${pos(p.at)}"></span>`).join('')}</span><span class="tlm-pts" aria-hidden="true">${points.map((p) => `<time class="${p.cls}" style="inset-inline-start:${pos(p.at)}">${fromMin(p.at)}</time>`).join('')}</span></span>`;
+    }
     return `<div class="tl" role="group" aria-label="לוח הזמנים של יום התחרות">
         <div class="tl-track" aria-hidden="true">
           ${t !== null ? `<div class="tl-window" style="inset-inline-start:${pos(s)};width:calc(${pos(t)} - ${pos(s)})"></div>` : ''}
@@ -841,6 +847,7 @@
   /** One event card (the "HUD"): attributes and club on top, date, title, start and place, registration. */
   function hudCardHtml(e, { lead = false, now = new Date(), tag = 'h2' } = {}) {
     const d = evDate(e);
+    const tlMini = e.details && e.source !== 'closed-area' ? timelineHtml(e.details, e, { mini: true }) : '';
     const left = daysBetween(now, d);
       return `<li class="top-card${lead ? ' lead' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}">
         ${watermarkHtml(e)}
@@ -858,7 +865,7 @@
 </div>
           <div class="top-meta">
             <${tag}><a href="#event/${encodeURIComponent(e.id)}"><span class="title-flags" aria-hidden="true">${isLeague(e) ? '🏆' : ''}${isMine(e) ? '⚑' : ''}</span>${esc(e.title)}</a></${tag}>
-            <p class="top-when">${[e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`, e.location && e.location !== e.title ? `<span class="top-loc">${esc(e.location)}${distParen(e)}</span>` : distParen(e).trim()].filter(Boolean).join(' · ')}<span class="sr-only">${e.time || e.location ? ', ' : ''}${fmtLong(d)}</span></p>
+            <p class="top-when">${[tlMini || (e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`), e.location && e.location !== e.title ? `<span class="top-loc">${esc(e.location)}${distParen(e)}</span>` : distParen(e).trim()].filter(Boolean).join(tlMini ? ' ' : ' · ')}<span class="sr-only">${e.time || e.location ? ', ' : ''}${fmtLong(d)}</span></p>
           </div>
         </div>
         ${lead && e.summary ? `<p class="lead-summary">${esc(e.summary)}</p>` : ''}
@@ -887,19 +894,13 @@
   /* ---------- Help: a sample card with every field, explained with arrows ---------- */
   const SAMPLE_LOGO = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#0b3d2e"/><path d="M50 12 62 50 50 88 38 50z" fill="#f26a1b"/><path d="M50 12 62 50H38z" fill="#fff"/><circle cx="50" cy="50" r="6" fill="#0b3d2e"/></svg>');
   const HELP_NOTES = [
-    ['.ppl-star', 'כוכב: כמה מ"האנשים שלי" רשומים. מעבר או הקשה מציגים את השמות ושעות הזינוק.'],
-    ['.league-pill', 'אירוע ליגה (גם פס זהב בצד הכרטיס).'],
-    ['.mine-pill', 'המועדון שלי מארגן את האירוע.'],
-    ['.badges .tag', 'סוג הניווט: רגלי או רכוב.'],
+    ['.ppl-star', 'כמה מהאנשים שלי רשומים (השמות בריחוף או בהקשה).'],
+    ['.badges', 'ליגה, המועדון שלי וסוג הניווט.'],
     ['.top-club', 'המועדון המארגן.'],
-    ['.hud-logo', 'לוגו המועדון המארגן.'],
-    ['.top-date', 'תאריך ויום בשבוע.'],
-    ['.top-meta a', 'שם האירוע. לחיצה פותחת את עמוד התחרות.'],
-    ['.start-time', 'שעת הזינוק הראשונה.'],
-    ['.top-loc', 'מקום הכינוס.'],
-    ['.dist', 'מרחק בקו אווירי מהמיקום שלי (נקבע ב"ההגדרות שלי").'],
-    ['.cd', 'ספירה לאחור עד סגירת ההרשמה המוקדמת.'],
-    ['.top-cta', 'הרשמה באתר האיגוד. לא מוצג כשההרשמה סגורה.'],
+    ['.top-date', 'התאריך.'],
+    ['.tlm', 'זינוק ראשון, זינוק אחרון ושעת גג.'],
+    ['.top-loc', 'המקום והמרחק ממך.'],
+    ['.reg-cd', 'הזמן שנשאר להרשמה מוקדמת, וכפתור הרשמה.'],
   ];
   function sampleEvent() {
     const day = new Date(); day.setDate(day.getDate() + 9);
@@ -908,7 +909,7 @@
     return {
       id: 'help-sample', title: 'ליגת ניווט – יער בן שמן', location: 'יער בן שמן', time: '09:00', date: iso(day),
       disciplines: ['foot'], tags: ['league'], clubName: 'מועדון לדוגמה', clubId: 'help-sample', url: '#',
-      details: { registrationDeadline: `${iso(reg)}T23:59`, lat: 31.95, lng: 34.93, club: { pageLogo: SAMPLE_LOGO } },
+      details: { registrationDeadline: `${iso(reg)}T23:59`, startFrom: '09:00', startTo: '11:00', cutoff: '13:30', lat: 31.95, lng: 34.93, club: { pageLogo: SAMPLE_LOGO } },
     };
   }
   function renderHelpCard() {

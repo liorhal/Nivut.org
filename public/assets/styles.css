@@ -1162,3 +1162,17 @@ main:focus { outline: none; }
 .more-row { display: flex; justify-content: center; margin: 18px 0 6px; }
 .more-btn { font-weight: 800; padding: 10px 22px; }
 .more-row:has(.more-btn[hidden]) { display: none; }
+
+/* Mini race-day diagram on the cards (instead of "start 09:00") */
+.tlm { display: inline-block; position: relative; width: 150px; vertical-align: middle; padding-top: 2px; }
+.tlm-track { display: block; position: relative; height: 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); }
+.tlm-win { position: absolute; top: 0; bottom: 0; border-radius: 999px; background: repeating-linear-gradient(45deg, #16a34a, #16a34a 4px, #22c55e 4px, #22c55e 8px); }
+.tlm-run { position: absolute; top: 2px; bottom: 2px; background: color-mix(in srgb, #f59e0b 60%, transparent); }
+.tlm-tick { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-inline-start: -1px; background: var(--text); border-radius: 1px; }
+.tlm-tick.cutoff { background: #dc2626; }
+.tlm-pts { display: block; position: relative; height: 1.05em; margin-top: 1px; }
+.tlm-pts time { position: absolute; top: 0; transform: translateX(50%); font: 900 .74rem/1.05 var(--num, system-ui); font-variant-numeric: tabular-nums; color: var(--text); white-space: nowrap; }
+.tlm-pts time.cutoff { color: #dc2626; }
+:root[data-theme="dark"] .tlm-pts time.cutoff { color: #f87171; }
+:root[data-contrast="high"] .tlm-win { background: var(--text); }
+.top-when:has(.tlm) { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
