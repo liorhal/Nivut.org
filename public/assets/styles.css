@@ -1547,3 +1547,13 @@ a.info-btn { text-decoration: none; }
   :is(#top4, #eventList, #hhCard) > .top-card.tk .cd.cd-card span { font-size: .7rem; margin: 0; }
   :is(#top4, #eventList, #hhCard) > .top-card.tk .top-cta { padding: 4px 10px; font-size: .78rem; }
 }
+/* Narrow cards: the register button beside the countdown shrinks to its arrow */
+.top-card.tk .tk-body { container-type: inline-size; container-name: tkbody; }
+@container tkbody (max-width: 300px) {
+  .reg-cd .top-cta { width: 34px; height: 34px; padding: 0 !important; display: inline-grid; place-items: center; border-radius: 50%; font-size: 1rem !important; }
+  .reg-cd .top-cta .cta-tx { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+@container tkbody (max-width: 240px) {
+  .reg-cd .reg-cd-main { flex-wrap: wrap !important; }
+  .reg-cd .reg-cd-label { white-space: normal !important; }
+}
