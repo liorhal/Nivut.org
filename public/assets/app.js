@@ -1419,7 +1419,7 @@
     } catch (err) {
       st.classList.add('warn');
       st.innerHTML = `לא ניתן לקרוא כרגע את הדירוג מאתר האיגוד.
-        <details class="diag"><summary>פרטים טכניים</summary><pre dir="ltr">${esc(`GET api/ranking?${q}\n${err.message}`)}</pre></details>`;
+        <details class="diag"><summary>פרטים טכניים</summary><pre dir="ltr">${esc(`GET api/ranking?${q}\n${err.message}${err.diag ? `\n${JSON.stringify(err.diag, null, 2)}` : ''}`)}</pre></details>`;
       if (!rk.data) $('#rkBody').innerHTML = '';
     } finally {
       $('#rkBody').removeAttribute('aria-busy');
@@ -1724,7 +1724,7 @@
   async function loadJson(path) {
     const r = await fetch(path, { cache: 'no-cache' });
     const body = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(body.error || `${path}: ${r.status}`);
+    if (!r.ok) throw Object.assign(new Error(body.error || `${path}: ${r.status}`), { diag: body.diag });
     return body;
   }
 
