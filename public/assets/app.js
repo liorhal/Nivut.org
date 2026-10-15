@@ -1407,6 +1407,14 @@
       renderRkCategories();
       const t = new Date(d.fetchedAt);
       st.textContent = `מתעדכן מאתר האיגוד · עודכן ב-${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
+      if (d.notApplied) {
+        // The association's site did not switch: say so plainly (with the technical details for a bug report).
+        const want = d.notApplied.map((x) => Object.values(x)[0]).join(', ');
+        st.classList.add('warn');
+        st.innerHTML = `אתר האיגוד לא החליף ל-${esc(want)} – מוצג ${esc(d.category.value || 'ברירת המחדל')} ${esc(d.season.value)}.
+          <a href="${esc(d.source)}" target="_blank" rel="noopener">לדירוג באתר האיגוד ↗</a>
+          <details class="diag"><summary>פרטים טכניים</summary><pre dir="ltr">${esc(JSON.stringify(d.diag, null, 2))}</pre></details>`;
+      }
       renderRanking();
     } catch (err) {
       st.classList.add('warn');

@@ -347,3 +347,11 @@ test('ranking page: leagues, selections and a result grid (the real Telerik mark
   assert.deepEqual(m.grids[0].events.map((e) => [e.id, e.name]), [['3146', 'מרחביה'], ['3147', 'קברי המכבים']]);
   assert.deepEqual(m.grids[0].rows[1], { rank: 2, name: 'נווט שני', club: 'מנשה', scores: [851, null], total: 851, ageFactor: 1.1, weighted: 936 });
 });
+
+test('ranking: combo item values come from the RadComboBox client script', () => {
+  const html = `<script>Sys.Application.add_init(function(){$create(Telerik.Web.UI.RadComboBox, {"_postBackReference":"__doPostBack('ctl00$ContentPlaceHolder1$rcbCategory','arguments')","_uniqueId":"ctl00$ContentPlaceHolder1$rcbCategory","clientStateFieldID":"ctl00_ContentPlaceHolder1_rcbCategory_ClientState","itemData":[{"value":"12"},{"value":"13"},{}]}, null, null, $get("ctl00_ContentPlaceHolder1_rcbCategory"));});</script>`;
+  const c = L.comboClientData(html, 'rcbCategory');
+  assert.deepEqual(c.values, ['12', '13', '']);
+  assert.match(c.postBack, /__doPostBack/);
+  assert.deepEqual(L.comboClientData(html, 'DropDownList1').values, []);
+});
