@@ -1418,7 +1418,8 @@
       renderRanking();
     } catch (err) {
       st.classList.add('warn');
-      st.textContent = 'לא ניתן לקרוא כרגע את הדירוג מאתר האיגוד.';
+      st.innerHTML = `לא ניתן לקרוא כרגע את הדירוג מאתר האיגוד.
+        <details class="diag"><summary>פרטים טכניים</summary><pre dir="ltr">${esc(`GET api/ranking?${q}\n${err.message}`)}</pre></details>`;
       if (!rk.data) $('#rkBody').innerHTML = '';
     } finally {
       $('#rkBody').removeAttribute('aria-busy');
