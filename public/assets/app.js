@@ -1082,11 +1082,11 @@
     const fresh = !seenCards.has(e.id);
     const enter = fresh ? ' is-new' : '';
     return `<li class="top-card tk${enter}${lead ? ' lead' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}">
-        <div class="tk-stub"><div class="top-date" aria-hidden="true"><span class="dow">${DAYS[d.getDay()]}</span><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span></div>${kindBadges(e)}<div class="tk-star"></div></div>
+        <div class="tk-stub"><div class="top-date" aria-hidden="true"><span class="dow">${DAYS[d.getDay()]}</span><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span></div><div class="tk-star"></div></div>
         <span class="tk-notch t" aria-hidden="true"></span><span class="tk-notch b" aria-hidden="true"></span>
         <div class="tk-body">
           ${watermarkHtml(e)}
-          <${tag}><a href="#event/${encodeURIComponent(e.id)}" title="${esc(e.title)}">${esc(e.title)}</a></${tag}>
+          <div class="tk-head"><${tag}><a href="#event/${encodeURIComponent(e.id)}" title="${esc(e.title)}">${esc(e.title)}</a></${tag}>${kindBadges(e)}</div>
           ${e.clubName || isMine(e) ? `<p class="tk-club">${e.clubName ? `<span class="tk-club-name">${esc(e.clubName)}</span>` : ''}${mineBadge(e)}</p>` : ''}
           <hr class="tk-sep" aria-hidden="true">
           <p class="top-when">${[!tlMini && e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`,
