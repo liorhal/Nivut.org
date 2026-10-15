@@ -252,11 +252,19 @@
   const isLeague = (e) => (e.tags || []).includes('league');
   const mineBadge = (e) => (isMine(e) ? '<span class="pill mine-pill">⚑<span class="mine-tx"> המועדון שלי</span></span>' : '');
   /** League / championship, under the date on the ticket card's stub. */
+  // Championship, sprint and relay only when the event's own text says so (name, note under it, description).
+  const ownText = (e) => [e.fullTitle || e.title, e.details?.note, ...(e.details?.description || [])].filter(Boolean).join(' ');
   const kindBadges = (e) => {
-    const kinds = [isLeague(e) && ['league', 'ליגה'], (e.tags || []).includes('champ') && ['champ', 'אליפות']].filter(Boolean);
-    return kinds.length ? `<div class="tk-kind">${kinds.map(([k, t]) => `<span class="tk-kind-${k}"><span aria-hidden="true">🏆</span> ${t}</span>`).join('')}</div>` : '';
+    const t = ownText(e);
+    const kinds = [
+      isLeague(e) && ['league', 'ליגה'],
+      /אליפו?ת/.test(t) && ['champ', 'אליפות'],
+      /ספרינט/.test(t) && ['sprint', 'ספרינט'],
+      /שליחים/.test(t) && ['relay', 'שליחים'],
+    ].filter(Boolean);
+    return kinds.length ? `<div class="tk-kind">${kinds.map(([k, label]) => `<span class="tk-kind-${k}">${label}</span>`).join('')}</div>` : '';
   };
-  const leagueBadge = (e) => (isLeague(e) ? '<span class="pill league-pill"><span aria-hidden="true">🏆</span> ליגה</span>' : '');
+  const leagueBadge = (e) => (isLeague(e) ? '<span class="pill league-pill">ליגה</span>' : '');
 
   function updateTrackButtons() {
     const c = clubOf(state.myClub);
@@ -384,6 +392,8 @@
       return;
     }
     const yes = state.people.length ? registeredPeople(data.participants) : [];
+    // Registered: the top box shows my registrations instead of the countdown and the register button.
+    $('#ev-reg')?.classList.toggle('is-registered', yes.length > 0);
     if (state.people.length) {
       set(mine2, yes.length
         ? `<span class="reg-mine-k"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.4l-6.1 3.4 1.4-6.8-5.1-4.7 6.9-.8z"/></svg>ההרשמות שלי</span>
@@ -454,7 +464,7 @@
         const hits = registeredPeople(data?.participants);
         if (!hits.length) return;
         cards.filter(([c, cid]) => cid === id && c.isConnected && !c.querySelector('.ppl-star')).forEach(([c]) => {
-          c.classList.add('has-people');
+          c.classList.add('has-people', 'is-registered');
           (c.querySelector('.tk-star') || c.querySelector('.top-bar'))?.insertAdjacentHTML('afterbegin', peopleStarHtml(hits));
         });
       });
@@ -1111,8 +1121,8 @@
   const SAMPLE_LOGO = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#0b3d2e"/><path d="M50 12 62 50 50 88 38 50z" fill="#f26a1b"/><path d="M50 12 62 50H38z" fill="#fff"/><circle cx="50" cy="50" r="6" fill="#0b3d2e"/></svg>');
   const HELP_NOTES = [
     ['.top-date', 'תאריך וסוג הניווט: ירוק = רגלי, כחול = רכוב.'],
-    ['.ppl-star', 'האם אני רשום, וזמני הזינוק (השמות בריחוף או בהקשה).'],
-    ['.tk-kind', 'מאפייני התחרות – ליגה / אליפות.'],
+    ['.ppl-star', 'האם אני רשום, וזמני הזינוק (השמות בריחוף או בהקשה). כשאני רשום, ההרשמה לא מוצגת בכרטיס.'],
+    ['.tk-kind', 'מאפייני התחרות – ליגה, אליפות, ספרינט, שליחים.'],
     ['.top-club', 'המועדון המארגן.'],
     ['.dist', 'המרחק ממך, ו־Waze לנקודת הכינוס.'],
     ['.tlm', 'זינוק ראשון, זינוק אחרון ושעת גג.'],

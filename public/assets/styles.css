@@ -1804,3 +1804,10 @@ a.info-btn { text-decoration: none; }
 @media (max-width: 560px) { .top-card.tk .tk-kind > span { padding: 1px 6px; font-size: .68rem; } }
 .top-card.tk .tk-stub:has(.tk-kind) { justify-content: flex-start; }
 .top-card.tk .tk-stub:has(.tk-kind) .tk-star { margin-top: auto; }
+
+/* registered: no early-registration countdown and no register button (the event page's full section keeps them) */
+#ev-reg.is-registered .reg-when, #ev-reg.is-registered .reg-actions .btn { display: none; }
+:is(#top4, #eventList) > .top-card.is-registered :is(.reg-cd, .top-foot) { display: none; }
+.top-card.tk .tk-kind > .tk-kind-sprint { background: #e0f2fe; color: #075985; }
+.top-card.tk .tk-kind > .tk-kind-relay { background: #ede9fe; color: #5b21b6; }
+.top-card.tk .tk-kind > .tk-kind-champ { background: #fff; color: #9a3412; }
