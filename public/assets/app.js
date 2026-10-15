@@ -1118,7 +1118,7 @@
     const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     return {
       id: 'help-sample', title: 'יער בן שמן', location: 'יער בן שמן', time: '09:00', date: iso(day),
-      disciplines: ['foot'], tags: ['league'], clubName: 'מועדון לדוגמה', clubId: 'help-sample', url: '#',
+      disciplines: ['foot'], tags: ['league'], clubName: 'חבל מודיעין', clubId: 'help-sample', url: '#',
       details: { description: ['אימון לכל הרמות, מתאים גם למתחילים.'], registrationDeadline: `${iso(reg)}T23:59`, startFrom: '09:00', startTo: '11:00', cutoff: '13:30', lat: 31.95, lng: 34.93, club: { pageLogo: SAMPLE_LOGO } },
     };
   }
