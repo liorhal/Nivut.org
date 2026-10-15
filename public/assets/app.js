@@ -114,6 +114,7 @@
     if (view !== 'event') state.lastView = view;
     window.scrollTo(0, 0);
     if (view === 'event') { showEvent(param); return; }
+    if (view === 'forum') markForumSeen();
     if (view === 'forum' && param) { openThread(param); return; }
     if (view === 'ranking') showRanking();
     if (name) $('#main').focus({ preventScroll: true });
@@ -1685,6 +1686,29 @@
     return html;
   };
 
+  /* New in the forum since the last visit: threads and replies after the time the forum was last opened. */
+  const forumSeen = { prev: store.get('forumSeen', null), onlyNew: false };
+  const isNewAt = (t) => !!(forumSeen.prev && t && t > forumSeen.prev);
+  const newReplies = (t) => t.replies.filter((r) => isNewAt(r.postedAt)).length;
+  const isNewThread = (t) => isNewAt(t.postedAt) || newReplies(t) > 0 || (!t.replies.length && isNewAt(t.lastActivity));
+  function forumBadge() {
+    const tab = $('.tabs a[data-view="forum"]');
+    const f = state.forum;
+    const n = f?.threads && location.hash.split('/')[0] !== '#forum' ? f.threads.filter(isNewThread).length : 0;
+    let b = $('.tab-new', tab);
+    if (!n) { b?.remove(); tab.removeAttribute('aria-label'); return; }
+    if (!b) { b = document.createElement('span'); b.className = 'tab-new'; b.dir = 'ltr'; b.setAttribute('aria-hidden', 'true'); tab.append(b); }
+    b.textContent = n > 9 ? '9+' : n;
+    tab.setAttribute('aria-label', `פורום – ${n} נושאים עם הודעות חדשות`);
+  }
+  /** Opening the forum: what is new is shown against the previous visit, and this visit becomes the last one. */
+  function markForumSeen() {
+    const now = new Date().toISOString();
+    if (!forumSeen.marked) { forumSeen.prev = store.get('forumSeen', null); forumSeen.marked = true; }
+    store.set('forumSeen', now);
+    forumBadge();
+  }
+
   function renderForum() {
     const f = state.forum;
     if (!f || f.error) {
@@ -1692,7 +1716,16 @@
       return;
     }
     const q = state.forumQ.toLowerCase();
-    const threads = f.threads.filter((t) => !q || [t.title, t.author, ...t.body, ...t.replies.flatMap((r) => [r.author, ...r.body])].join(' ').toLowerCase().includes(q));
+    const fresh = f.threads.filter(isNewThread);
+    const bar = $('#forumNew');
+    bar.hidden = !fresh.length;
+    if (!fresh.length) forumSeen.onlyNew = false;
+    if (fresh.length) {
+      const since = new Date(forumSeen.prev);
+      bar.innerHTML = `<span><span class="new-dot" aria-hidden="true"></span><strong>${fresh.length}</strong> ${fresh.length === 1 ? 'נושא עם הודעות חדשות' : 'נושאים עם הודעות חדשות'} מאז הביקור הקודם (<bdi>${since.getDate()}.${since.getMonth() + 1}</bdi> בשעה <bdi>${since.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</bdi>)</span>
+        <button type="button" class="chip" id="forumOnlyNew" aria-pressed="${forumSeen.onlyNew}">${forumSeen.onlyNew ? 'הצג הכול' : 'הצג רק חדשות'}</button>`;
+    }
+    const threads = f.threads.filter((t) => !forumSeen.onlyNew || isNewThread(t)).filter((t) => !q || [t.title, t.author, ...t.body, ...t.replies.flatMap((r) => [r.author, ...r.body])].join(' ').toLowerCase().includes(q));
     if (!f.threads.length) {
       $('#topicList').innerHTML = `<li class="empty">לא נמצאו כרגע הודעות בפורום.
         <a href="${esc(f.source || state.links.forum || '#')}" target="_blank" rel="noopener">לפורום באתר האיגוד ↗</a>
@@ -1701,11 +1734,13 @@
     }
     $('#topicList').innerHTML = threads.length ? threads.map((t) => {
       const ev = matchEvent(t.title);
-      return `<li class="topic${t.announcement || t.pinned ? ' featured' : ''}">
+      const nr = newReplies(t), nt = isNewAt(t.postedAt);
+      const fresh1 = nt || nr > 0 || isNewThread(t);
+      return `<li class="topic${t.announcement || t.pinned ? ' featured' : ''}${fresh1 ? ' is-new' : ''}">
         <details id="thread-${esc(t.id)}">
           <summary>
             <div class="topic-head">
-              <div class="badges">${t.announcement ? '<span class="pill strong">הכרזה</span>' : ''}${t.pinned ? '<span class="pill">📌 נעוץ</span>' : ''}</div>
+              <div class="badges">${nt ? '<span class="pill new">חדש</span>' : nr ? `<span class="pill new">${nr === 1 ? 'תגובה חדשה' : `${nr} תגובות חדשות`}</span>` : fresh1 ? '<span class="pill new">עדכון</span>' : ''}${t.announcement ? '<span class="pill strong">הכרזה</span>' : ''}${t.pinned ? '<span class="pill">📌 נעוץ</span>' : ''}</div>
               <h2>${esc(t.title)}</h2>
               <p class="meta"><span class="author${state.myClub && t.authorClubId === state.myClub ? ' mine-author' : ''}">${t.authorLogo || t.authorClubId ? logoHtml({ id: t.authorClubId, fallback: t.authorLogo }, 'cl-xs') : ''}${esc(t.author)}</span>${t.lastActivity ? `<span>פעילות אחרונה ${relTime(t.lastActivity)}</span>` : ''}</p>
             </div>
@@ -1714,8 +1749,8 @@
           <div class="thread">
             ${msgBody(t, t.url) || '<p class="muted">(הודעה ללא תוכן)</p>'}
             ${ev ? `<p class="related">אירוע קשור: <button type="button" class="chip" data-open="${esc(ev.id)}">${esc(ev.title)} · ${fmtShort(evDate(ev))}</button></p>` : ''}
-            ${t.replies.length ? `<ol class="reply-list" aria-label="תגובות">${t.replies.map((r) => `<li>
-              <p class="meta"><strong class="author${state.myClub && r.authorClubId === state.myClub ? ' mine-author' : ''}">${r.authorLogo || r.authorClubId ? logoHtml({ id: r.authorClubId, fallback: r.authorLogo }, 'cl-xs') : ''}${esc(r.author)}</strong><span>${relTime(r.postedAt)}</span></p>${msgBody(r, t.url) || `<p>${esc(r.title)}</p>`}</li>`).join('')}</ol>` : ''}
+            ${t.replies.length ? `<ol class="reply-list" aria-label="תגובות">${t.replies.map((r) => `<li${isNewAt(r.postedAt) ? ' class="new-reply"' : ''}>
+              <p class="meta"><strong class="author${state.myClub && r.authorClubId === state.myClub ? ' mine-author' : ''}">${r.authorLogo || r.authorClubId ? logoHtml({ id: r.authorClubId, fallback: r.authorLogo }, 'cl-xs') : ''}${esc(r.author)}</strong><span>${relTime(r.postedAt)}</span>${isNewAt(r.postedAt) ? '<span class="pill new">חדש</span>' : ''}</p>${msgBody(r, t.url) || `<p>${esc(r.title)}</p>`}</li>`).join('')}</ol>` : ''}
             <p><a class="btn ghost" href="${esc(t.url)}" target="_blank" rel="noopener">להגיב בפורום ↗</a></p>
           </div>
         </details>
@@ -1735,6 +1770,15 @@
     const f = state.forum;
     $('#forumLink').href = f?.source || state.links.forum || '#';
     $('#forumQ').addEventListener('input', (e) => { state.forumQ = e.target.value.trim(); renderForum(); });
+    $('#forumNew').addEventListener('click', (e) => {
+      if (!e.target.closest('#forumOnlyNew')) return;
+      forumSeen.onlyNew = !forumSeen.onlyNew;
+      renderForum();
+      $('#forumOnlyNew')?.focus();
+    });
+    // the very first visit has nothing "new": start counting from now
+    if (!store.get('forumSeen', null)) store.set('forumSeen', new Date().toISOString());
+    forumBadge();
     if (f && !f.error) {
       const s = $('#forumStatus');
       s.textContent = !f.threads.length ? statusText(f) : `${statusText(f)} · ${f.threads.length} נושאים${f.via === 'rss' ? ' (מעדכוני ה-RSS של הפורום)' : ' מהשבוע האחרון'}`;

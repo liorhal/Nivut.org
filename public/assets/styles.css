@@ -1775,3 +1775,20 @@ a.info-btn { text-decoration: none; }
 .hh-tip { position: static; width: max-content; margin: 10px auto 0; pointer-events: none; }
 .hh-stage.wide .hh-tip { position: absolute; z-index: 3; margin: 0; }
 .hh-stage.wide:has(.hh-tip) { padding-bottom: 64px; }
+
+/* forum: what is new since the last visit */
+.tab-new {
+  display: inline-block; vertical-align: 1px; margin-inline-start: 5px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+  background: var(--flag, #f26a1b); color: #fff; font: 800 .7rem/18px var(--num, inherit); text-align: center; box-shadow: 0 0 0 2px var(--surface, #fff);
+}
+@media (prefers-reduced-motion: no-preference) { .tab-new { animation: star-pop .35s cubic-bezier(.3, 1.6, .5, 1); } }
+.forum-new {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 8px 0 12px; padding: 10px 14px;
+  border-radius: 12px; background: color-mix(in srgb, var(--flag, #f26a1b) 10%, var(--surface, #fff)); border: 1px solid color-mix(in srgb, var(--flag, #f26a1b) 35%, transparent);
+}
+.forum-new[hidden] { display: none; }
+.new-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--flag, #f26a1b); margin-inline-end: 6px; vertical-align: middle; }
+.pill.new { background: var(--flag, #f26a1b); color: #fff; border-color: transparent; font-weight: 800; }
+.topic.is-new > details > summary { box-shadow: inset -4px 0 0 var(--flag, #f26a1b); }
+.reply-list li.new-reply { background: color-mix(in srgb, var(--flag, #f26a1b) 8%, transparent); border-radius: 8px; box-shadow: inset -3px 0 0 var(--flag, #f26a1b); }
+:root[data-contrast="high"] .pill.new, :root[data-contrast="high"] .tab-new { background: var(--text); color: var(--bg); }
