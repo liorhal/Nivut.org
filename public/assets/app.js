@@ -1341,8 +1341,9 @@
   /* ---------- Ranking (#ranking) ---------- */
   // League ranking from the association's ranking page: a bar per competitor (weighted ranking),
   // my people in the brand colour and named, everyone else muted; the full table below.
-  const RK_LEAGUES = { foot: 'ניווט רגלי', mtbo: 'ניווט רכוב', local: 'ליגה מקומית' };
+  const RK_LEAGUES = { foot: 'ניווט רגלי', mtbo: 'ניווט רכוב' };
   const rk = { sel: store.get('rank', { league: 'foot', season: '', category: '' }), data: null, around: true, busy: false, inited: false };
+  if (!RK_LEAGUES[rk.sel.league]) rk.sel = { league: 'foot', season: '', category: '' }; // a league no longer offered
   // Categories where my people were found, remembered per league: { foot: { H21A: ['דנה כהן'] } }
   const rkStars = store.get('rkStars', {});
   /** Remembers (or forgets) the shown category by whether any of my people are in it. */
