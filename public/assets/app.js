@@ -1417,6 +1417,68 @@
     }
   }
 
+  /**
+   * "By event": a column per event of the season (first on the right). Everyone's points are small
+   * grey dots, the field's median a short line, and up to three highlighted people (mine, else the top
+   * three) larger coloured dots: filled when the result counts toward the ranking (best N), hollow when not.
+   */
+  function eventStripHtml(g, mineNames) {
+    const ev = g.events;
+    if (!ev.length) return '';
+    const rows = g.rows;
+    const mineRows = rows.filter((r) => mineNames.has(r.name));
+    const focus = (mineRows.length ? mineRows : rows.slice(0, 3)).slice(0, 3);
+    const extra = mineRows.slice(3); // more than three of mine: one neutral colour
+    const pos = rows.flatMap((r) => r.scores).filter((v) => v > 0);
+    if (!pos.length) return '';
+    // The scale follows the bulk of the results; stray scores (a "1" for a non-finish) sit on the bottom edge.
+    const sortedPos = [...pos].sort((a, b) => a - b);
+    const mid = sortedPos[sortedPos.length >> 1];
+    const core = sortedPos.filter((v) => v >= mid * 0.4); // real results; "1"s and the like fall below
+    const lo = core[0] ?? sortedPos[0], hi = sortedPos[sortedPos.length - 1];
+    const pad = Math.max(10, (hi - lo) * 0.06);
+    const min = Math.max(0, lo - pad), max = hi + pad;
+    const y = (v) => Math.max(0, ((v - min) / (max - min)) * 100).toFixed(1);
+    const ticks = [0, 0.5, 1].map((t) => Math.round((min + (max - min) * t) / 10) * 10);
+    const counted = (r) => {
+      const idx = r.scores.map((v, k) => [v, k]).filter(([v]) => v > 0).sort((a, b) => b[0] - a[0]).slice(0, g.best || Infinity).map(([, k]) => k);
+      return new Set(idx);
+    };
+    const series = [...focus.map((r, i) => ({ r, cls: `s${i + 1}` })), ...extra.map((r) => ({ r, cls: 's-more' }))].map((x) => ({ ...x, counted: counted(x.r) }));
+    const median = (vals) => { const a = [...vals].sort((x, z) => x - z); const m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; };
+    const cols = ev.map((e, k) => {
+      const vals = rows.map((r) => r.scores[k]).filter((v) => v > 0);
+      const field = rows.map((r, i) => ({ v: r.scores[k], i })).filter(({ v }) => v > 0)
+        .map(({ v, i }) => `<i class="es-dot" style="bottom:${y(v)}%;--jx:${((i % 5) - 2) * 4}px"></i>`).join('');
+      const med = vals.length ? median(vals) : null;
+      const sorted = [...vals].sort((a, b) => b - a);
+      const me = series.map(({ r, cls, counted: c }, si) => {
+        const v = r.scores[k];
+        if (!(v > 0)) return '';
+        const place = sorted.indexOf(v) + 1;
+        const tip = [`${r.name}:`, `${e.name}\t${fmtPts(v)}`, `מקום בתחרות\t${place} מתוך ${vals.length}`, `נספר בדירוג\t${c.has(k) ? 'כן' : 'לא'}`].join('\n');
+        return `<span class="es-me ${cls}${c.has(k) ? ' counted' : ''}" style="bottom:${y(v)}%;--jx:${(si - (series.length - 1) / 2) * 11}px" data-tip="${esc(tip)}" tabindex="0" role="img" aria-label="${esc(`${r.name}, ${e.name}: ${fmtPts(v)} נקודות, מקום ${place} מתוך ${vals.length}${c.has(k) ? '' : ', לא נספר בדירוג'}`)}"></span>`;
+      }).join('');
+      return `<div class="es-col" role="group" aria-label="${esc(`${e.name}: ${vals.length} מתחרים${med ? `, חציון ${fmtPts(Math.round(med))}` : ''}`)}">
+          <div class="es-track">${field}${med ? `<b class="es-med" style="bottom:${y(med)}%" title="חציון ${fmtPts(Math.round(med))}"></b>` : ''}${me}</div>
+          <a class="es-lbl" href="${esc(e.url)}" target="_blank" rel="noopener" title="${esc(e.name)}">${esc(e.name)}</a>
+        </div>`;
+    }).join('');
+    const legend = [...series.filter((x) => x.cls !== 's-more').map(({ r, cls }) => `<li><span class="es-key ${cls} counted"></span>${esc(r.name)}</li>`),
+      extra.length ? `<li><span class="es-key s-more counted"></span>עוד מהאנשים שלי (${extra.length})</li>` : '',
+      '<li class="muted"><span class="es-key s-hollow"></span>לא נספר בדירוג</li>',
+      '<li class="muted"><span class="es-key s-field"></span>שאר המתחרים</li>', '<li class="muted"><span class="es-key s-med"></span>חציון</li>'].join('');
+    return `<figure class="es">
+      <figcaption><h3>פירוט לפי תחרות</h3><span class="muted small">${mineRows.length ? 'האנשים שלי' : 'שלושת הראשונים'} מול כל המתחרים בכל תחרות בעונה${g.best ? ` · נספרות ${g.best} התוצאות הטובות` : ''}</span></figcaption>
+      <ul class="es-legend">${legend}</ul>
+      <div class="es-scroll"><div class="es-plot" style="--n:${ev.length}">
+        <div class="es-axis" aria-hidden="true">${ticks.map((t) => `<span style="bottom:${y(t)}%">${fmtPts(t)}</span>`).join('')}</div>
+        <div class="es-grid" aria-hidden="true">${ticks.map((t) => `<i style="bottom:${y(t)}%"></i>`).join('')}</div>
+        <div class="es-cols">${cols}</div>
+      </div></div>
+    </figure>`;
+  }
+
   const fmtPts = (n) => (n === null || n === undefined ? '–' : Number(n).toLocaleString('he-IL'));
 
   function renderRanking() {
@@ -1461,6 +1523,7 @@
         <div class="rk-sec-head"><h2 id="rk-h${gi}">${grids.length > 1 ? esc(g.title) : `${esc(d.category.value)} · ${esc(d.season.value)}`}</h2>
           ${g.best ? `<p class="muted small">דירוג משוקלל, לפי ${g.best} התוצאות הטובות ביותר ומקדם גיל</p>` : ''}${toggle}</div>
         <ol class="rk-chart" aria-label="דירוג משוקלל">${bars}</ol>
+        ${eventStripHtml(g, mine)}
         ${table}
       </section>`;
     });
