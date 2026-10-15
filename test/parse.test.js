@@ -355,3 +355,22 @@ test('ranking: combo item values come from the RadComboBox client script', () =>
   assert.match(c.postBack, /__doPostBack/);
   assert.deepEqual(L.comboClientData(html, 'DropDownList1').values, []);
 });
+
+test('calendar: the place and the description make the name; the description is kept for the championship mark', () => {
+  const html = '<table><tr><th>תאריך</th><th>מקום</th><th>תיאור</th><th>מועדון מארגן</th></tr>'
+    + '<tr><td>24/10/2026</td><td><a href="/3400/Info">יער אודם</a></td><td>אליפות ישראל היום ה-2</td><td>גליל</td></tr></table>';
+  const [e] = L.parseCalendar(html, 'https://nivut.org.il/calendar.aspx');
+  assert.equal(e.title, 'יער אודם – אליפות ישראל היום ה-2');
+  assert.equal(e.calDesc, 'אליפות ישראל היום ה-2');
+  assert.equal(e.nivutId, '3400');
+  // a home-page event takes the calendar's name
+  const merged = L.mergeEvents({ featured: [{ id: 'n3400', nivutId: '3400', date: e.date, title: 'יער אודם אליפות ישראל', url: 'x' }], closedAreas: [] }, new Map(), [e]);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].title, 'יער אודם – אליפות ישראל היום ה-2');
+  assert.equal(merged[0].homeTitle, 'יער אודם אליפות ישראל');
+});
+
+test('calendar: an event-name column without a description keeps the event name', () => {
+  const html = '<table><tr><th>תאריך</th><th>שם האירוע</th><th>מקום</th></tr><tr><td>17/10/2026</td><td>ניווט פרדסי עין ורד</td><td>עין ורד</td></tr></table>';
+  assert.equal(L.parseCalendar(html, 'https://x/')[0].title, 'ניווט פרדסי עין ורד');
+});

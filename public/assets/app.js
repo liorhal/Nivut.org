@@ -258,7 +258,8 @@
     const t = ownText(e);
     const kinds = [
       isLeague(e) && ['league', 'ליגה'],
-      /אליפו?ת/.test(t) && ['champ', 'אליפות'],
+      // championship: only what the events calendar's description says
+      /אליפו?ת/.test(e.calDesc || '') && ['champ', 'אליפות'],
       /ספרינט/.test(t) && ['sprint', 'ספרינט'],
       /שליחים/.test(t) && ['relay', 'שליחים'],
     ].filter(Boolean);
