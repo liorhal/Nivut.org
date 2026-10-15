@@ -374,3 +374,17 @@ test('calendar: an event-name column without a description keeps the event name'
   const html = '<table><tr><th>תאריך</th><th>שם האירוע</th><th>מקום</th></tr><tr><td>17/10/2026</td><td>ניווט פרדסי עין ורד</td><td>עין ורד</td></tr></table>';
   assert.equal(L.parseCalendar(html, 'https://x/')[0].title, 'ניווט פרדסי עין ורד');
 });
+
+test('parseCalendar reads the real events calendar (תאריך | יום | שם/מקום | תאור | מועדון | סוג ארוע)', () => {
+  const ev = L.parseCalendar(fs.readFileSync(path.join(__dirname, 'fixtures/calendar.html'), 'utf8'), 'https://nivut.org.il/Calendar.aspx');
+  assert.ok(ev.length > 50);
+  const galil = ev.find((e) => e.nivutId === '3437');
+  assert.equal(galil.title, 'קיבוץ מחניים – אליפות הגליל בניווט מאוץ');
+  assert.equal(galil.calDesc, 'אליפות הגליל בניווט מאוץ');
+  assert.equal(galil.clubName, 'גליל');
+  assert.equal(galil.time, '');
+  const closed = ev.find((e) => e.nivutId === '3483');
+  assert.equal(closed.calDesc, 'אירוע סגור');
+  assert.equal(L.eventFlags(closed).closed, true);
+  assert.deepEqual(ev.find((e) => e.nivutId === '3387').disciplines, ['mtbo']);
+});
