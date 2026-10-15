@@ -388,3 +388,9 @@ test('parseCalendar reads the real events calendar (תאריך | יום | שם/�
   assert.equal(L.eventFlags(closed).closed, true);
   assert.deepEqual(ev.find((e) => e.nivutId === '3387').disciplines, ['mtbo']);
 });
+
+test('"ליגת אס"א" is not a league round', () => {
+  const ev = L.parseCalendar(fs.readFileSync(path.join(__dirname, 'fixtures/calendar.html'), 'utf8'), 'https://nivut.org.il/Calendar.aspx');
+  assert.ok(!ev.find((e) => e.nivutId === '3457').tags.includes('league'));
+  assert.ok(ev.find((e) => e.nivutId === '3335').tags.includes('league'));
+});

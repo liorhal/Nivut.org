@@ -253,14 +253,14 @@
   const mineBadge = (e) => (isMine(e) ? '<span class="pill mine-pill">⚑<span class="mine-tx"> המועדון שלי</span></span>' : '');
   /** League / championship, under the date on the ticket card's stub. */
   // Championship, sprint and relay only when the description ("מידע נוסף") says so; the event's name does not count.
-  const ownText = (e) => (e.details?.description || []).join(' ');
+  const ownText = (e) => [...(e.details?.description || []), e.calDesc || ''].join(' ');
   const kindBadges = (e) => {
     const t = ownText(e);
     const kinds = [
       isLeague(e) && ['league', 'ליגה'],
       // championship: only what the events calendar's description says
       /אליפו?ת/.test(e.calDesc || '') && ['champ', 'אליפות'],
-      /ספרינט/.test(t) && ['sprint', 'ספרינט'],
+      /ספרינט|מאוץ/.test(t) && ['sprint', 'ספרינט'],
       /שליחים/.test(t) && ['relay', 'שליחים'],
     ].filter(Boolean);
     return kinds.length ? `<div class="tk-kind">${kinds.map(([k, label]) => `<span class="tk-kind-${k}">${label}</span>`).join('')}</div>` : '';
@@ -961,7 +961,9 @@
   /** Has an event page on the association site, where you register (closed areas and calendar-only items do not). */
   /** "אירוע סגור" (a private event) in the title, category, the event-page note ("- אירוע סגור -") or additional info. */
   /** "אירוע סגור" in "מידע נוסף" or in the line under the event name (category / note). */
-  const isClosedEvent = (e) => !!e.closed
+  // Navigation trips abroad ("ניווט חו"ל") are not events here either.
+  const isAbroad = (e) => /חו["״׳']ל/.test(`${e.title} ${e.homeTitle || ''}`);
+  const isClosedEvent = (e) => !!e.closed || isAbroad(e)
     || /(?:אירוע|ארוע)\s*סגור/.test(`${infoText(e)} ${plain(e.details?.note)} ${plain(e.details?.eventType)}`);
   const hasRegistration = (e) => !!e.nivutId && e.source !== 'closed-area' && !noSiteRegistration(e) && !isClosedEvent(e);
   /** Upcoming events you can register for; the annual plan shows everything except closed events. */
