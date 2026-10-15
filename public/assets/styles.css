@@ -1770,3 +1770,8 @@ a.info-btn { text-decoration: none; }
 .es-plot { padding-top: 10px; }
 .es-axis, .es-grid { margin-top: 10px; }
 .es-grid { inset-block-start: 10px; margin-top: 0; }
+
+/* help: the star's tooltip shown open on the sample card */
+.hh-tip { position: static; width: max-content; margin: 10px auto 0; pointer-events: none; }
+.hh-stage.wide .hh-tip { position: absolute; z-index: 3; margin: 0; }
+.hh-stage.wide:has(.hh-tip) { padding-bottom: 64px; }

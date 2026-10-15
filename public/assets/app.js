@@ -1104,34 +1104,40 @@
   /* ---------- Help: a sample card with every field, explained with arrows ---------- */
   const SAMPLE_LOGO = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#0b3d2e"/><path d="M50 12 62 50 50 88 38 50z" fill="#f26a1b"/><path d="M50 12 62 50H38z" fill="#fff"/><circle cx="50" cy="50" r="6" fill="#0b3d2e"/></svg>');
   const HELP_NOTES = [
-    ['.top-date', 'התאריך. הצבע מסמן את סוג הניווט: ירוק רגלי, כחול רכוב.'],
-    ['.ppl-star', 'כמה מהאנשים שלי רשומים (השמות בריחוף או בהקשה).'],
-    ['.badges', 'ליגה והמועדון שלי.'],
+    ['.top-date', 'תאריך וסוג הניווט: ירוק = רגלי, כחול = רכוב.'],
+    ['.ppl-star', 'האם אני רשום, וזמני הזינוק (השמות בריחוף או בהקשה).'],
+    ['.badges', 'מאפייני התחרות – ליגה / אליפות.'],
     ['.top-club', 'המועדון המארגן.'],
     ['.dist', 'המרחק ממך, ו־Waze לנקודת הכינוס.'],
     ['.tlm', 'זינוק ראשון, זינוק אחרון ושעת גג.'],
-    ['.reg-cd', 'הזמן שנשאר להרשמה מוקדמת, וכפתור הרשמה.'],
+    ['.reg-cd', 'הרשמה: הזמן שנשאר להרשמה מוקדמת. ההרשמה עצמה מתבצעת באתר הרשמי של האיגוד.'],
   ];
   function sampleEvent() {
     const day = new Date(); day.setDate(day.getDate() + 9);
     const reg = new Date(); reg.setDate(reg.getDate() + 4); reg.setHours(23, 59, 0, 0);
     const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     return {
-      id: 'help-sample', title: 'ליגת ניווט – יער בן שמן', location: 'יער בן שמן', time: '09:00', date: iso(day),
+      id: 'help-sample', title: 'יער בן שמן', location: 'יער בן שמן', time: '09:00', date: iso(day),
       disciplines: ['foot'], tags: ['league'], clubName: 'מועדון לדוגמה', clubId: 'help-sample', url: '#',
       details: { description: ['אימון לכל הרמות, מתאים גם למתחילים.'], registrationDeadline: `${iso(reg)}T23:59`, startFrom: '09:00', startTo: '11:00', cutoff: '13:30', lat: 31.95, lng: 34.93, club: { pageLogo: SAMPLE_LOGO } },
     };
   }
   function renderHelpCard() {
-    // The sample shows every field, so it borrows "my club" and a location just for this render.
-    const saved = { myClub: state.myClub, home: state.home };
-    state.myClub = 'help-sample';
+    // The sample shows every field, so it borrows a location just for this render.
+    const saved = { home: state.home };
     state.home = state.home || { lat: 32.085, lng: 34.781 };
     try { $('#hhCard').innerHTML = hudCardHtml(sampleEvent(), { tag: 'h3' }); } finally { Object.assign(state, saved); }
     $('#hhCard .tk-star').insertAdjacentHTML('afterbegin', peopleStarHtml([{ name: 'נועה כהן', start: '09:12' }, { name: 'דני לוי', start: '09:40' }]));
     tickCountdowns();
     const card = $('#hhCard .top-card');
     card.classList.add('has-people');
+    // the star's tooltip, shown open
+    const star = $('#hhCard .ppl-star');
+    $('#hhStage .hh-tip')?.remove();
+    $('#hhCard').insertAdjacentHTML('afterend', `<div class="tip hh-tip" aria-hidden="true">${star.dataset.tip.split('\n').map((l) => {
+      const [name, time] = l.split('\t');
+      return time === undefined ? `<span class="tip-head">${esc(name)}</span>` : `<span class="tip-row"><span>${esc(name)}</span><b>${esc(time)}</b></span>`;
+    }).join('')}</div>`);
     $('#hhNotes').innerHTML = HELP_NOTES.map(([sel, text]) => ({ el: [...card.querySelectorAll(sel)].find((x) => x.offsetWidth > 2), text }))
       .filter((n) => n.el && n.el.offsetWidth > 2).map((n, i) => {
         n.el.dataset.hhNum = i + 1;
@@ -1150,6 +1156,15 @@
     const wide = stage.clientWidth >= 820;
     stage.classList.toggle('wide', wide);
     const cardBox = $('#hhCard').getBoundingClientRect();
+    // the open tooltip just below the star
+    const hhTip = $('.hh-tip', stage), starEl = $('#hhCard .ppl-star');
+    if (hhTip) hhTip.style.cssText = '';
+    if (hhTip && starEl && wide) {
+      const st = starEl.getBoundingClientRect();
+      // under the card, beside the star (clear of the notes and their arrows)
+      hhTip.style.top = `${Math.max(st.bottom, cardBox.bottom) - sr.top + 10}px`;
+      hhTip.style.left = `${Math.max(0, Math.min(st.left - sr.left - hhTip.offsetWidth - 4, stage.clientWidth - hhTip.offsetWidth))}px`;
+    }
     const items = $$('#hhNotes li').map((li) => {
       const el = $(`#hhCard [data-hh-num="${li.dataset.n}"]`);
       const r = el.getBoundingClientRect();
