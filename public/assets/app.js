@@ -1122,8 +1122,8 @@
     ['.ppl-star', 'האם אני רשום, וזמני הזינוק.'],
     ['.tk-kind', 'מאפייני התחרות – ליגה, אליפות, ספרינט, שליחים.'],
     ['.tk-club-name', 'המועדון המארגן.'],
-    ['.dist', 'המרחק ממך, ו־Waze לנקודת הכינוס.'],
-    ['.tlm', 'זינוק ראשון, זינוק אחרון ושעת גג.'],
+    ['.top-when .waze-link', 'המרחק ממך, ו־Waze לנקודת הכינוס.', 'left'],
+    ['.tlm', 'זינוק ראשון, זינוק אחרון ושעת גג.', 'left'],
     ['.reg-cd', 'הרשמה: הזמן שנשאר להרשמה מוקדמת. ההרשמה עצמה מתבצעת באתר הרשמי של האיגוד.'],
   ];
   function sampleEvent() {
@@ -1152,10 +1152,10 @@
       const [name, time] = l.split('\t');
       return time === undefined ? `<span class="tip-head">${esc(name)}</span>` : `<span class="tip-row"><span>${esc(name)}</span><b>${esc(time)}</b></span>`;
     }).join('')}</div>`);
-    $('#hhNotes').innerHTML = HELP_NOTES.map(([sel, text]) => ({ el: [...card.querySelectorAll(sel)].find((x) => x.offsetWidth > 2), text }))
+    $('#hhNotes').innerHTML = HELP_NOTES.map(([sel, text, side]) => ({ el: [...card.querySelectorAll(sel)].find((x) => x.offsetWidth > 2), text, side }))
       .filter((n) => n.el && n.el.offsetWidth > 2).map((n, i) => {
         n.el.dataset.hhNum = i + 1;
-        return `<li data-n="${i + 1}"><span class="hh-num" aria-hidden="true">${i + 1}</span>${esc(n.text)}</li>`;
+        return `<li data-n="${i + 1}"${n.side ? ` data-side="${n.side}"` : ''}><span class="hh-num" aria-hidden="true">${i + 1}</span>${esc(n.text)}</li>`;
       }).join('');
     $$('#hhCard img').forEach((img) => img.addEventListener('load', layoutHelp));
     layoutHelp();
@@ -1198,7 +1198,7 @@
     const cx = (cardBox.left + cardBox.right) / 2 - sr.left;
     const colW = Math.min(250, (stage.clientWidth - cardBox.width) / 2 - 36);
     const sides = { right: [], left: [] };
-    items.forEach((it) => sides[it.x >= cx ? 'right' : 'left'].push(it));
+    items.forEach((it) => sides[it.li.dataset.side || (it.x >= cx ? 'right' : 'left')].push(it));
     let paths = '';
     for (const [side, list] of Object.entries(sides)) {
       list.sort((a, b) => a.y - b.y);
