@@ -1542,7 +1542,9 @@
       </section>`;
     });
     $('#rkBody').innerHTML = sections.length ? sections.join('')
-      : '<p class="empty">אין עדיין דירוג לקטגוריה הזו בעונה הזו. נסו קטגוריה או עונה אחרת.</p>';
+      : `<p class="empty">${d.season.options.length ? 'אין עדיין דירוג לקטגוריה הזו בעונה הזו. נסו קטגוריה או עונה אחרת.' : 'לא הצלחנו לקרוא את רשימות הליגה מאתר האיגוד.'}
+          <a href="${esc(d.source)}" target="_blank" rel="noopener">לדירוג באתר האיגוד ↗</a></p>
+        ${d.diag && !d.notApplied ? `<details class="diag"><summary>פרטים טכניים</summary><pre dir="ltr">${esc(JSON.stringify(d.diag, null, 2))}</pre></details>` : ''}`;
     // My people first: place, points and the gap to the leader and to the one above.
     $('#rkMine').innerHTML = !state.people.length
       ? '<p class="muted small">הוסיפו את <button type="button" class="linklike" data-open-people>האנשים שלכם</button> כדי לראות אותם מודגשים בדירוג.</p>'
