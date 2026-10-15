@@ -2,6 +2,10 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="utf-8">
+  <script>
+    // Served under a sub-path (e.g. www.terra-explore.co.il/nivut): the relative api/ and assets/ addresses need the trailing slash.
+    if (!/\/$|\.html?$/.test(location.pathname)) location.replace(location.pathname + '/' + location.search + location.hash);
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ניווט ישראל – לוח אירועים</title>
   <meta name="description" content="ניווטים קרובים, לוח אירועים שנתי ופורום – בצורה נוחה ונגישה, על בסיס nivut.org.il">
