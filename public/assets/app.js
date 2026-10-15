@@ -1089,8 +1089,10 @@
         <span class="tk-notch t" aria-hidden="true"></span><span class="tk-notch b" aria-hidden="true"></span>
         <div class="tk-body">
           ${watermarkHtml(e)}
-          <div class="tk-head"><${tag}><a href="#event/${encodeURIComponent(e.id)}" title="${esc(e.title)}">${esc(e.title)}</a></${tag}>${kindBadges(e)}</div>
-          ${e.clubName || isMine(e) ? `<p class="tk-club">${e.clubName ? `<span class="tk-club-name">${esc(e.clubName)}</span>` : ''}${mineBadge(e)}</p>` : ''}
+          <div class="tk-head"><${tag}><a href="#event/${encodeURIComponent(e.id)}" title="${esc(e.title)}">${
+            // the calendar's place and description, one line each
+            e.calPlace && e.calDesc ? `<span class="tk-place">${esc(e.calPlace)}</span><span class="sr-only"> – </span><span class="tk-desc">${esc(e.calDesc)}</span>` : esc(e.title)}</a></${tag}></div>
+          ${e.clubName || isMine(e) || kindBadges(e) ? `<div class="tk-club">${e.clubName ? `<span class="tk-club-name">${esc(e.clubName)}</span>` : ''}${mineBadge(e)}${kindBadges(e)}</div>` : ''}
           <hr class="tk-sep" aria-hidden="true">
           <p class="top-when">${[!tlMini && e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`,
             // Phones hide the diagram in the four nearest; this short line takes its place there.
@@ -1134,7 +1136,7 @@
     const reg = new Date(); reg.setDate(reg.getDate() + 4); reg.setHours(23, 59, 0, 0);
     const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     return {
-      id: 'help-sample', title: 'יער בן שמן', location: 'יער בן שמן', time: '09:00', date: iso(day),
+      id: 'help-sample', title: 'יער בן שמן – ליגה מחזור 3', calPlace: 'יער בן שמן', calDesc: 'ליגה מחזור 3', location: 'יער בן שמן', time: '09:00', date: iso(day),
       disciplines: ['foot'], tags: ['league'], clubName: 'חבל מודיעין', clubId: 'help-sample', url: '#',
       details: { description: ['אימון לכל הרמות, מתאים גם למתחילים.'], registrationDeadline: `${iso(reg)}T23:59`, startFrom: '09:00', startTo: '11:00', cutoff: '13:30', lat: 31.95, lng: 34.93, club: { pageLogo: SAMPLE_LOGO } },
     };
