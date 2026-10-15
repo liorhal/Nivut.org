@@ -1407,9 +1407,14 @@
       renderRkCategories();
       const t = new Date(d.fetchedAt);
       st.textContent = `מתעדכן מאתר האיגוד · עודכן ב-${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
-      if (d.notApplied) {
+      const failed = (d.notApplied || []).filter((x) => !x.reason);
+      const missing = (d.notApplied || []).find((x) => x.reason && x.category);
+      if (missing && !failed.length) {
+        // the category is not run in this season: the site's first one is shown instead
+        st.textContent = `הקטגוריה ${missing.category} לא קיימת בעונת ${d.season.value} – מוצגת ${d.category.value}.`;
+      } else if (d.notApplied) {
         // The association's site did not switch: say so plainly (with the technical details for a bug report).
-        const want = d.notApplied.map((x) => Object.values(x)[0]).join(', ');
+        const want = (failed.length ? failed : d.notApplied).map((x) => Object.values(x)[0]).join(', ');
         st.classList.add('warn');
         st.innerHTML = `אתר האיגוד לא החליף ל-${esc(want)} – מוצג ${esc(d.category.value || 'ברירת המחדל')} ${esc(d.season.value)}.
           <a href="${esc(d.source)}" target="_blank" rel="noopener">לדירוג באתר האיגוד ↗</a>
