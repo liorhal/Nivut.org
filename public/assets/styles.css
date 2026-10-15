@@ -1867,3 +1867,13 @@ a.info-btn { text-decoration: none; }
 .top-card.tk .tk-club .tk-kind { display: flex; flex-wrap: nowrap; gap: 4px; flex: none; margin: 0; margin-inline-start: auto; max-width: none; }
 .top-card.tk .tk-club .tk-kind > span { box-shadow: none; }
 .top-card.tk .tk-club .tk-kind > .tk-kind-champ { border: 1px solid #fdba74; }
+
+/* kinds on the place line: floated to the left, so only the first line of the name makes room for them */
+.top-card.tk .tk-head { display: block; }
+.top-card.tk .tk-head::after { content: ""; display: block; clear: both; }
+.top-card.tk .tk-head > .tk-kind { float: left; display: flex; gap: 4px; margin: 3px 8px 2px 0; max-width: 60%; flex-wrap: wrap; justify-content: flex-end; }
+.top-card.tk .tk-head > .tk-kind > span { box-shadow: none; }
+.top-card.tk .tk-head > .tk-kind > .tk-kind-champ { border: 1px solid #fdba74; }
+.top-card.tk .tk-head > :is(h2, h3):has(.tk-place) { overflow: visible; }
+.top-card.tk .tk-head > .tk-kind { margin: 2px 8px 0 0; }
+.top-card.tk .tk-head > .tk-kind > span { padding: 0 7px; line-height: 1.45; }
