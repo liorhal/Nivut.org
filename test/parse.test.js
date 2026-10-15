@@ -321,3 +321,29 @@ test('event page: "קבצים ונספחים" box, file kinds and the results pa
   assert.equal(L.fileKind('LapCombat', 'x.html'), 'analysis');
   assert.equal(L.fileKind('מפת הגעה', 'x.pdf'), 'other');
 });
+
+test('ranking page: leagues, selections and a result grid (the real Telerik markup, made-up names)', () => {
+  const combo = (id, value, items) => `<div id="ctl00_ContentPlaceHolder1_${id}" class="RadComboBox"><span class="rcbInner"><input name="ctl00$ContentPlaceHolder1$${id}" type="text" class="rcbInput" id="ctl00_ContentPlaceHolder1_${id}_Input" value="${value}" readonly="readonly"></span>
+    <div class="rcbSlide"><div id="ctl00_ContentPlaceHolder1_${id}_DropDown" class="RadComboBoxDropDown"><div class="rcbScroll"><ul class="rcbList">${items.map((i) => `<li class="rcbItem">${i}</li>`).join('')}</ul></div></div></div></div>`;
+  const ev = (id, name) => `<th scope="col" class="rgHeader"><table><tbody><tr><th class=""><div class=""><a href="https://nivut.org.il/${id}/Info">${name}</a></div></th></tr></tbody></table></th>`;
+  const html = `<div class="title"><span>ליגת ניווט רגלי</span></div>${combo('ddlSeason', '2025-2026', ['2025-2026', '2024-2025'])}${combo('DropDownList1', 'בחר קטגוריה', ['H21A', 'D21A'])}
+    <h3>הדירוג מחושב לפי 5 התוצאות הטובות ביותר</h3><div id="ctl00_ContentPlaceHolder1_RadGrid1"></div>
+    <div class="title"><span>ליגת ניווט רכוב</span></div>${combo('rcbSeason', '2025-2026', ['2025-2026'])}${combo('rcbCategory', 'Long-M50', ['Long-M50', 'Long-Open'])}
+    <h3>הדירוג מחושב לפי 4 התוצאות הטובות ביותר</h3>
+    <div id="ctl00_ContentPlaceHolder1_rGridMtbo" class="RadGrid"><table class="rgMasterTable" id="ctl00_ContentPlaceHolder1_rGridMtbo_ctl00"><thead><tr>
+      <th scope="col" class="rgHeader">#</th><th scope="col" class="rgHeader">שם</th><th scope="col" class="rgHeader">מועדון</th>${ev(3146, 'מרחביה')}${ev(3147, 'קברי המכבים')}<th scope="col" class="rgHeader">דירוג</th><th scope="col" class="rgHeader">מקדם גיל</th><th scope="col" class="rgHeader">דירוג משוקלל</th>
+    </tr></thead><tbody>
+      <tr class="rgRow"><td>1</td><td>נווטת ראשונה</td><td>השרון</td><td>805</td><td>790</td><td>1595</td><td>1.14</td><td>1818</td></tr>
+      <tr class="rgAltRow"><td>2</td><td>נווט שני</td><td>מנשה</td><td>851</td><td>&nbsp;</td><td>851</td><td>1.1</td><td>936</td></tr>
+    </tbody></table></div>`;
+  const r = L.parseRanking(html, 'https://nivut.org.il/results/ranking.aspx');
+  assert.deepEqual(Object.keys(r.leagues), ['foot', 'mtbo']);
+  assert.equal(r.leagues.foot.category.value, ''); // "בחר..." is no selection
+  assert.deepEqual(r.leagues.foot.grids, []); // an empty grid never borrows the next league's table
+  const m = r.leagues.mtbo;
+  assert.equal(m.category.value, 'Long-M50');
+  assert.deepEqual(m.category.options, ['Long-M50', 'Long-Open']);
+  assert.equal(m.grids[0].best, 4);
+  assert.deepEqual(m.grids[0].events.map((e) => [e.id, e.name]), [['3146', 'מרחביה'], ['3147', 'קברי המכבים']]);
+  assert.deepEqual(m.grids[0].rows[1], { rank: 2, name: 'נווט שני', club: 'מנשה', scores: [851, null], total: 851, ageFactor: 1.1, weighted: 936 });
+});

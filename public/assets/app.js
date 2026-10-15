@@ -99,7 +99,7 @@
   }
 
   /* ---------- Routing ---------- */
-  const VIEWS = ['upcoming', 'annual', 'forum', 'event'];
+  const VIEWS = ['upcoming', 'annual', 'forum', 'ranking', 'event'];
   function route() {
     const [name, ...rest] = location.hash.slice(1).split('/');
     const param = decodeURIComponent(rest.join('/'));
@@ -109,12 +109,13 @@
     const shown = $(`#view-${view}`);
     shown.classList.remove('view-in'); void shown.offsetWidth; shown.classList.add('view-in');
     $$('.tabs a').forEach((a) => a.setAttribute('aria-selected', String(a.dataset.view === view)));
-    const titles = { upcoming: 'ניווטים קרובים', annual: 'תוכנית שנתית', forum: 'פורום', event: 'אירוע' };
+    const titles = { upcoming: 'ניווטים קרובים', annual: 'תוכנית שנתית', forum: 'פורום', ranking: 'דירוג', event: 'אירוע' };
     document.title = `${titles[view]} – ניווט ישראל`;
     if (view !== 'event') state.lastView = view;
     window.scrollTo(0, 0);
     if (view === 'event') { showEvent(param); return; }
     if (view === 'forum' && param) { openThread(param); return; }
+    if (view === 'ranking') showRanking();
     if (name) $('#main').focus({ preventScroll: true });
   }
 
@@ -299,6 +300,7 @@
     renderPeopleList();
     state.regIds = null;
     renderRegFilter();
+    if (rk.data) renderRanking();
     if (state.filter.registered) findRegistered().then(() => { renderTop4(); renderList(); });
     renderTop4();
     if (location.hash.startsWith('#event/')) renderMyPeople(decodeURIComponent(location.hash.slice(7)));
@@ -1333,6 +1335,122 @@
       <p class="muted">${x.date ? fmtLong(parseDate(x.date)) : ''}${x.category ? ` · ${esc(x.category)}` : ''}</p>
       <h3><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a></h3>
       ${x.summary ? `<p>${esc(x.summary)}</p>` : ''}</li>`).join('');
+  }
+
+
+  /* ---------- Ranking (#ranking) ---------- */
+  // League ranking from the association's ranking page: a bar per competitor (weighted ranking),
+  // my people in the brand colour and named, everyone else muted; the full table below.
+  const RK_LEAGUES = { foot: 'ניווט רגלי', mtbo: 'ניווט רכוב', local: 'ליגה מקומית' };
+  const rk = { sel: store.get('rank', { league: 'foot', season: '', category: '' }), data: null, around: true, busy: false, inited: false };
+
+  function showRanking() {
+    if (!rk.inited) {
+      rk.inited = true;
+      $('#rkLeagues').innerHTML = Object.entries(RK_LEAGUES).map(([k, t]) => `<button type="button" data-league="${k}" aria-pressed="${rk.sel.league === k}">${t}</button>`).join('');
+      $('#rkLeagues').addEventListener('click', (ev) => {
+        const b = ev.target.closest('[data-league]');
+        if (!b || b.dataset.league === rk.sel.league) return;
+        rk.sel = { league: b.dataset.league, season: '', category: '' };
+        $$('#rkLeagues [data-league]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+        loadRanking();
+      });
+      $('#rkSeason').addEventListener('change', (ev) => { rk.sel.season = ev.target.value; loadRanking(); });
+      $('#rkCategory').addEventListener('change', (ev) => { rk.sel.category = ev.target.value; loadRanking(); });
+      $('#rkBody').addEventListener('click', (ev) => {
+        const t = ev.target.closest('[data-rk-around]');
+        if (t) { rk.around = t.dataset.rkAround === '1'; renderRanking(); }
+      });
+    }
+    if (!rk.data) loadRanking();
+  }
+
+  async function loadRanking() {
+    const st = $('#rkStatus');
+    st.hidden = false; st.classList.remove('warn');
+    st.textContent = 'טוען את הדירוג מאתר האיגוד…';
+    $('#rkBody').setAttribute('aria-busy', 'true');
+    if (!rk.data) $('#rkBody').innerHTML = `<div class="rk-skeleton" aria-hidden="true">${'<i class="sk-line"></i>'.repeat(8)}</div>`;
+    const q = new URLSearchParams(Object.entries(rk.sel).filter(([, v]) => v));
+    try {
+      const d = await loadJson(`api/ranking?${q}`);
+      rk.data = d;
+      rk.sel = { league: d.key || rk.sel.league, season: d.season.value, category: d.category.value };
+      store.set('rank', rk.sel);
+      const opts = (sel, c) => { sel.innerHTML = c.options.map((o) => `<option${o === c.value ? ' selected' : ''}>${esc(o)}</option>`).join(''); };
+      opts($('#rkSeason'), d.season);
+      opts($('#rkCategory'), d.category);
+      const t = new Date(d.fetchedAt);
+      st.textContent = `מתעדכן מאתר האיגוד · עודכן ב-${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
+      renderRanking();
+    } catch (err) {
+      st.classList.add('warn');
+      st.textContent = 'לא ניתן לקרוא כרגע את הדירוג מאתר האיגוד.';
+      if (!rk.data) $('#rkBody').innerHTML = '';
+    } finally {
+      $('#rkBody').removeAttribute('aria-busy');
+    }
+  }
+
+  const fmtPts = (n) => (n === null || n === undefined ? '–' : Number(n).toLocaleString('he-IL'));
+
+  function renderRanking() {
+    const d = rk.data;
+    if (!d) return;
+    const grids = d.grids || [];
+    const mineAll = [];
+    const sections = grids.map((g, gi) => {
+      const rows = g.rows;
+      const max = Math.max(1, ...rows.map((r) => r.weighted || 0));
+      const mine = new Set(rows.filter((r) => state.people.some((p) => sameName(p, r.name))).map((r) => r.name));
+      rows.filter((r) => mine.has(r.name)).forEach((r) => mineAll.push({ r, g, n: rows.length, leader: rows[0], above: rows[rows.indexOf(r) - 1] }));
+      // With my people in a long list, show the top three and the neighbourhood of each of mine.
+      const near = new Set();
+      rows.forEach((r, i) => { if (mine.has(r.name)) for (let k = i - 3; k <= i + 3; k++) if (rows[k]) near.add(rows[k]); });
+      const compact = rk.around && mine.size > 0 && rows.length > 15;
+      const shown = compact ? rows.filter((r, i) => i < 3 || near.has(r)) : rows;
+      let prev = -1;
+      const bars = shown.map((r) => {
+        const i = rows.indexOf(r);
+        const gap = prev >= 0 && i > prev + 1 ? `<li class="rk-gap" aria-hidden="true">⋯ ${i - prev - 1} נוספים</li>` : '';
+        prev = i;
+        const isMine = mine.has(r.name);
+        const tip = ['נקודות לפי אירוע:', ...g.events.map((e, k) => `${e.name}\t${fmtPts(r.scores[k])}`), `מקדם גיל\t${r.ageFactor ?? '–'}`].join('\n');
+        const pct = ((r.weighted || 0) / max) * 100;
+        return `${gap}<li class="rk-row${isMine ? ' mine' : ''}">
+          <span class="rk-rank">${r.rank ?? i + 1}</span>
+          <span class="rk-who"><span class="rk-name">${isMine ? '<span class="rk-star" aria-hidden="true">★</span>' : ''}${esc(r.name)}</span><span class="rk-club">${esc(r.club)}</span></span>
+          <span class="rk-bar" data-tip="${esc(tip)}" tabindex="0" role="img" aria-label="${esc(`${r.name}: ${fmtPts(r.weighted)} נקודות, מקום ${r.rank ?? i + 1} מתוך ${rows.length}`)}"><span class="rk-fill" style="width:${pct.toFixed(1)}%"></span></span>
+          <span class="rk-val">${fmtPts(r.weighted)}</span>
+        </li>`;
+      }).join('');
+      const toggle = mine.size && rows.length > 15 ? `<div class="seg rk-view" role="group" aria-label="מה להציג">
+          <button type="button" data-rk-around="1" aria-pressed="${rk.around}">סביב האנשים שלי</button>
+          <button type="button" data-rk-around="0" aria-pressed="${!rk.around}">כל ${rows.length}</button></div>` : '';
+      const table = `<details class="rk-table"><summary>טבלה מלאה (${rows.length} מתחרים)</summary><div class="table-wrap"><table>
+          <caption class="sr-only">${esc(d.title)} · ${esc(d.category.value)} · ${esc(d.season.value)}${grids.length > 1 ? ` · ${esc(g.title)}` : ''}</caption>
+          <thead><tr><th scope="col">#</th><th scope="col">שם</th><th scope="col">מועדון</th>${g.events.map((e) => `<th scope="col"><a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.name)}</a></th>`).join('')}<th scope="col">דירוג</th><th scope="col">מקדם גיל</th><th scope="col">משוקלל</th></tr></thead>
+          <tbody>${rows.map((r) => `<tr${mine.has(r.name) ? ' class="mine"' : ''}><td>${r.rank ?? ''}</td><th scope="row">${esc(r.name)}</th><td>${esc(r.club)}</td>${r.scores.map((v) => `<td>${fmtPts(v)}</td>`).join('')}<td>${fmtPts(r.total)}</td><td>${r.ageFactor ?? '–'}</td><td><b>${fmtPts(r.weighted)}</b></td></tr>`).join('')}</tbody>
+        </table></div></details>`;
+      return `<section class="rk-section" aria-labelledby="rk-h${gi}">
+        <div class="rk-sec-head"><h2 id="rk-h${gi}">${grids.length > 1 ? esc(g.title) : `${esc(d.category.value)} · ${esc(d.season.value)}`}</h2>
+          ${g.best ? `<p class="muted small">דירוג משוקלל, לפי ${g.best} התוצאות הטובות ביותר ומקדם גיל</p>` : ''}${toggle}</div>
+        <ol class="rk-chart" aria-label="דירוג משוקלל">${bars}</ol>
+        ${table}
+      </section>`;
+    });
+    $('#rkBody').innerHTML = sections.length ? sections.join('')
+      : '<p class="empty">אין עדיין דירוג לקטגוריה הזו בעונה הזו. נסו קטגוריה או עונה אחרת.</p>';
+    // My people first: place, points and the gap to the leader and to the one above.
+    $('#rkMine').innerHTML = !state.people.length
+      ? '<p class="muted small">הוסיפו את <button type="button" class="linklike" data-open-people>האנשים שלכם</button> כדי לראות אותם מודגשים בדירוג.</p>'
+      : mineAll.length ? `<ul class="rk-mine-list">${mineAll.map(({ r, g, n, leader, above }) => `<li>
+          <span class="rk-mine-name">★ ${esc(r.name)}</span>
+          <span class="rk-mine-place"><b>${r.rank}</b> מתוך ${n}${grids.length > 1 ? ` · ${esc(g.title)}` : ''}</span>
+          <span class="rk-mine-pts"><b>${fmtPts(r.weighted)}</b> נק׳</span>
+          <span class="muted small">${r === leader ? 'במקום הראשון' : `${fmtPts(leader.weighted - r.weighted)} מאחורי הראשון${above && above !== leader ? ` · ${fmtPts(above.weighted - r.weighted)} מאחורי מקום ${above.rank}` : ''}`}</span>
+        </li>`).join('')}</ul>`
+      : `<p class="muted small">אף אחד מהאנשים שלך לא מופיע ב${esc(d.category.value)} בעונה ${esc(d.season.value)}. בחרו את הקטגוריה שלהם.</p>`;
   }
 
   /* ---------- Annual ---------- */

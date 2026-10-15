@@ -1665,3 +1665,66 @@ a.info-btn { text-decoration: none; }
 }
 :root[data-theme="dark"] .sk-line::after { background: linear-gradient(90deg, transparent, rgb(255 255 255 / .12), transparent); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sk-line::after { background: linear-gradient(90deg, transparent, rgb(255 255 255 / .12), transparent); } }
+
+/* =====================================================================
+   Ranking (#ranking): one bar per competitor, my people in the brand colour
+   ===================================================================== */
+:root { --rk-bar: #84918a; --rk-mine: var(--brand); }
+:root[data-theme="dark"] { --rk-bar: #66766e; --rk-mine: #3fb07a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --rk-bar: #66766e; --rk-mine: #3fb07a; } }
+:root[data-contrast="high"] { --rk-bar: var(--muted); --rk-mine: var(--text); }
+
+.rk-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; margin: 4px 0 14px; }
+.rk-field { display: grid; gap: 4px; font-size: .85rem; color: var(--muted); font-weight: 700; }
+.rk-field select { min-width: 150px; min-height: 42px; }
+.rk-leagues button[aria-pressed="true"] { background: var(--brand); color: var(--brand-ink); }
+
+.rk-mine-list { list-style: none; margin: 0 0 18px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.rk-mine-list li { display: grid; gap: 2px; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 2px solid var(--rk-mine); box-shadow: var(--shadow); }
+.rk-mine-name { font-weight: 800; }
+.rk-mine-place b, .rk-mine-pts b { font-family: var(--num); font-weight: 900; font-size: 1.5rem; }
+.rk-mine-place { color: var(--muted); }
+
+.rk-section { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 16px 18px; margin-bottom: 18px; box-shadow: var(--shadow); }
+.rk-sec-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 10px; }
+.rk-sec-head h2 { margin: 0; font-family: var(--display); font-size: 1.9rem; line-height: 1; }
+.rk-sec-head p { margin: 0; }
+.rk-sec-head .rk-view { margin-inline-start: auto; }
+
+.rk-chart { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.rk-row { display: grid; grid-template-columns: 2.2em minmax(110px, 13em) minmax(0, 1fr) 4.2em; align-items: center; gap: 10px; padding: 3px 6px; border-radius: 8px; }
+.rk-row:hover { background: var(--surface-2); }
+.rk-rank { font-family: var(--num); font-weight: 900; color: var(--muted); text-align: center; }
+.rk-who { display: grid; min-width: 0; line-height: 1.2; }
+.rk-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rk-club { font-size: .75rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rk-bar { position: relative; height: 14px; border-radius: 0 4px 4px 0; cursor: help; outline-offset: 3px; }
+.rk-fill { position: absolute; inset-block: 0; inset-inline-start: 0; border-radius: 4px 0 0 4px; background: var(--rk-bar); min-width: 2px; } /* RTL: anchored at the right, rounded at the data end */
+.rk-val { font-family: var(--num); font-weight: 800; font-size: .9rem; color: var(--text); text-align: end; font-variant-numeric: tabular-nums; }
+.rk-row.mine { background: color-mix(in srgb, var(--rk-mine) 10%, transparent); }
+.rk-row.mine .rk-fill { background: var(--rk-mine); }
+.rk-row.mine .rk-name { font-weight: 900; }
+.rk-row.mine .rk-rank { color: var(--text); }
+.rk-star { color: #f5b301; margin-inline-end: 4px; }
+.rk-gap { list-style: none; padding: 2px 6px 2px 0; color: var(--muted); font-size: .8rem; text-align: center; }
+
+.rk-table { margin-top: 14px; }
+.rk-table summary { cursor: pointer; font-weight: 800; color: var(--brand); }
+.rk-table .table-wrap { overflow-x: auto; margin-top: 8px; }
+.rk-table table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+.rk-table :is(th, td) { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: start; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rk-table thead th { font-size: .75rem; color: var(--muted); }
+.rk-table tr.mine { background: color-mix(in srgb, var(--rk-mine) 12%, transparent); }
+.rk-table tbody th { font-weight: 700; }
+.rk-skeleton { display: grid; gap: 10px; padding: 16px 0; }
+.rk-skeleton .sk-line { height: 16px; }
+.rk-skeleton .sk-line:nth-child(odd) { width: 80%; } .rk-skeleton .sk-line:nth-child(even) { width: 60%; }
+
+@media (max-width: 640px) {
+  .rk-controls { gap: 10px; }
+  .rk-field { flex: 1 1 140px; } .rk-field select { min-width: 0; width: 100%; }
+  .rk-row { grid-template-columns: 1.8em minmax(84px, 8.5em) minmax(0, 1fr) 3.4em; gap: 8px; padding-inline: 2px; }
+  .rk-val { font-size: .8rem; }
+  .rk-section { padding: 12px; }
+  .rk-sec-head .rk-view { margin-inline-start: 0; }
+}

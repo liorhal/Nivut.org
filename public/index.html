@@ -26,6 +26,7 @@
           <li><a role="tab" href="#upcoming" data-view="upcoming">ניווטים קרובים</a></li>
           <li><a role="tab" href="#annual" data-view="annual">תוכנית שנתית</a></li>
           <li><a role="tab" href="#forum" data-view="forum">פורום</a></li>
+          <li><a role="tab" href="#ranking" data-view="ranking">דירוג</a></li>
         </ul>
       </nav>
       <button type="button" class="people-btn" id="peopleBtn" aria-haspopup="dialog">
@@ -115,6 +116,23 @@
     </section>
 
     <!-- תוכנית שנתית -->
+    <section id="view-ranking" class="view" aria-labelledby="rank-title" hidden>
+      <div class="container">
+        <div class="section-head">
+          <h1 id="rank-title">דירוג</h1>
+          <a class="btn ghost" id="rkSource" href="https://nivut.org.il/results/ranking.aspx" target="_blank" rel="noopener">הדירוג באתר האיגוד ↗</a>
+        </div>
+        <div class="rk-controls">
+          <div class="seg rk-leagues" id="rkLeagues" role="group" aria-label="ליגה"></div>
+          <label class="rk-field"><span>עונה</span><select id="rkSeason"></select></label>
+          <label class="rk-field"><span>קטגוריה</span><select id="rkCategory"></select></label>
+        </div>
+        <p id="rkStatus" class="live-status" role="status" hidden></p>
+        <div id="rkMine" class="rk-mine" aria-live="polite"></div>
+        <div id="rkBody"></div>
+      </div>
+    </section>
+
     <section id="view-annual" class="view" aria-labelledby="annual-title" hidden>
       <div class="container">
         <div class="section-head">
