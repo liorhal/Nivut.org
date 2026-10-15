@@ -300,7 +300,7 @@
     renderPeopleList();
     state.regIds = null;
     renderRegFilter();
-    if (rk.data) renderRanking();
+    if (rk.data) { rememberStars(rk.data); renderRkCategories(); renderRanking(); }
     if (state.filter.registered) findRegistered().then(() => { renderTop4(); renderList(); });
     renderTop4();
     if (location.hash.startsWith('#event/')) renderMyPeople(decodeURIComponent(location.hash.slice(7)));
@@ -1343,6 +1343,25 @@
   // my people in the brand colour and named, everyone else muted; the full table below.
   const RK_LEAGUES = { foot: 'ניווט רגלי', mtbo: 'ניווט רכוב', local: 'ליגה מקומית' };
   const rk = { sel: store.get('rank', { league: 'foot', season: '', category: '' }), data: null, around: true, busy: false, inited: false };
+  // Categories where my people were found, remembered per league: { foot: { H21A: ['דנה כהן'] } }
+  const rkStars = store.get('rkStars', {});
+  /** Remembers (or forgets) the shown category by whether any of my people are in it. */
+  function rememberStars(d) {
+    const names = [...new Set((d.grids || []).flatMap((g) => g.rows.filter((r) => state.people.some((p) => sameName(p, r.name))).map((r) => r.name)))];
+    const lg = (rkStars[d.key] ||= {});
+    if (names.length) lg[d.category.value] = names; else delete lg[d.category.value];
+    store.set('rkStars', rkStars);
+  }
+  function renderRkCategories() {
+    const d = rk.data;
+    const stars = rkStars[d.key] || {};
+    $('#rkCategory').innerHTML = d.category.options.map((o) => `<option value="${esc(o)}"${o === d.category.value ? ' selected' : ''}>${stars[o] ? '★ ' : ''}${esc(o)}</option>`).join('');
+    // Quick picks: the categories of my people
+    const picks = Object.entries(stars).filter(([c]) => d.category.options.includes(c));
+    $('#rkQuick').innerHTML = picks.length ? `<span class="rk-quick-k">הקטגוריות של האנשים שלי:</span>${picks.map(([c, names]) =>
+      `<button type="button" class="chip" data-rk-cat="${esc(c)}" aria-pressed="${c === d.category.value}" title="${esc(names.join(', '))}">★ ${esc(c)}<span class="sr-only"> (${esc(names.join(', '))})</span></button>`).join('')}` : '';
+    $('#rkQuick').hidden = !picks.length;
+  }
 
   function showRanking() {
     if (!rk.inited) {
@@ -1357,6 +1376,11 @@
       });
       $('#rkSeason').addEventListener('change', (ev) => { rk.sel.season = ev.target.value; loadRanking(); });
       $('#rkCategory').addEventListener('change', (ev) => { rk.sel.category = ev.target.value; loadRanking(); });
+      $('#rkQuick').addEventListener('click', (ev) => {
+        const b = ev.target.closest('[data-rk-cat]');
+        if (!b || b.dataset.rkCat === rk.sel.category) return;
+        rk.sel.category = b.dataset.rkCat; loadRanking();
+      });
       $('#rkBody').addEventListener('click', (ev) => {
         const t = ev.target.closest('[data-rk-around]');
         if (t) { rk.around = t.dataset.rkAround === '1'; renderRanking(); }
@@ -1379,7 +1403,8 @@
       store.set('rank', rk.sel);
       const opts = (sel, c) => { sel.innerHTML = c.options.map((o) => `<option${o === c.value ? ' selected' : ''}>${esc(o)}</option>`).join(''); };
       opts($('#rkSeason'), d.season);
-      opts($('#rkCategory'), d.category);
+      rememberStars(d);
+      renderRkCategories();
       const t = new Date(d.fetchedAt);
       st.textContent = `מתעדכן מאתר האיגוד · עודכן ב-${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
       renderRanking();

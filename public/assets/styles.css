@@ -1728,3 +1728,7 @@ a.info-btn { text-decoration: none; }
   .rk-section { padding: 12px; }
   .rk-sec-head .rk-view { margin-inline-start: 0; }
 }
+/* Quick picks: categories where my people are */
+.rk-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: -4px 0 12px; }
+.rk-quick-k { font-size: .85rem; font-weight: 700; color: var(--muted); }
+.rk-quick .chip[aria-pressed="true"] { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
