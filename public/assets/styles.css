@@ -1877,3 +1877,8 @@ a.info-btn { text-decoration: none; }
 .top-card.tk .tk-head > :is(h2, h3):has(.tk-place) { overflow: visible; }
 .top-card.tk .tk-head > .tk-kind { margin: 2px 8px 0 0; }
 .top-card.tk .tk-head > .tk-kind > span { padding: 0 7px; line-height: 1.45; }
+
+/* brand: the association's logo, mirrored, on a white tile (the JPG has a white background) */
+.brand-logo { width: 36px; height: 38px; object-fit: contain; transform: scaleX(-1); background: #fff; border-radius: 8px; padding: 2px; box-shadow: 0 1px 4px rgb(0 0 0 / .2); flex: none; }
+.brand-flag[hidden], .brand-logo[hidden] { display: none; }
+@media (max-width: 560px) { .brand-logo { width: 30px; height: 32px; } }
