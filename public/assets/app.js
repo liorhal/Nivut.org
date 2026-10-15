@@ -252,8 +252,8 @@
   const isLeague = (e) => (e.tags || []).includes('league');
   const mineBadge = (e) => (isMine(e) ? '<span class="pill mine-pill">⚑<span class="mine-tx"> המועדון שלי</span></span>' : '');
   /** League / championship, under the date on the ticket card's stub. */
-  // Championship, sprint and relay only when the event's own text says so (name, note under it, description).
-  const ownText = (e) => [e.fullTitle || e.title, e.details?.note, ...(e.details?.description || [])].filter(Boolean).join(' ');
+  // Championship, sprint and relay only when the description ("מידע נוסף") says so; the event's name does not count.
+  const ownText = (e) => (e.details?.description || []).join(' ');
   const kindBadges = (e) => {
     const t = ownText(e);
     const kinds = [
