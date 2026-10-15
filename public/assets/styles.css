@@ -1792,3 +1792,15 @@ a.info-btn { text-decoration: none; }
 .topic.is-new > details > summary { box-shadow: inset -4px 0 0 var(--flag, #f26a1b); }
 .reply-list li.new-reply { background: color-mix(in srgb, var(--flag, #f26a1b) 8%, transparent); border-radius: 8px; box-shadow: inset -3px 0 0 var(--flag, #f26a1b); }
 :root[data-contrast="high"] .pill.new, :root[data-contrast="high"] .tab-new { background: var(--text); color: var(--bg); }
+
+/* ticket card: league / championship under the date */
+.top-card.tk .tk-kind { display: grid; gap: 4px; justify-items: center; }
+.top-card.tk .tk-kind > span {
+  display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+  background: var(--gold); color: var(--gold-ink); font-size: .74rem; font-weight: 900; line-height: 1.5; box-shadow: 0 2px 6px rgb(0 0 0 / .2);
+}
+.top-card.tk .tk-kind > span > span { font-size: .8em; }
+:root[data-contrast="high"] .top-card.tk .tk-kind > span { background: var(--bg); color: var(--text); }
+@media (max-width: 560px) { .top-card.tk .tk-kind > span { padding: 1px 6px; font-size: .68rem; } }
+.top-card.tk .tk-stub:has(.tk-kind) { justify-content: flex-start; }
+.top-card.tk .tk-stub:has(.tk-kind) .tk-star { margin-top: auto; }

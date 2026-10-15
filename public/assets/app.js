@@ -251,6 +251,11 @@
   const isMine = (e) => !!state.myClub && eventClubId(e) === state.myClub;
   const isLeague = (e) => (e.tags || []).includes('league');
   const mineBadge = (e) => (isMine(e) ? '<span class="pill mine-pill">⚑<span class="mine-tx"> המועדון שלי</span></span>' : '');
+  /** League / championship, under the date on the ticket card's stub. */
+  const kindBadges = (e) => {
+    const kinds = [isLeague(e) && ['league', 'ליגה'], (e.tags || []).includes('champ') && ['champ', 'אליפות']].filter(Boolean);
+    return kinds.length ? `<div class="tk-kind">${kinds.map(([k, t]) => `<span class="tk-kind-${k}"><span aria-hidden="true">🏆</span> ${t}</span>`).join('')}</div>` : '';
+  };
   const leagueBadge = (e) => (isLeague(e) ? '<span class="pill league-pill"><span aria-hidden="true">🏆</span> ליגה</span>' : '');
 
   function updateTrackButtons() {
@@ -1067,12 +1072,12 @@
     const fresh = !seenCards.has(e.id);
     const enter = fresh ? ' is-new' : '';
     return `<li class="top-card tk${enter}${lead ? ' lead' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}">
-        <div class="tk-stub"><div class="top-date" aria-hidden="true"><span class="dow">${DAYS[d.getDay()]}</span><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span></div><div class="tk-star"></div></div>
+        <div class="tk-stub"><div class="top-date" aria-hidden="true"><span class="dow">${DAYS[d.getDay()]}</span><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span></div>${kindBadges(e)}<div class="tk-star"></div></div>
         <span class="tk-notch t" aria-hidden="true"></span><span class="tk-notch b" aria-hidden="true"></span>
         <div class="tk-body">
           ${watermarkHtml(e)}
           <div class="top-bar">
-            <div class="badges">${leagueBadge(e)}${mineBadge(e)}</div>
+            <div class="badges">${mineBadge(e)}</div>
             ${e.clubName ? `<span class="top-club">${eventLogo(e, 'cl-sm')}<span>${esc(e.clubName)}</span></span>` : ''}
           </div>
           <${tag}><a href="#event/${encodeURIComponent(e.id)}" title="${esc(e.title)}">${esc(e.title)}</a></${tag}>
@@ -1107,7 +1112,7 @@
   const HELP_NOTES = [
     ['.top-date', 'תאריך וסוג הניווט: ירוק = רגלי, כחול = רכוב.'],
     ['.ppl-star', 'האם אני רשום, וזמני הזינוק (השמות בריחוף או בהקשה).'],
-    ['.badges', 'מאפייני התחרות – ליגה / אליפות.'],
+    ['.tk-kind', 'מאפייני התחרות – ליגה / אליפות.'],
     ['.top-club', 'המועדון המארגן.'],
     ['.dist', 'המרחק ממך, ו־Waze לנקודת הכינוס.'],
     ['.tlm', 'זינוק ראשון, זינוק אחרון ושעת גג.'],
