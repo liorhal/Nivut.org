@@ -1086,11 +1086,9 @@
         <span class="tk-notch t" aria-hidden="true"></span><span class="tk-notch b" aria-hidden="true"></span>
         <div class="tk-body">
           ${watermarkHtml(e)}
-          <div class="top-bar">
-            <div class="badges">${mineBadge(e)}</div>
-            ${e.clubName ? `<span class="top-club">${eventLogo(e, 'cl-sm')}<span>${esc(e.clubName)}</span></span>` : ''}
-          </div>
           <${tag}><a href="#event/${encodeURIComponent(e.id)}" title="${esc(e.title)}">${esc(e.title)}</a></${tag}>
+          ${e.clubName || isMine(e) ? `<p class="tk-club">${e.clubName ? `<span class="tk-club-name">${esc(e.clubName)}</span>` : ''}${mineBadge(e)}</p>` : ''}
+          <hr class="tk-sep" aria-hidden="true">
           <p class="top-when">${[!tlMini && e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`,
             // Phones hide the diagram in the four nearest; this short line takes its place there.
             tlMini && e.details?.startFrom && `<strong class="start-time start-alt">זינוק <bdi dir="ltr">${esc(e.details.startFrom)}${e.details.startTo ? `–${esc(e.details.startTo)}` : ''}</bdi></strong>`,
@@ -1121,9 +1119,9 @@
   const SAMPLE_LOGO = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#0b3d2e"/><path d="M50 12 62 50 50 88 38 50z" fill="#f26a1b"/><path d="M50 12 62 50H38z" fill="#fff"/><circle cx="50" cy="50" r="6" fill="#0b3d2e"/></svg>');
   const HELP_NOTES = [
     ['.top-date', 'תאריך וסוג הניווט: ירוק = רגלי, כחול = רכוב.'],
-    ['.ppl-star', 'האם אני רשום, וזמני הזינוק (השמות בריחוף או בהקשה). כשאני רשום, ההרשמה לא מוצגת בכרטיס.'],
+    ['.ppl-star', 'האם אני רשום, וזמני הזינוק.'],
     ['.tk-kind', 'מאפייני התחרות – ליגה, אליפות, ספרינט, שליחים.'],
-    ['.top-club', 'המועדון המארגן.'],
+    ['.tk-club-name', 'המועדון המארגן.'],
     ['.dist', 'המרחק ממך, ו־Waze לנקודת הכינוס.'],
     ['.tlm', 'זינוק ראשון, זינוק אחרון ושעת גג.'],
     ['.reg-cd', 'הרשמה: הזמן שנשאר להרשמה מוקדמת. ההרשמה עצמה מתבצעת באתר הרשמי של האיגוד.'],

@@ -1811,3 +1811,13 @@ a.info-btn { text-decoration: none; }
 .top-card.tk .tk-kind > .tk-kind-sprint { background: #e0f2fe; color: #075985; }
 .top-card.tk .tk-kind > .tk-kind-relay { background: #ede9fe; color: #5b21b6; }
 .top-card.tk .tk-kind > .tk-kind-champ { background: #fff; color: #9a3412; }
+
+/* ticket card: the name at the top (up to two lines), the organising club under it, a thin rule, then where and when */
+.top-card.tk .tk-body { align-content: start; }
+.top-card.tk :is(h2, h3), #top4 > .top-card.tk.lead :is(h2, h3) {
+  white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; text-overflow: clip;
+}
+.top-card.tk .tk-club { display: flex; align-items: center; gap: 8px; min-width: 0; margin: -6px 0 0; font-size: .84rem; font-weight: 800; color: var(--muted); }
+.top-card.tk .tk-club-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.top-card.tk .tk-club .pill { flex: none; }
+.top-card.tk .tk-sep { border: 0; border-top: 1px solid var(--line, rgb(0 0 0 / .1)); margin: 0; width: 100%; }
