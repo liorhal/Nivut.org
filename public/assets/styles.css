@@ -2023,3 +2023,14 @@ a.info-btn { text-decoration: none; }
 .rs-legs td.tot small { display: inline; margin-inline-start: 6px; font-weight: 600; color: var(--muted); font-size: .7rem; white-space: nowrap; }
 .rs-legs tbody.rs-runner tr:not(:last-child) :is(td, th.rs-kind) { border-bottom-style: dashed; }
 .rs-legs tr.speed td:not(.lapc), .rs-legs tr.mistake td:not(.lapc) { background: none; }
+
+/* legs table: every cell is the same three slots (value · gap · place), so values and places line up down a column;
+   a thin line between legs */
+.rs-legs td:not(.tot) { text-align: start; white-space: nowrap; }
+.rs-legs td > span { text-align: center; }
+.rs-legs td .lt, .rs-legs td.lapc .lt { width: 3.6em; min-width: 0; }
+.rs-legs.long td .lt { width: 4.4em; }
+.rs-legs td .lg { width: 3.4em; min-width: 0; }
+.rs-legs td .rs-pl { min-width: 1.7em; }
+.rs-legs td.none { text-align: center; }
+.rs-legs td, .rs-legs thead th:not(:first-child) { border-inline-start: 1px solid color-mix(in srgb, var(--text) 12%, transparent); }

@@ -2019,7 +2019,7 @@
     const lapCell = (k, i, v) => {
       if (v === null || v === undefined) return '<td class="none">–</td>';
       const p = lapPlace(k, i, v), txt = k === 'speed' ? fmtSpeed(v) : fmtMistake(v);
-      return `<td class="lapc ${k === 'speed' ? speedCls(v) : mistakeCls(v)}" aria-label="${esc(`${k === 'speed' ? 'מדד מהירות' : 'זמן טעות'}: ${txt}, מקום ${p}`)}"><span class="lt"><bdi dir="ltr">${txt}</bdi></span><span class="rs-pl">${p}</span></td>`;
+      return `<td class="lapc ${k === 'speed' ? speedCls(v) : mistakeCls(v)}" aria-label="${esc(`${k === 'speed' ? 'מדד מהירות' : 'זמן טעות'}: ${txt}, מקום ${p}`)}"><span class="lt"><bdi dir="ltr">${txt}</bdi></span><span class="lg"></span><span class="rs-pl">${p}</span></td>`;
     };
     const lap = on.has('speed') || on.has('mistake');
     const summary = (r, k) => {
@@ -2039,7 +2039,7 @@
       return `<tbody class="rs-runner">${rows.map(([k, t], n) => `<tr class="${k}">${n ? '' : `<th scope="rowgroup" rowspan="${rows.length}" class="rs-who"><i class="rs-sw s${rs.picked.get(rsKey(r))}" aria-hidden="true"></i>${esc(r.name)}</th>`}<th scope="row" class="rs-kind">${t}</th>${cells[k]()}${summary(r, k)}</tr>`).join('')}</tbody>`;
     }).join('');
     return `<div class="rs-legs-top"><p class="muted small rs-legs-key">${key}</p>${toggle}</div>
-      <div class="rs-legs-wrap"><table class="rs-legs"><caption class="sr-only">לכל מתחרה מסומן שורה לכל נתון שנבחר: ${rows.map(([, t]) => t).join(', ')}</caption>
+      <div class="rs-legs-wrap"><table class="rs-legs${picked.some((r) => r.splits.some((v) => v >= 3600)) ? ' long' : ''}"><caption class="sr-only">לכל מתחרה מסומן שורה לכל נתון שנבחר: ${rows.map(([, t]) => t).join(', ')}</caption>
         <thead><tr><th scope="col" colspan="2">מתחרה</th>${c.controls.map((ctl) => `<th scope="col">${esc(shortCtl(ctl))}</th>`).join('')}${lap ? '<th scope="col">סיכום</th>' : ''}</tr></thead>${body}</table></div>`;
   }
 
