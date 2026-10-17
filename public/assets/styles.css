@@ -1970,7 +1970,7 @@ a.info-btn { text-decoration: none; }
 .tip table.tt th, .tip table.tt td { padding: 2px 6px; white-space: nowrap; }
 .tip table.tt thead th { color: #bdb8ad; font-weight: 700; font-size: .74rem; text-align: center; border-bottom: 1px solid rgb(255 255 255 / .15); }
 .tip table.tt thead tr:first-child th { border-bottom: 0; color: #fbbf24; font-size: .78rem; }
-.tip table.tt thead th[colspan="3"], .tip table.tt td:nth-child(4) { border-inline-start: 1px solid rgb(255 255 255 / .2); }
+.tip table.tt thead th[colspan="3"]:last-child, .tip table.tt td:nth-child(5) { border-inline-start: 1px solid rgb(255 255 255 / .2); }
 .tip table.tt tbody th { text-align: start; font-weight: 700; }
 .tip table.tt td.n { text-align: center; font-family: var(--num); font-weight: 800; }
 .tip .tt-top { color: #86efac; font-weight: 800; }

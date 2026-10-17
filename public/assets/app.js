@@ -2019,12 +2019,12 @@
       const gap = (v) => (v === null ? '–' : v === 0 ? '<span class="tt-top">ראשון</span>' : `<bdi dir="ltr">${fmtSec(v, true)}</bdi>`);
       const ctl = c.controls[j];
       const html = `<div class="tt-head">נקודה ${esc(shortCtl(ctl))}${/\((\d+)\)/.test(ctl) ? ` <span>(${esc(/\((\d+)\)/.exec(ctl)[1])})</span>` : ''}</div>
-        <table class="tt"><thead><tr><th></th><th colspan="2">כללי</th><th colspan="3">מקטע</th></tr>
-        <tr class="sub"><th></th><th>מקום</th><th>פער</th><th>זמן</th><th>מקום</th><th>פער</th></tr></thead><tbody>${rows.map((x) => `<tr>
+        <table class="tt"><thead><tr><th></th><th colspan="3">כללי</th><th colspan="3">מקטע</th></tr>
+        <tr class="sub"><th></th><th>זמן</th><th>מקום</th><th>פער</th><th>זמן</th><th>מקום</th><th>פער</th></tr></thead><tbody>${rows.map((x) => `<tr>
           <th><i class="tt-sw s${x.slot}"></i>${esc(x.r.name)}</th>
-          <td class="n">${x.cr ?? '–'}</td><td class="n">${gap(x.cg)}</td>
+          <td class="n">${x.at === null || x.at === undefined ? '–' : `<bdi dir="ltr">${fmtSec(x.at)}</bdi>`}</td><td class="n">${x.cr ?? '–'}</td><td class="n">${gap(x.cg)}</td>
           <td class="n">${x.leg === null ? '–' : `<bdi dir="ltr">${fmtSec(x.leg)}</bdi>`}</td><td class="n">${x.lr ?? '–'}</td><td class="n">${gap(x.lg)}</td></tr>`).join('')}</tbody></table>`;
-      const tip = [`נקודה ${shortCtl(ctl)}:`, ...rows.map((x) => `${x.r.name}\tכללי ${x.cr ?? '–'} (${x.cg === null ? '–' : fmtSec(x.cg, true)}) · מקטע ${fmtSec(x.leg)} – ${x.lr ?? '–'} (${x.lg === null ? '–' : fmtSec(x.lg, true)})`)].join('\n');
+      const tip = [`נקודה ${shortCtl(ctl)}:`, ...rows.map((x) => `${x.r.name}\tכללי ${x.at === null || x.at === undefined ? '–' : fmtSec(x.at)} – ${x.cr ?? '–'} (${x.cg === null ? '–' : fmtSec(x.cg, true)}) · מקטע ${fmtSec(x.leg)} – ${x.lr ?? '–'} (${x.lg === null ? '–' : fmtSec(x.lg, true)})`)].join('\n');
       return `<rect class="rs-band" x="${x0}" y="${T}" width="${Math.max(2, x1 - x0)}" height="${H - T - B}" data-tip="${esc(tip)}" data-tip-html="${esc(html)}" tabindex="-1"/>`;
     }).join('');
     return `<svg class="rs-chart" viewBox="0 0 ${W} ${H}" role="img" dir="ltr" aria-label="${esc(`פער מהמנצח (${ref.name}) בכל נקודה, ל-${picked.length} מתחרים. הנתונים בטבלת המקטעים שמתחת.`)}">
