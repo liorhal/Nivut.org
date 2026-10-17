@@ -1958,3 +1958,6 @@ a.info-btn { text-decoration: none; }
 .rs-ext { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
 .rs-ext p { margin: 0; }
 .rs-frame { width: 100%; height: min(78vh, 900px); border: 1px solid var(--border); border-radius: 14px; background: #fff; }
+
+.rs-legs td small.cum { color: var(--text); opacity: .7; font-weight: 700; }
+.rs-legs td small { white-space: nowrap; }

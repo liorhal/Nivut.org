@@ -652,7 +652,7 @@
     return started ? ['results', 'analysis', 'starts', 'planner', 'other'] : ['planner', 'starts', 'results', 'analysis', 'other'];
   }
   /** Results and splits files on the association's hosts open in our own viewer (#results/<event>/<file>). */
-  const viewable = (f) => (f.kind === 'results' || f.kind === 'analysis') && /^https?:\/\/(?:cdn\.|www\.)?nivut\.org\.il\/[^?#]*\.html?(?:[?#]|$)/i.test(f.url);
+  const viewable = (f) => (f.kind === 'results' || f.kind === 'analysis') && /^https?:\/\/(?:cdn\.|www\.)?nivut\.org\.il\/[^?#]*\.(?:html?|pdf)(?:[?#]|$)/i.test(f.url);
   const fileHref = (f, e) => (e && viewable(f) ? `#results/${encodeURIComponent(e.id)}/${encodeURIComponent(f.url)}` : f.url);
   const fileLink = (f, key = false, e = null) => `<a class="ev-file kind-${f.kind}${key ? ' key' : ''}" href="${esc(fileHref(f, e))}"${fileHref(f, e) === f.url ? ' target="_blank" rel="noopener"' : ''}${isImageUrl(f.url) ? ` data-lightbox="${esc(f.name)}"` : ''}>
       <span class="fi" aria-hidden="true">${FILE_KINDS[f.kind]?.icon || '📎'}</span><span class="fn">${esc(f.name)}</span>${f.kind !== 'other' && f.name !== FILE_KINDS[f.kind].label ? `<span class="fk">${FILE_KINDS[f.kind].label}</span>` : ''}</a>`;
@@ -1954,7 +1954,11 @@
     }));
     const best = c.controls.map((_, i) => Math.min(...legs.map((l) => l[i]).filter((v) => v !== null && v > 0)));
     const rank = (i, v) => (v === null ? null : 1 + legs.filter((l) => l[i] !== null && l[i] < v).length);
-    return { legs, best, rank };
+    // overall at each control: place among everyone's time to that point, and the gap to the first there
+    const cum = (i) => c.runners.map((r) => r.splits[i]).filter((v) => v !== null && v !== undefined && v > 0);
+    const cumBest = c.controls.map((_, i) => Math.min(...cum(i)));
+    const cumRank = (i, v) => (v === null || v === undefined ? null : 1 + cum(i).filter((x) => x < v).length);
+    return { legs, best, rank, cumBest, cumRank };
   }
   /** The reference for "time behind": the winner's cumulative times (the fastest finisher with all splits). */
   function referenceOf(c) {
@@ -2003,12 +2007,16 @@
     const bands = xs.map((t, i) => {
       if (!i) return '';
       const x0 = x((xs[i - 1] + t) / 2), x1 = i < xs.length - 1 ? x((t + xs[i + 1]) / 2) : W - R;
-      const tip = [`נקודה ${shortCtl(c.controls[i - 1])}:`, ...picked.map((r) => {
-        const leg = st.legs[c.runners.indexOf(r)][i - 1];
-        const rk = st.rank(i - 1, leg);
-        const b = behind[picked.indexOf(r)][i];
-        return `${r.name}\t${b === null ? '–' : fmtSec(b, true)} · מקטע ${fmtSec(leg)}${rk ? ` (${rk})` : ''}`;
-      })].join('\n');
+      const j = i - 1;
+      const iso = (t) => `\u2066${t}\u2069`; // keep "+0:43" in one direction inside Hebrew
+      const tip = picked.flatMap((r) => {
+        const leg = st.legs[c.runners.indexOf(r)][j];
+        const at = r.splits[j];
+        const lr = st.rank(j, leg), cr = st.cumRank(j, at);
+        const overall = cr ? `מקום ${cr} · ${at - st.cumBest[j] ? iso(fmtSec(at - st.cumBest[j], true)) : 'מוביל'}` : '–';
+        const legTxt = lr ? `מקום ${lr} · ${leg - st.best[j] ? iso(fmtSec(leg - st.best[j], true)) : 'הכי מהיר'}` : '–';
+        return [`${r.name} – נקודה ${shortCtl(c.controls[j])}:`, `כללי\t${overall}`, `מקטע ${iso(fmtSec(leg))}\t${legTxt}`];
+      }).join('\n');
       return `<rect class="rs-band" x="${x0}" y="${T}" width="${Math.max(2, x1 - x0)}" height="${H - T - B}" data-tip="${esc(tip)}" tabindex="-1"/>`;
     }).join('');
     return `<svg class="rs-chart" viewBox="0 0 ${W} ${H}" role="img" dir="ltr" aria-label="${esc(`פער מהמנצח (${ref.name}) בכל נקודה, ל-${picked.length} מתחרים. הנתונים בטבלת המקטעים שמתחת.`)}">
@@ -2041,16 +2049,17 @@
       <p class="muted small rs-info">${[c.info && `<bdi dir="ltr">${esc(c.info)}</bdi>`, `סיימו ${c.runners.filter((r) => r.status === 'OK').length} מתוך ${c.runners.length}`].filter(Boolean).join(' · ')}</p>
       ${hasSplits(c) && ref ? `<section class="ev-card rs-graph" aria-labelledby="rsg-h">
         <h2 id="rsg-h">פער מהמנצח בכל נקודה</h2>
-        <p class="muted small">קו שעולה – הפסד זמן מול ${esc(ref.name)} באותו מקטע; קו שטוח – אותו קצב. ריחוף על נקודה מציג זמני מקטע ודירוג.</p>
+        <p class="muted small">קו שיורד – הפסד זמן מול ${esc(ref.name)} באותו מקטע; קו שטוח – אותו קצב. ריחוף על נקודה מציג מקום כללי ופער, ומקום ופער במקטע.</p>
         <div class="rs-legend">${legend}</div>
         <div class="rs-chart-wrap">${chartSvg(c, ref, st)}</div>
-        ${picked.length ? `<div class="rs-legs-wrap"><table class="rs-legs"><caption class="sr-only">זמני מקטעים (ודירוג במקטע) של המתחרים המסומנים</caption>
+        ${picked.length ? `<div class="rs-legs-wrap"><table class="rs-legs"><caption class="sr-only">זמני מקטעים של המתחרים המסומנים: זמן המקטע, המקום והפער במקטע, והמקום הכללי בנקודה</caption>
           <thead><tr><th scope="col">מתחרה</th>${c.controls.map((ctl) => `<th scope="col">${esc(shortCtl(ctl))}</th>`).join('')}</tr></thead>
           <tbody>${picked.map((r) => {
             const legs = st.legs[c.runners.indexOf(r)];
             return `<tr><th scope="row"><i class="rs-sw s${rs.picked.get(rsKey(r))}" aria-hidden="true"></i>${esc(r.name)}</th>${legs.map((v, i) => {
-              const rk = st.rank(i, v);
-              return `<td class="${v !== null && v === st.best[i] ? 'best' : ''}">${fmtSec(v)}${rk ? `<small>${rk}</small>` : ''}</td>`;
+              const rk = st.rank(i, v), cr = st.cumRank(i, r.splits[i]);
+              const gap = v !== null && v > st.best[i] ? fmtSec(v - st.best[i], true) : '';
+              return `<td class="${v !== null && v === st.best[i] ? 'best' : ''}">${fmtSec(v)}${rk ? `<small>${rk}${gap ? ` · <bdi dir="ltr">${gap}</bdi>` : ''}</small>` : ''}${cr ? `<small class="cum">כללי ${cr}</small>` : ''}</td>`;
             }).join('')}</tr>`;
           }).join('')}</tbody></table></div>` : ''}
       </section>` : ''}

@@ -443,5 +443,16 @@ test('results file: a results PDF converted to HTML (Hebrew back in reading orde
 test('results files are fetched only from the association', () => {
   assert.ok(L.resultFileUrl('https://cdn.nivut.org.il/uploads/a_results.html'));
   assert.equal(L.resultFileUrl('https://example.com/a.html'), null);
-  assert.equal(L.resultFileUrl('https://cdn.nivut.org.il/uploads/a.pdf'), null);
+  assert.ok(L.resultFileUrl('https://cdn.nivut.org.il/uploads/a.pdf'));
+  assert.equal(L.resultFileUrl('https://cdn.nivut.org.il/uploads/a.docx'), null);
+});
+
+test('results file: a results PDF itself (text read from the PDF, Hebrew back in reading order)', () => {
+  const r = R.parseResultFile(fs.readFileSync(path.join(__dirname, 'fixtures/results/oe-results.pdf')));
+  assert.equal(r.format, 'pdf');
+  assert.equal(r.title, 'בית ענבה');
+  assert.equal(r.date, '2026-10-17');
+  const d12 = r.courses.find((c) => c.name === 'D12');
+  assert.deepEqual([d12.runners[0].name, d12.runners[0].club, d12.runners[0].time], ['פרלמן מידן זהר', 'חבל מודיעין', 2749]);
+  assert.equal(r.courses.find((c) => c.name === 'D16A').runners.at(-1).status, 'MP');
 });
