@@ -1996,3 +1996,10 @@ a.info-btn { text-decoration: none; }
 .rs-legs td.best .rs-pl { background: var(--brand); color: #fff; }
 .rs-legs td.none { color: var(--muted); }
 @media (max-width: 640px) { .rs-legs tbody.rs-runner th[scope="rowgroup"] { white-space: normal; max-width: 6.5em; line-height: 1.25; } }
+
+/* per-leg bars against the winner */
+.rs-sub-h { margin: 22px 0 2px; font-size: 1.05rem; }
+.rs-bar { fill: var(--sc); }
+.rs-stripe { fill: color-mix(in srgb, var(--text) 3%, transparent); }
+.rs-grid.zero { stroke: color-mix(in srgb, var(--text) 45%, transparent); stroke-width: 1.5; }
+.rs-chart .rs-side { font-size: 11px; fill: var(--muted); }
