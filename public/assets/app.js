@@ -429,7 +429,9 @@
     const show = (el) => {
       if (owner !== el) shownAt = Date.now();
       owner = el;
-      tip.innerHTML = el.dataset.tip.split('\n').map((l) => {
+      // rich tooltips (built by us from escaped values) carry their own markup; the rest are "name\tvalue" lines
+      tip.classList.toggle('tip-wide', !!el.dataset.tipHtml);
+      tip.innerHTML = el.dataset.tipHtml || el.dataset.tip.split('\n').map((l) => {
         const [name, time] = l.split('\t');
         if (time === undefined && name.endsWith(':')) return `<span class="tip-head">${esc(name)}</span>`;
         return `<span class="tip-row"><span>${esc(name)}</span>${time ? `<b>${esc(time)}</b>` : ''}</span>`;
@@ -2009,16 +2011,21 @@
       if (!i) return '';
       const x0 = x((xs[i - 1] + t) / 2), x1 = i < xs.length - 1 ? x((t + xs[i + 1]) / 2) : W - R;
       const j = i - 1;
-      const iso = (t) => `\u2066${t}\u2069`; // keep "+0:43" in one direction inside Hebrew
-      const tip = picked.flatMap((r) => {
-        const leg = st.legs[c.runners.indexOf(r)][j];
-        const at = r.splits[j];
-        const lr = st.rank(j, leg), cr = st.cumRank(j, at);
-        const overall = cr ? `מקום ${cr} · ${at - st.cumBest[j] ? iso(fmtSec(at - st.cumBest[j], true)) : 'מוביל'}` : '–';
-        const legTxt = lr ? `מקום ${lr} · ${leg - st.best[j] ? iso(fmtSec(leg - st.best[j], true)) : 'הכי מהיר'}` : '–';
-        return [`${r.name} – נקודה ${shortCtl(c.controls[j])}:`, `כללי\t${overall}`, `מקטע ${iso(fmtSec(leg))}\t${legTxt}`];
-      }).join('\n');
-      return `<rect class="rs-band" x="${x0}" y="${T}" width="${Math.max(2, x1 - x0)}" height="${H - T - B}" data-tip="${esc(tip)}" tabindex="-1"/>`;
+      const rows = picked.map((r) => {
+        const leg = st.legs[c.runners.indexOf(r)][j], at = r.splits[j];
+        return { r, slot: rs.picked.get(rsKey(r)), at, leg, cr: st.cumRank(j, at), lr: st.rank(j, leg),
+          cg: at !== null && at !== undefined ? at - st.cumBest[j] : null, lg: leg !== null ? leg - st.best[j] : null };
+      }).sort((a, b) => (a.cr ?? 1e9) - (b.cr ?? 1e9));
+      const gap = (v) => (v === null ? '–' : v === 0 ? '<span class="tt-top">ראשון</span>' : `<bdi dir="ltr">${fmtSec(v, true)}</bdi>`);
+      const ctl = c.controls[j];
+      const html = `<div class="tt-head">נקודה ${esc(shortCtl(ctl))}${/\((\d+)\)/.test(ctl) ? ` <span>(${esc(/\((\d+)\)/.exec(ctl)[1])})</span>` : ''}</div>
+        <table class="tt"><thead><tr><th></th><th colspan="2">כללי</th><th colspan="3">מקטע</th></tr>
+        <tr class="sub"><th></th><th>מקום</th><th>פער</th><th>זמן</th><th>מקום</th><th>פער</th></tr></thead><tbody>${rows.map((x) => `<tr>
+          <th><i class="tt-sw s${x.slot}"></i>${esc(x.r.name)}</th>
+          <td class="n">${x.cr ?? '–'}</td><td class="n">${gap(x.cg)}</td>
+          <td class="n">${x.leg === null ? '–' : `<bdi dir="ltr">${fmtSec(x.leg)}</bdi>`}</td><td class="n">${x.lr ?? '–'}</td><td class="n">${gap(x.lg)}</td></tr>`).join('')}</tbody></table>`;
+      const tip = [`נקודה ${shortCtl(ctl)}:`, ...rows.map((x) => `${x.r.name}\tכללי ${x.cr ?? '–'} (${x.cg === null ? '–' : fmtSec(x.cg, true)}) · מקטע ${fmtSec(x.leg)} – ${x.lr ?? '–'} (${x.lg === null ? '–' : fmtSec(x.lg, true)})`)].join('\n');
+      return `<rect class="rs-band" x="${x0}" y="${T}" width="${Math.max(2, x1 - x0)}" height="${H - T - B}" data-tip="${esc(tip)}" data-tip-html="${esc(html)}" tabindex="-1"/>`;
     }).join('');
     return `<svg class="rs-chart" viewBox="0 0 ${W} ${H}" role="img" dir="ltr" aria-label="${esc(`פער מהמנצח (${ref.name}) בכל נקודה, ל-${picked.length} מתחרים. הנתונים בטבלת המקטעים שמתחת.`)}">
       <g>${grid}${cols}</g><line class="rs-zero" x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}"/>${lines}<g>${bands}</g></svg>`;
