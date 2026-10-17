@@ -1943,3 +1943,18 @@ a.info-btn { text-decoration: none; }
 /* phones: the chart keeps a readable size and scrolls sideways */
 @media (max-width: 700px) { .rs-chart-wrap { overflow-x: auto; } .rs-chart { min-width: 640px; } }
 .rs-grid, .rs-vgrid { stroke: color-mix(in srgb, var(--text) 14%, transparent); }
+
+/* a group of files ("LapCombat-…") as one row with a category picker */
+.file-group { flex-wrap: wrap; }
+.file-group .fn { flex: 0 1 auto; }
+.file-group .fg-pick { flex: 1; min-width: 120px; }
+.file-group select { width: 100%; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-weight: 700; }
+.file-group .fg-open { flex: none; padding: 6px 12px; border-radius: 999px; background: var(--brand); color: #fff; text-decoration: none; font-weight: 800; font-size: .88rem; }
+.file-group .fg-open:hover { filter: brightness(1.1); }
+
+.file-group .fg-count { flex: none; font-size: .8rem; color: var(--muted); font-weight: 700; }
+.rs-group-bar { margin-bottom: 14px; }
+.rs-orig { margin: 0 0 8px; font-size: .9rem; }
+.rs-ext { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.rs-ext p { margin: 0; }
+.rs-frame { width: 100%; height: min(78vh, 900px); border: 1px solid var(--border); border-radius: 14px; background: #fff; }

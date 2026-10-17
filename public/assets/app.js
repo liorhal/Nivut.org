@@ -656,6 +656,30 @@
   const fileHref = (f, e) => (e && viewable(f) ? `#results/${encodeURIComponent(e.id)}/${encodeURIComponent(f.url)}` : f.url);
   const fileLink = (f, key = false, e = null) => `<a class="ev-file kind-${f.kind}${key ? ' key' : ''}" href="${esc(fileHref(f, e))}"${fileHref(f, e) === f.url ? ' target="_blank" rel="noopener"' : ''}${isImageUrl(f.url) ? ` data-lightbox="${esc(f.name)}"` : ''}>
       <span class="fi" aria-hidden="true">${FILE_KINDS[f.kind]?.icon || '📎'}</span><span class="fn">${esc(f.name)}</span>${f.kind !== 'other' && f.name !== FILE_KINDS[f.kind].label ? `<span class="fk">${FILE_KINDS[f.kind].label}</span>` : ''}</a>`;
+  /**
+   * A run of files named "<prefix>-<category>" (LapCombat-Long, LapCombat-MediumA, …) is one row with a category picker.
+   * The last category picked for that prefix is remembered.
+   */
+  function groupFiles(files) {
+    const prefixOf = (f) => /^(.{2,40}?)\s*[-–_:]\s*(\S.{0,40})$/.exec(f.name.trim());
+    const count = new Map();
+    files.forEach((f) => { const m = prefixOf(f); if (m) count.set(`${f.kind}|${m[1].toLowerCase()}`, (count.get(`${f.kind}|${m[1].toLowerCase()}`) || 0) + 1); });
+    const out = [], seen = new Map();
+    for (const f of files) {
+      const m = prefixOf(f), key = m && `${f.kind}|${m[1].toLowerCase()}`;
+      if (!m || count.get(key) < 3) { out.push(f); continue; }
+      if (!seen.has(key)) { const g = { group: true, kind: f.kind, prefix: m[1], items: [] }; seen.set(key, g); out.push(g); }
+      seen.get(key).items.push({ label: m[2], f });
+    }
+    return out;
+  }
+  /** A group of files: one link to its page, where the category is chosen. */
+  const groupHref = (g, e) => `#results/${encodeURIComponent(e?.id || '')}/group:${encodeURIComponent(g.prefix)}`;
+  const fileGroupHtml = (g, key, e) => `<a class="ev-file file-group kind-${g.kind}${key ? ' key' : ''}" href="${esc(groupHref(g, e))}">
+      <span class="fi" aria-hidden="true">${FILE_KINDS[g.kind]?.icon || '📎'}</span><span class="fn">${esc(g.prefix)}</span>
+      <span class="fg-count">${g.items.length} קטגוריות</span><span class="fk">${FILE_KINDS[g.kind]?.label || ''}</span></a>`;
+  const filesListHtml = (files, keyOf, e) => groupFiles(files).map((x) => `<li>${x.group ? fileGroupHtml(x, keyOf(x), e) : fileLink(x, keyOf(x), e)}</li>`).join('');
+
   function filesHtml(e) {
     const files = e.details?.attachments || [];
     if (!files.length) return '';
@@ -663,7 +687,7 @@
     const sorted = [...files].sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
     const lead = order.slice(0, 2); // what matters now
     return `<section class="ev-card ev-files-card" id="ev-files" aria-labelledby="fl-h"><h2 id="fl-h">קבצים ונספחים</h2>
-      <ul class="ev-files">${sorted.map((f) => `<li>${fileLink(f, lead.includes(f.kind), e)}</li>`).join('')}</ul></section>`;
+      <ul class="ev-files">${filesListHtml(sorted, (x) => lead.includes(x.kind), e)}</ul></section>`;
   }
 
   /** Home page: the three latest events (today included), with only their results and results analysis. */
@@ -685,7 +709,7 @@
         <div class="rr-main">
           <h3><a href="#event/${encodeURIComponent(e.id)}" title="${esc(e.title)}">${esc(e.title)}</a></h3>
           <p class="sr-only">${fmtLong(d)}</p>
-          ${files.length ? `<ul class="rr-files">${files.map((f) => `<li>${fileLink(f, true, e)}</li>`).join('')}</ul>`
+          ${files.length ? `<ul class="rr-files">${filesListHtml(files, () => true, e)}</ul>`
             : `<p class="muted small">${daysBetween(new Date(), d) === 0 ? 'האירוע מתקיים היום – התוצאות יופיעו כאן' : 'התוצאות טרם פורסמו'}</p>`}
         </div></li>`;
     }).join('');
@@ -1823,20 +1847,67 @@
   const rsKey = (r) => `${r.name}|${r.club}|${r.pos}`;
   const isMinePerson = (name) => state.people.some((p) => sameName(p, name));
 
+  /** Where the viewer draws: inside a group page (#rsBody), else the whole results page. */
+  const rsTarget = () => (rs.inGroup && $('#rsBody')) || $('#resultsPage');
+
   async function showResultFile(param) {
     const cut = param.indexOf('/');
     const evId = cut >= 0 ? param.slice(0, cut) : '', url = cut >= 0 ? param.slice(cut + 1) : param;
-    const page = $('#resultsPage');
+    if (url.startsWith('group:')) { showFileGroup(evId, url.slice(6)); return; }
+    rs.inGroup = false;
     rs.event = state.events.find((x) => x.id === evId) || null;
-    const back = rs.event ? `<a class="btn ghost" href="#event/${encodeURIComponent(rs.event.id)}">→ לעמוד התחרות</a>` : '';
+    loadResult(url);
+    $('#main').focus({ preventScroll: true });
+  }
+
+  /** A group of files ("LapCombat-Long", "LapCombat-MediumA", …): a button per category, the chosen one below. */
+  async function showFileGroup(evId, prefix) {
+    rs.inGroup = true;
+    const page = $('#resultsPage');
+    let e = state.events.find((x) => x.id === evId) || null;
+    rs.event = e;
+    const back = e ? `<a class="btn ghost" href="#event/${encodeURIComponent(e.id)}">→ לעמוד התחרות</a>` : '';
+    if (e && !e.details && e.nivutId) {
+      page.innerHTML = '<p class="live-status" role="status">טוען…</p>';
+      await loadJson(`api/event?id=${encodeURIComponent(e.nivutId)}`).then((d) => applyDetails(e, d)).catch(() => {});
+    }
+    const g = groupFiles(e?.details?.attachments || []).find((x) => x.group && x.prefix.toLowerCase() === prefix.toLowerCase());
+    if (!g) {
+      page.innerHTML = `<div class="section-head"><h1 id="rsTitle">${esc(prefix)}</h1>${back}</div><p class="empty">לא מצאנו את הקבצים. ${e ? `<a href="#event/${encodeURIComponent(e.id)}">לעמוד התחרות</a>` : ''}</p>`;
+      return;
+    }
+    const title = e ? (e.calPlace && e.calDesc ? `${e.calPlace} – ${e.calDesc}` : e.title) : '';
+    const remembered = store.get('fileGroups', {})[g.prefix.toLowerCase()];
+    const sel = Math.max(0, g.items.findIndex((it) => it.label === remembered));
+    page.innerHTML = `<div class="section-head"><div><h1 id="rsTitle">${esc(g.prefix)}</h1>${title ? `<p class="muted">${esc(title)}${e ? ` · ${esc(fmtLong(evDate(e)))}` : ''}</p>` : ''}</div><div class="rs-actions">${back}</div></div>
+      <div class="seg rs-courses rs-group-bar" role="group" aria-label="קטגוריה">${g.items.map((it, i) => `<button type="button" data-gitem="${i}" aria-pressed="${i === sel}">${esc(it.label)}</button>`).join('')}</div>
+      <div id="rsBody"></div>`;
+    rs.group = g;
+    openGroupItem(sel);
+    $('#main').focus({ preventScroll: true });
+  }
+  function openGroupItem(i) {
+    const g = rs.group, it = g.items[i];
+    store.set('fileGroups', { ...store.get('fileGroups', {}), [g.prefix.toLowerCase()]: it.label });
+    $$('[data-gitem]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.gitem === i)));
+    if (viewable(it.f)) { loadResult(it.f.url); return; }
+    // an outside analysis (LapCombat, Livelox…): shown here when the site allows it, always one click away
+    $('#rsBody').innerHTML = `<div class="rs-ext"><p class="muted small">${esc(`${g.prefix} – ${it.label}`)} נפתח מאתר חיצוני. אם הוא לא נטען כאן:</p>
+        <a class="btn" href="${esc(it.f.url)}" target="_blank" rel="noopener">פתיחה בחלון חדש ↗</a></div>
+      <iframe class="rs-frame" src="${esc(it.f.url)}" title="${esc(`${g.prefix} – ${it.label}`)}" loading="lazy" referrerpolicy="no-referrer"></iframe>`;
+  }
+
+  async function loadResult(url) {
+    const page = rsTarget();
+    const back = rs.event && !rs.inGroup ? `<a class="btn ghost" href="#event/${encodeURIComponent(rs.event.id)}">→ לעמוד התחרות</a>` : '';
     if (rs.key !== url || !rs.data) {
       rs.key = url; rs.data = null; rs.picked = new Map(); rs.q = '';
-      page.innerHTML = `<div class="section-head"><h1 id="rsTitle">תוצאות</h1>${back}</div><p class="live-status" role="status">טוען את קובץ התוצאות…</p>
+      page.innerHTML = `${rs.inGroup ? '' : `<div class="section-head"><h1 id="rsTitle">תוצאות</h1>${back}</div>`}<p class="live-status" role="status">טוען את קובץ התוצאות…</p>
         <div class="rk-skeleton" aria-hidden="true">${'<i class="sk-line"></i>'.repeat(8)}</div>`;
       try {
         rs.data = await loadJson(`api/resultfile?url=${encodeURIComponent(url)}`);
       } catch (err) {
-        page.innerHTML = `<div class="section-head"><h1 id="rsTitle">תוצאות</h1>${back}</div>
+        page.innerHTML = `${rs.inGroup ? '' : `<div class="section-head"><h1 id="rsTitle">תוצאות</h1>${back}</div>`}
           <p class="empty">לא הצלחנו לקרוא את הקובץ. <a href="${esc(url)}" target="_blank" rel="noopener">לפתיחת הקובץ המקורי ↗</a></p>
           <details class="diag"><summary>פרטים טכניים</summary><pre dir="ltr">${esc(err.message)}</pre></details>`;
         return;
@@ -1849,7 +1920,6 @@
       pickDefaults();
     }
     renderResultFile();
-    $('#main').focus({ preventScroll: true });
   }
 
   const course = () => rs.data?.courses?.[rs.course];
@@ -1861,7 +1931,8 @@
     if (!hasSplits(c)) return;
     const ok = c.runners.filter((r) => r.status === 'OK' && r.splits.some((v) => v !== null));
     const mine = c.runners.filter((r) => isMinePerson(r.name));
-    const want = [...new Set([ok[0], ...mine, ...(mine.length ? [] : ok.slice(1, 3))].filter(Boolean))].slice(0, RS_COLORS);
+    // my people are picked first (they get the first colours), the winner as the reference line; without them, the top three
+    const want = [...new Set(mine.length ? [...mine, ok[0]] : ok.slice(0, 3))].filter(Boolean).slice(0, RS_COLORS);
     want.forEach((r) => togglePick(r));
   }
   /** Colour follows the runner: a picked runner keeps its slot until unpicked. */
@@ -1945,13 +2016,13 @@
   }
 
   function renderResultFile() {
-    const d = rs.data, page = $('#resultsPage');
+    const d = rs.data, page = rsTarget();
     const ev = rs.event;
     const back = ev ? `<a class="btn ghost" href="#event/${encodeURIComponent(ev.id)}">→ לעמוד התחרות</a>` : '';
     const title = ev ? (ev.calPlace && ev.calDesc ? `${ev.calPlace} – ${ev.calDesc}` : ev.title) : d.title || 'תוצאות';
     const date = ev ? fmtLong(evDate(ev)) : d.date;
     if (!d.courses?.length) {
-      page.innerHTML = `<div class="section-head"><h1 id="rsTitle">${esc(title)}</h1>${back}</div>
+      page.innerHTML = `${rs.inGroup ? '' : `<div class="section-head"><h1 id="rsTitle">${esc(title)}</h1>${back}</div>`}
         <p class="empty">את הקובץ הזה עוד לא אנחנו יודעים להציג. <a href="${esc(rs.key)}" target="_blank" rel="noopener">לפתיחת הקובץ המקורי ↗</a></p>`;
       return;
     }
@@ -1964,8 +2035,8 @@
     const picked = c.runners.filter((r) => rs.picked.has(rsKey(r)));
     const legend = picked.map((r) => `<button type="button" class="rs-chip s${rs.picked.get(rsKey(r))}" data-unpick="${esc(rsKey(r))}" aria-label="${esc(`הסרת ${r.name} מהגרף`)}"><i aria-hidden="true"></i>${esc(r.name)} <span aria-hidden="true">×</span></button>`).join('');
     page.innerHTML = `
-      <div class="section-head"><div><h1 id="rsTitle">${esc(title)}</h1><p class="muted">${esc(date || '')}${d.format === 'pdf' ? '' : ''}</p></div>
-        <div class="rs-actions">${back}<a class="btn ghost" href="${esc(rs.key)}" target="_blank" rel="noopener">הקובץ המקורי ↗</a></div></div>
+      ${rs.inGroup ? `<p class="rs-orig"><a href="${esc(rs.key)}" target="_blank" rel="noopener">הקובץ המקורי ↗</a></p>` : `<div class="section-head"><div><h1 id="rsTitle">${esc(title)}</h1><p class="muted">${esc(date || '')}</p></div>
+        <div class="rs-actions">${back}<a class="btn ghost" href="${esc(rs.key)}" target="_blank" rel="noopener">הקובץ המקורי ↗</a></div></div>`}
       <div class="seg rs-courses" role="group" aria-label="מסלול / קטגוריה">${d.courses.map((x, i) => `<button type="button" data-course="${i}" aria-pressed="${i === rs.course}">${esc(x.name)}${x.runners.some((r) => isMinePerson(r.name)) ? ' ★' : ''}</button>`).join('')}</div>
       <p class="muted small rs-info">${[c.info && `<bdi dir="ltr">${esc(c.info)}</bdi>`, `סיימו ${c.runners.filter((r) => r.status === 'OK').length} מתוך ${c.runners.length}`].filter(Boolean).join(' · ')}</p>
       ${hasSplits(c) && ref ? `<section class="ev-card rs-graph" aria-labelledby="rsg-h">
@@ -2006,6 +2077,8 @@
   function initResultsView() {
     const page = $('#resultsPage');
     page.addEventListener('click', (ev) => {
+      const gi = ev.target.closest('[data-gitem]');
+      if (gi) { openGroupItem(+gi.dataset.gitem); return; }
       const b = ev.target.closest('[data-course]');
       if (b) { rs.course = +b.dataset.course; rs.q = ''; pickDefaults(); renderResultFile(); $(`[data-course="${rs.course}"]`)?.focus(); return; }
       const u = ev.target.closest('[data-unpick]');
@@ -2101,6 +2174,8 @@
     initForum();
     renderRecentResults();
     if (/^#(event|forum)\//.test(location.hash)) route();
+    // a results page opened before the events arrived: draw it again with the event (its title, its files)
+    if (/^#results\//.test(location.hash) && (rs.inGroup || !rs.event)) route();
     checkInView();
   }
 
