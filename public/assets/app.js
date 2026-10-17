@@ -2062,16 +2062,19 @@
         <p class="muted small">קו שיורד – הפסד זמן מול ${esc(ref.name)} באותו מקטע; קו שטוח – אותו קצב. ריחוף על נקודה מציג מקום כללי ופער, ומקום ופער במקטע.</p>
         <div class="rs-legend">${legend}</div>
         <div class="rs-chart-wrap">${chartSvg(c, ref, st)}</div>
-        ${picked.length ? `<div class="rs-legs-wrap"><table class="rs-legs"><caption class="sr-only">זמני מקטעים של המתחרים המסומנים: זמן המקטע, המקום והפער במקטע, והמקום הכללי בנקודה</caption>
-          <thead><tr><th scope="col">מתחרה</th>${c.controls.map((ctl) => `<th scope="col">${esc(shortCtl(ctl))}</th>`).join('')}</tr></thead>
-          <tbody>${picked.map((r) => {
+        ${picked.length ? `<p class="muted small rs-legs-key">בכל תא: <b>זמן</b> · פער מהראשון · <span class="rs-pl">מקום</span></p>
+        <div class="rs-legs-wrap"><table class="rs-legs"><caption class="sr-only">לכל מתחרה מסומן שתי שורות: כללי – הזמן מהזינוק עד הנקודה, הפער מהמוביל והמקום; מקטע – זמן המקטע, הפער מהמהיר והמקום במקטע</caption>
+          <thead><tr><th scope="col" colspan="2">מתחרה</th>${c.controls.map((ctl) => `<th scope="col">${esc(shortCtl(ctl))}</th>`).join('')}</tr></thead>
+          ${picked.map((r) => {
             const legs = st.legs[c.runners.indexOf(r)];
-            return `<tr><th scope="row"><i class="rs-sw s${rs.picked.get(rsKey(r))}" aria-hidden="true"></i>${esc(r.name)}</th>${legs.map((v, i) => {
-              const rk = st.rank(i, v), cr = st.cumRank(i, r.splits[i]);
-              const gap = v !== null && v > st.best[i] ? fmtSec(v - st.best[i], true) : '';
-              return `<td class="${v !== null && v === st.best[i] ? 'best' : ''}">${fmtSec(v)}${rk ? `<small>${rk}${gap ? ` · <bdi dir="ltr">${gap}</bdi>` : ''}</small>` : ''}${cr ? `<small class="cum">כללי ${cr}</small>` : ''}</td>`;
-            }).join('')}</tr>`;
-          }).join('')}</tbody></table></div>` : ''}
+            const cell = (v, best, place, label) => {
+              if (v === null || v === undefined) return '<td class="none">–</td>';
+              const top = place === 1;
+              return `<td class="${top ? 'best' : ''}" aria-label="${esc(`${label}: ${fmtSec(v)}, ${top ? 'ראשון' : `פער ${fmtSec(v - best, true)}, מקום ${place ?? '–'}`}`)}"><span class="lt">${fmtSec(v)}</span><span class="lg"><bdi dir="ltr">${top ? '' : fmtSec(v - best, true)}</bdi></span><span class="rs-pl">${place ?? '–'}</span></td>`;
+            };
+            return `<tbody class="rs-runner"><tr class="cum"><th scope="rowgroup" rowspan="2"><i class="rs-sw s${rs.picked.get(rsKey(r))}" aria-hidden="true"></i>${esc(r.name)}</th><th scope="row" class="rs-kind">כללי</th>${r.splits.map((v, i) => cell(v, st.cumBest[i], st.cumRank(i, v), 'כללי')).join('')}</tr>
+              <tr class="leg"><th scope="row" class="rs-kind">מקטע</th>${legs.map((v, i) => cell(v, st.best[i], st.rank(i, v), 'מקטע')).join('')}</tr></tbody>`;
+          }).join('')}</table></div>` : ''}
       </section>` : ''}
       <section class="ev-card rs-table-card" aria-labelledby="rst-h">
         <div class="rs-table-head"><h2 id="rst-h">תוצאות – ${esc(c.name)}</h2>

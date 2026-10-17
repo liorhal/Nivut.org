@@ -1977,3 +1977,22 @@ a.info-btn { text-decoration: none; }
 .tip .tt-sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-inline-end: 6px; vertical-align: 0; background: var(--sc); }
 .tip .tt-sw.s0 { --sc: var(--rs0, #3987e5); } .tip .tt-sw.s1 { --sc: var(--rs1, #d95926); } .tip .tt-sw.s2 { --sc: var(--rs2, #199e70); }
 .tip .tt-sw.s3 { --sc: var(--rs3, #c98500); } .tip .tt-sw.s4 { --sc: var(--rs4, #d55181); } .tip .tt-sw.s5 { --sc: var(--rs5, #9085e9); }
+
+/* legs table: per runner an overall row and a leg row; each cell = time · gap · place */
+.rs-legs-key { margin: 12px 0 0; }
+.rs-legs-key .rs-pl { vertical-align: 1px; }
+.rs-legs tbody.rs-runner { border-top: 2px solid var(--line, #e5e2db); }
+.rs-legs tbody.rs-runner th[scope="rowgroup"] { text-align: start; font-family: inherit; position: sticky; inset-inline-start: 0; background: var(--surface); vertical-align: middle; }
+.rs-legs th.rs-kind { position: static; background: none; font-family: inherit; font-weight: 700; font-size: .74rem; color: var(--muted); text-align: start; }
+.rs-legs tr.cum td, .rs-legs tr.cum th.rs-kind { border-bottom-style: dashed; }
+.rs-legs tr.leg td, .rs-legs tr.leg th { background: color-mix(in srgb, var(--text) 3%, transparent); }
+.rs-legs td { min-width: 104px; }
+.rs-legs td > span { display: inline-block; vertical-align: middle; }
+.rs-legs td .lt { font-weight: 800; min-width: 3.2em; text-align: center; }
+.rs-legs td .lg { color: var(--muted); font-size: .76rem; min-width: 3.4em; text-align: center; }
+.rs-pl { display: inline-block; min-width: 1.6em; padding: 0 4px; border-radius: 999px; font-size: .72rem; font-weight: 800; line-height: 1.5; text-align: center;
+  background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--text); font-family: var(--num, inherit); }
+.rs-legs td.best .lt { color: var(--brand); }
+.rs-legs td.best .rs-pl { background: var(--brand); color: #fff; }
+.rs-legs td.none { color: var(--muted); }
+@media (max-width: 640px) { .rs-legs tbody.rs-runner th[scope="rowgroup"] { white-space: normal; max-width: 6.5em; line-height: 1.25; } }
