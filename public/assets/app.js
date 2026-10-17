@@ -1838,7 +1838,7 @@
   /* ---------- Results files: a readable table per course, and splits as a SplitsBrowser-style chart ---------- */
   const RS_PARSER = 3; // bumped when the results parser learns a format, so cached "unknown" answers are not reused
   const RS_COLORS = 6; // categorical slots (validated: light #2a78d6… / dark #3987e5…), in fixed order
-  const rs = { key: '', data: null, event: null, course: 0, picked: new Map(), q: '' };
+  const rs = { key: '', data: null, event: null, course: 0, picked: new Map(), q: '', refMode: store.get('rsRefMode', 'fastest') };
   const fmtSec = (v, plus = false) => {
     if (v === null || v === undefined || Number.isNaN(v)) return '–';
     const neg = v < 0, a = Math.abs(Math.round(v));
@@ -1964,9 +1964,16 @@
     const cumRank = (i, v) => (v === null || v === undefined ? null : 1 + cum(i).filter((x) => x < v).length);
     return { legs, best, rank, cumBest, cumRank };
   }
-  /** The reference for "time behind": the fastest leg at every leg, added up – so whoever was fastest on a leg draws a flat line there.
-   *  Legs come from valid finishers; a leg none of them has falls back to anyone's best. */
-  function referenceOf(c, st) {
+  /** The reference for "time behind", by the chosen mode:
+   *  'fastest' – the fastest leg at every leg, added up, so whoever was fastest on a leg draws a flat line there
+   *  (legs from valid finishers; a leg none of them has falls back to anyone's best);
+   *  'winner' – the winner's cumulative times (the fastest finisher with all splits), so the winner is the flat line. */
+  function referenceOf(c, st, mode) {
+    if (mode === 'winner') {
+      const win = c.runners.filter((r) => r.status === 'OK' && r.time && r.splits.length === c.controls.length && r.splits.every((v) => v !== null))
+        .sort((a, b) => a.time - b.time)[0];
+      if (win) return { name: win.name, splits: win.splits, mode };
+    }
     const ok = c.runners.map((r, k) => (r.status === 'OK' ? st.legs[k] : null)).filter(Boolean);
     let at = 0;
     const splits = [];
@@ -1976,7 +1983,7 @@
       if (!Number.isFinite(leg)) return null;
       splits.push(at += leg);
     }
-    return { name: 'הטוב ביותר בכל מקטע', splits };
+    return { name: 'הטוב ביותר בכל מקטע', splits, mode: 'fastest' };
   }
   const shortCtl = (label) => (/^finish$/i.test(label) ? 'F' : String(label).split(/\s/)[0]);
 
@@ -2036,7 +2043,7 @@
       const tip = [`נקודה ${shortCtl(ctl)}:`, ...rows.map((x) => `${x.r.name}\tכללי ${x.at === null || x.at === undefined ? '–' : fmtSec(x.at)} – ${x.cr ?? '–'} (${x.cg === null ? '–' : fmtSec(x.cg, true)}) · מקטע ${fmtSec(x.leg)} – ${x.lr ?? '–'} (${x.lg === null ? '–' : fmtSec(x.lg, true)})`)].join('\n');
       return `<rect class="rs-band" x="${x0}" y="${T}" width="${Math.max(2, x1 - x0)}" height="${H - T - B}" data-tip="${esc(tip)}" data-tip-html="${esc(html)}" tabindex="-1"/>`;
     }).join('');
-    return `<svg class="rs-chart" viewBox="0 0 ${W} ${H}" role="img" dir="ltr" aria-label="${esc(`פער מהזמן הטוב ביותר בכל נקודה (סכום המקטעים המהירים), ל-${picked.length} מתחרים. הנתונים בטבלת המקטעים שמתחת.`)}">
+    return `<svg class="rs-chart" viewBox="0 0 ${W} ${H}" role="img" dir="ltr" aria-label="${esc(`${ref.mode === 'winner' ? `פער מהמנצח (${ref.name}) בכל נקודה` : 'פער מהזמן הטוב ביותר בכל נקודה (סכום המקטעים המהירים)'}, ל-${picked.length} מתחרים. הנתונים בטבלת המקטעים שמתחת.`)}">
       <g>${grid}${cols}</g><line class="rs-zero" x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}"/>${lines}<g>${bands}</g></svg>`;
   }
 
@@ -2054,7 +2061,7 @@
     }
     const c = course();
     const st = hasSplits(c) ? legStats(c) : null;
-    const ref = st ? referenceOf(c, st) : null;
+    const ref = st ? referenceOf(c, st, rs.refMode) : null;
     const lead = c.runners.find((r) => r.status === 'OK' && r.time);
     const q = rs.q.trim().toLowerCase();
     const shown = c.runners.filter((r) => !q || `${r.name} ${r.club}`.toLowerCase().includes(q));
@@ -2066,8 +2073,11 @@
       <div class="seg rs-courses" role="group" aria-label="מסלול / קטגוריה">${d.courses.map((x, i) => `<button type="button" data-course="${i}" aria-pressed="${i === rs.course}">${esc(x.name)}${x.runners.some((r) => isMinePerson(r.name)) ? ' ★' : ''}</button>`).join('')}</div>
       <p class="muted small rs-info">${[c.info && `<bdi dir="ltr">${esc(c.info)}</bdi>`, `סיימו ${c.runners.filter((r) => r.status === 'OK').length} מתוך ${c.runners.length}`].filter(Boolean).join(' · ')}</p>
       ${hasSplits(c) && ref ? `<section class="ev-card rs-graph" aria-labelledby="rsg-h">
-        <h2 id="rsg-h">פער מהמהיר ביותר בכל מקטע</h2>
-        <p class="muted small">קו הייחוס (0) – הזמן המהיר ביותר בכל מקטע. קו שטוח – המהיר ביותר באותו מקטע; קו שיורד – הזמן שהפסיד לו. ריחוף על נקודה מציג זמן, מקום ופער כלליים ובמקטע.</p>
+        <div class="rs-graph-head"><h2 id="rsg-h">${ref.mode === 'winner' ? 'פער מהמנצח בכל נקודה' : 'פער מהמהיר ביותר בכל מקטע'}</h2>
+          <div class="seg rs-refmode" role="group" aria-label="קו הייחוס של הגרף">${[['fastest', 'מול המהיר בכל מקטע'], ['winner', 'מול המנצח']].map(([m, t]) => `<button type="button" data-refmode="${m}" aria-pressed="${ref.mode === m}">${t}</button>`).join('')}</div></div>
+        <p class="muted small">${ref.mode === 'winner'
+          ? `קו הייחוס (0) – ${esc(ref.name)}. קו שטוח – אותו קצב כמוהו; קו שיורד – הפסד זמן מולו באותו מקטע; קו שעולה – רווח.`
+          : 'קו הייחוס (0) – הזמן המהיר ביותר בכל מקטע. קו שטוח – המהיר ביותר באותו מקטע; קו שיורד – הזמן שהפסיד לו.'} ריחוף על נקודה מציג זמן, מקום ופער כלליים ובמקטע.</p>
         <div class="rs-legend">${legend}</div>
         <div class="rs-chart-wrap">${chartSvg(c, ref, st)}</div>
         ${picked.length ? `<p class="muted small rs-legs-key">בכל תא: <b>זמן</b> · פער מהראשון · <span class="rs-pl">מקום</span></p>
@@ -2111,6 +2121,8 @@
       if (gi) { openGroupItem(+gi.dataset.gitem); return; }
       const b = ev.target.closest('[data-course]');
       if (b) { rs.course = +b.dataset.course; rs.q = ''; pickDefaults(); renderResultFile(); $(`[data-course="${rs.course}"]`)?.focus(); return; }
+      const m = ev.target.closest('[data-refmode]');
+      if (m) { rs.refMode = m.dataset.refmode; store.set('rsRefMode', rs.refMode); renderResultFile(); $(`[data-refmode="${rs.refMode}"]`)?.focus(); return; }
       const u = ev.target.closest('[data-unpick]');
       if (u) { rs.picked.delete(u.dataset.unpick); renderResultFile(); }
     });
