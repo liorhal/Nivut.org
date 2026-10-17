@@ -1982,7 +1982,7 @@ a.info-btn { text-decoration: none; }
 .rs-legs-key { margin: 12px 0 0; }
 .rs-legs-key .rs-pl { vertical-align: 1px; }
 .rs-legs tbody.rs-runner { border-top: 2px solid var(--line, #e5e2db); }
-.rs-legs tbody.rs-runner th[scope="rowgroup"] { text-align: start; font-family: inherit; position: sticky; inset-inline-start: 0; background: var(--surface); vertical-align: middle; }
+.rs-legs th.rs-who, .rs-legs tbody.rs-runner th[scope="rowgroup"] { text-align: start; font-family: inherit; position: sticky; inset-inline-start: 0; background: var(--surface); vertical-align: middle; }
 .rs-legs th.rs-kind { position: static; background: none; font-family: inherit; font-weight: 700; font-size: .74rem; color: var(--muted); text-align: start; }
 .rs-legs tr.cum td, .rs-legs tr.cum th.rs-kind { border-bottom-style: dashed; }
 .rs-legs tr.leg td, .rs-legs tr.leg th { background: color-mix(in srgb, var(--text) 3%, transparent); }
@@ -1995,8 +1995,27 @@ a.info-btn { text-decoration: none; }
 .rs-legs td.best .lt { color: var(--brand); }
 .rs-legs td.best .rs-pl { background: var(--brand); color: #fff; }
 .rs-legs td.none { color: var(--muted); }
-@media (max-width: 640px) { .rs-legs tbody.rs-runner th[scope="rowgroup"] { white-space: normal; max-width: 6.5em; line-height: 1.25; } }
+@media (max-width: 640px) { .rs-legs th.rs-who, .rs-legs tbody.rs-runner th[scope="rowgroup"] { white-space: normal; max-width: 6.5em; line-height: 1.25; } }
 /* chart header: title and the reference switch (fastest per leg / winner) */
 .rs-graph-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 4px; }
 .rs-graph-head h2 { margin: 0; }
 .rs-refmode button { padding: 6px 12px; font-size: .88rem; }
+
+/* legs table: the view switch (result / LapCombat speed index / mistake time) and LapCombat cells */
+.rs-legs-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-top: 12px; }
+.rs-legs-top .rs-legs-key { margin: 0; flex: 1 1 280px; }
+.rs-legview button { padding: 6px 12px; font-size: .85rem; }
+.rs-legs td.lapc, .rs-legs td.tot { min-width: 74px; }
+.rs-legs td.tot { font-weight: 800; border-inline-start: 2px solid var(--line, #e5e2db); }
+.rs-legs td.lapc .lt { min-width: 3.4em; }
+.rs-legs td.good .lt, .lapk.good, .tip td.lap.good { color: #15803d; }
+.rs-legs td.warn .lt, .lapk.warn { color: #b45309; }
+.rs-legs td.bad .lt, .lapk.bad { color: #b91c1c; }
+.rs-legs td.lapc.warn { background: color-mix(in srgb, #f59e0b 12%, transparent); }
+.rs-legs td.lapc.bad { background: color-mix(in srgb, #ef4444 14%, transparent); }
+.rs-legs td.lapc.good { background: color-mix(in srgb, #22c55e 10%, transparent); }
+.lapk { font-weight: 800; white-space: nowrap; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) :is(.rs-legs td.good .lt, .lapk.good) { color: #4ade80; } :root:not([data-theme="light"]) :is(.rs-legs td.warn .lt, .lapk.warn) { color: #fbbf24; } :root:not([data-theme="light"]) :is(.rs-legs td.bad .lt, .lapk.bad) { color: #f87171; } }
+:root[data-theme="dark"] :is(.rs-legs td.good .lt, .lapk.good) { color: #4ade80; } :root[data-theme="dark"] :is(.rs-legs td.warn .lt, .lapk.warn) { color: #fbbf24; } :root[data-theme="dark"] :is(.rs-legs td.bad .lt, .lapk.bad) { color: #f87171; }
+.tip td.lap.good { color: #86efac; } .tip td.lap.warn { color: #fcd34d; } .tip td.lap.bad { color: #fca5a5; }
+.tip.tip-wide { max-width: min(640px, calc(100vw - 16px)); }

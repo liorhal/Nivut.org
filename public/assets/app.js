@@ -1836,9 +1836,9 @@
   }
 
   /* ---------- Results files: a readable table per course, and splits as a SplitsBrowser-style chart ---------- */
-  const RS_PARSER = 3; // bumped when the results parser learns a format, so cached "unknown" answers are not reused
+  const RS_PARSER = 4; // bumped when the results parser learns a format, so cached "unknown" answers are not reused
   const RS_COLORS = 6; // categorical slots (validated: light #2a78d6… / dark #3987e5…), in fixed order
-  const rs = { key: '', data: null, event: null, course: 0, picked: new Map(), q: '', refMode: store.get('rsRefMode', 'fastest') };
+  const rs = { key: '', data: null, event: null, course: 0, picked: new Map(), q: '', refMode: store.get('rsRefMode', 'fastest'), legView: store.get('rsLegView', 'result') };
   const fmtSec = (v, plus = false) => {
     if (v === null || v === undefined || Number.isNaN(v)) return '–';
     const neg = v < 0, a = Math.abs(Math.round(v));
@@ -1985,7 +1985,60 @@
     }
     return { name: 'הטוב ביותר בכל מקטע', splits, mode: 'fastest' };
   }
+  // LapCombat's extra per-leg numbers: the speed index (100 = the average of the best three on that leg; lower is faster)
+  // and the time lost to mistakes (negative = better than the runner's own pace)
+  const speedCls = (v) => (v === null || v === undefined ? '' : v <= 100 ? 'good' : v <= 115 ? '' : v <= 140 ? 'warn' : 'bad');
+  const mistakeCls = (v) => (v === null || v === undefined ? '' : v < 0 ? 'good' : v < 15 ? '' : v < 45 ? 'warn' : 'bad');
+  const fmtSpeed = (v) => (v === null || v === undefined ? '–' : v.toFixed(1));
+  const fmtMistake = (v) => (v === null || v === undefined ? '–' : v === 0 ? '0:00' : fmtSec(v, true));
   const shortCtl = (label) => (/^finish$/i.test(label) ? 'F' : String(label).split(/\s/)[0]);
+
+  /** The legs table under the chart: the result (overall and leg rows), or LapCombat's speed index / mistake time. */
+  function legsTableHtml(c, st, picked) {
+    const view = c.lap && c.lap[rs.legView] ? rs.legView : 'result';
+    const views = [['result', 'תוצאה'], ...(c.lap?.speed ? [['speed', 'Leg speed index']] : []), ...(c.lap?.mistake ? [['mistake', 'Leg mistake time']] : [])];
+    const toggle = views.length > 1 ? `<div class="seg rs-legview" role="group" aria-label="נתוני הטבלה">${views.map(([v, t]) => `<button type="button" data-legview="${v}" aria-pressed="${v === view}">${t}</button>`).join('')}</div>` : '';
+    const head = (extra) => `<thead><tr><th scope="col" colspan="${view === 'result' ? 2 : 1}">מתחרה</th>${c.controls.map((ctl) => `<th scope="col">${esc(shortCtl(ctl))}</th>`).join('')}${extra}</tr></thead>`;
+    const who = (r, span = '') => `<th scope="${span ? 'rowgroup' : 'row'}"${span} class="rs-who"><i class="rs-sw s${rs.picked.get(rsKey(r))}" aria-hidden="true"></i>${esc(r.name)}</th>`;
+    let key, caption, body, extra = '';
+    if (view === 'result') {
+      key = 'בכל תא: <b>זמן</b> · פער מהראשון · <span class="rs-pl">מקום</span>';
+      caption = 'לכל מתחרה מסומן שתי שורות: כללי – הזמן מהזינוק עד הנקודה, הפער מהמוביל והמקום; מקטע – זמן המקטע, הפער מהמהיר והמקום במקטע';
+      body = picked.map((r) => {
+        const legs = st.legs[c.runners.indexOf(r)];
+        const cell = (v, best, place, label) => {
+          if (v === null || v === undefined) return '<td class="none">–</td>';
+          const top = place === 1;
+          return `<td class="${top ? 'best' : ''}" aria-label="${esc(`${label}: ${fmtSec(v)}, ${top ? 'ראשון' : `פער ${fmtSec(v - best, true)}, מקום ${place ?? '–'}`}`)}"><span class="lt">${fmtSec(v)}</span><span class="lg"><bdi dir="ltr">${top ? '' : fmtSec(v - best, true)}</bdi></span><span class="rs-pl">${place ?? '–'}</span></td>`;
+        };
+        return `<tbody class="rs-runner"><tr class="cum">${who(r, ' rowspan="2"')}<th scope="row" class="rs-kind">כללי</th>${r.splits.map((v, i) => cell(v, st.cumBest[i], st.cumRank(i, v), 'כללי')).join('')}</tr>
+          <tr class="leg"><th scope="row" class="rs-kind">מקטע</th>${legs.map((v, i) => cell(v, st.best[i], st.rank(i, v), 'מקטע')).join('')}</tr></tbody>`;
+      }).join('');
+    } else {
+      const speed = view === 'speed';
+      const vals = (r) => (speed ? r.speed : r.mistake) || [];
+      // place on the leg among everyone with a value (lower is better for both)
+      const place = (i, v) => (v === null || v === undefined ? null : 1 + c.runners.filter((x) => { const w = vals(x)[i]; return w !== null && w !== undefined && w < v; }).length);
+      key = speed
+        ? 'מדד המהירות במקטע: 100 = ממוצע שלושת הטובים במקטע; נמוך יותר = מהיר יותר. <span class="lapk good">עד 100</span> <span class="lapk">עד 115</span> <span class="lapk warn">עד 140</span> <span class="lapk bad">מעל 140</span> · <span class="rs-pl">מקום</span>'
+        : 'הזמן שאבד בטעויות במקטע, ביחס לקצב של המתחרה עצמו (שלילי = מצוין). <span class="lapk good">שלילי</span> <span class="lapk">עד 0:15</span> <span class="lapk warn">עד 0:45</span> <span class="lapk bad">מעל 0:45</span> · <span class="rs-pl">מקום</span>';
+      caption = speed ? 'מדד המהירות של כל מתחרה מסומן בכל מקטע, וממוצע' : 'זמן הטעויות של כל מתחרה מסומן בכל מקטע, סך הכול וזמן הסיום האידיאלי בלי טעויות';
+      extra = speed ? '<th scope="col">ממוצע</th><th scope="col" title="Cruising speed index">שיוט</th>' : '<th scope="col">סה״כ</th><th scope="col" title="Mistake ratio">יחס</th><th scope="col" title="Ideal finishing time without mistake">אידיאלי</th>';
+      body = `<tbody>${picked.map((r) => {
+        const cells = vals(r).map((v, i) => {
+          if (v === null || v === undefined) return '<td class="none">–</td>';
+          const p = place(i, v), txt = speed ? fmtSpeed(v) : fmtMistake(v);
+          return `<td class="lapc ${speed ? speedCls(v) : mistakeCls(v)}" aria-label="${esc(`${txt}, מקום ${p}`)}"><span class="lt"><bdi dir="ltr">${txt}</bdi></span><span class="rs-pl">${p}</span></td>`;
+        }).join('');
+        const sum = speed
+          ? `<td class="tot">${fmtSpeed(r.speedAvg)}</td><td class="tot">${fmtSpeed(r.cruise)}</td>`
+          : `<td class="tot"><bdi dir="ltr">${fmtMistake(r.mistakeTotal)}</bdi></td><td class="tot">${r.mistakeRatio === null || r.mistakeRatio === undefined ? '–' : `${r.mistakeRatio}%`}</td><td class="tot">${r.ideal ? fmtSec(r.ideal) : '–'}</td>`;
+        return `<tr>${who(r)}${cells}${sum}</tr>`;
+      }).join('')}</tbody>`;
+    }
+    return `<div class="rs-legs-top"><p class="muted small rs-legs-key">${key}</p>${toggle}</div>
+      <div class="rs-legs-wrap"><table class="rs-legs rs-legs-${view}"><caption class="sr-only">${caption}</caption>${head(extra)}${body}</table></div>`;
+  }
 
   function chartSvg(c, ref, st) {
     const picked = c.runners.filter((r) => rs.picked.has(rsKey(r)));
@@ -2035,12 +2088,12 @@
       const gap = (v) => (v === null ? '–' : v === 0 ? '<span class="tt-top">ראשון</span>' : `<bdi dir="ltr">${fmtSec(v, true)}</bdi>`);
       const ctl = c.controls[j];
       const html = `<div class="tt-head">נקודה ${esc(shortCtl(ctl))}${/\((\d+)\)/.test(ctl) ? ` <span>(${esc(/\((\d+)\)/.exec(ctl)[1])})</span>` : ''}</div>
-        <table class="tt"><thead><tr><th></th><th colspan="3">כללי</th><th colspan="3">מקטע</th></tr>
-        <tr class="sub"><th></th><th>זמן</th><th>מקום</th><th>פער</th><th>זמן</th><th>מקום</th><th>פער</th></tr></thead><tbody>${rows.map((x) => `<tr>
+        <table class="tt"><thead><tr><th></th><th colspan="3">כללי</th><th colspan="3">מקטע</th>${c.lap ? '<th colspan="2">LapCombat</th>' : ''}</tr>
+        <tr class="sub"><th></th><th>זמן</th><th>מקום</th><th>פער</th><th>זמן</th><th>מקום</th><th>פער</th>${c.lap ? '<th title="Leg speed index">מהירות</th><th title="Leg mistake time">טעות</th>' : ''}</tr></thead><tbody>${rows.map((x) => `<tr>
           <th><i class="tt-sw s${x.slot}"></i>${esc(x.r.name)}</th>
           <td class="n">${x.at === null || x.at === undefined ? '–' : `<bdi dir="ltr">${fmtSec(x.at)}</bdi>`}</td><td class="n">${x.cr ?? '–'}</td><td class="n">${gap(x.cg)}</td>
-          <td class="n">${x.leg === null ? '–' : `<bdi dir="ltr">${fmtSec(x.leg)}</bdi>`}</td><td class="n">${x.lr ?? '–'}</td><td class="n">${gap(x.lg)}</td></tr>`).join('')}</tbody></table>`;
-      const tip = [`נקודה ${shortCtl(ctl)}:`, ...rows.map((x) => `${x.r.name}\tכללי ${x.at === null || x.at === undefined ? '–' : fmtSec(x.at)} – ${x.cr ?? '–'} (${x.cg === null ? '–' : fmtSec(x.cg, true)}) · מקטע ${fmtSec(x.leg)} – ${x.lr ?? '–'} (${x.lg === null ? '–' : fmtSec(x.lg, true)})`)].join('\n');
+          <td class="n">${x.leg === null ? '–' : `<bdi dir="ltr">${fmtSec(x.leg)}</bdi>`}</td><td class="n">${x.lr ?? '–'}</td><td class="n">${gap(x.lg)}</td>${c.lap ? `<td class="n lap ${speedCls(x.r.speed?.[j])}">${fmtSpeed(x.r.speed?.[j])}</td><td class="n lap ${mistakeCls(x.r.mistake?.[j])}"><bdi dir="ltr">${fmtMistake(x.r.mistake?.[j])}</bdi></td>` : ''}</tr>`).join('')}</tbody></table>`;
+      const tip = [`נקודה ${shortCtl(ctl)}:`, ...rows.map((x) => `${x.r.name}\tכללי ${x.at === null || x.at === undefined ? '–' : fmtSec(x.at)} – ${x.cr ?? '–'} (${x.cg === null ? '–' : fmtSec(x.cg, true)}) · מקטע ${fmtSec(x.leg)} – ${x.lr ?? '–'} (${x.lg === null ? '–' : fmtSec(x.lg, true)})${c.lap ? ` · מהירות ${fmtSpeed(x.r.speed?.[j])} · טעות ${fmtMistake(x.r.mistake?.[j])}` : ''}`)].join('\n');
       return `<rect class="rs-band" x="${x0}" y="${T}" width="${Math.max(2, x1 - x0)}" height="${H - T - B}" data-tip="${esc(tip)}" data-tip-html="${esc(html)}" tabindex="-1"/>`;
     }).join('');
     return `<svg class="rs-chart" viewBox="0 0 ${W} ${H}" role="img" dir="ltr" aria-label="${esc(`${ref.mode === 'winner' ? `פער מהמנצח (${ref.name}) בכל נקודה` : 'פער מהזמן הטוב ביותר בכל נקודה (סכום המקטעים המהירים)'}, ל-${picked.length} מתחרים. הנתונים בטבלת המקטעים שמתחת.`)}">
@@ -2080,19 +2133,7 @@
           : 'קו הייחוס (0) – הזמן המהיר ביותר בכל מקטע. קו שטוח – המהיר ביותר באותו מקטע; קו שיורד – הזמן שהפסיד לו.'} ריחוף על נקודה מציג זמן, מקום ופער כלליים ובמקטע.</p>
         <div class="rs-legend">${legend}</div>
         <div class="rs-chart-wrap">${chartSvg(c, ref, st)}</div>
-        ${picked.length ? `<p class="muted small rs-legs-key">בכל תא: <b>זמן</b> · פער מהראשון · <span class="rs-pl">מקום</span></p>
-        <div class="rs-legs-wrap"><table class="rs-legs"><caption class="sr-only">לכל מתחרה מסומן שתי שורות: כללי – הזמן מהזינוק עד הנקודה, הפער מהמוביל והמקום; מקטע – זמן המקטע, הפער מהמהיר והמקום במקטע</caption>
-          <thead><tr><th scope="col" colspan="2">מתחרה</th>${c.controls.map((ctl) => `<th scope="col">${esc(shortCtl(ctl))}</th>`).join('')}</tr></thead>
-          ${picked.map((r) => {
-            const legs = st.legs[c.runners.indexOf(r)];
-            const cell = (v, best, place, label) => {
-              if (v === null || v === undefined) return '<td class="none">–</td>';
-              const top = place === 1;
-              return `<td class="${top ? 'best' : ''}" aria-label="${esc(`${label}: ${fmtSec(v)}, ${top ? 'ראשון' : `פער ${fmtSec(v - best, true)}, מקום ${place ?? '–'}`}`)}"><span class="lt">${fmtSec(v)}</span><span class="lg"><bdi dir="ltr">${top ? '' : fmtSec(v - best, true)}</bdi></span><span class="rs-pl">${place ?? '–'}</span></td>`;
-            };
-            return `<tbody class="rs-runner"><tr class="cum"><th scope="rowgroup" rowspan="2"><i class="rs-sw s${rs.picked.get(rsKey(r))}" aria-hidden="true"></i>${esc(r.name)}</th><th scope="row" class="rs-kind">כללי</th>${r.splits.map((v, i) => cell(v, st.cumBest[i], st.cumRank(i, v), 'כללי')).join('')}</tr>
-              <tr class="leg"><th scope="row" class="rs-kind">מקטע</th>${legs.map((v, i) => cell(v, st.best[i], st.rank(i, v), 'מקטע')).join('')}</tr></tbody>`;
-          }).join('')}</table></div>` : ''}
+        ${picked.length ? legsTableHtml(c, st, picked) : ''}
       </section>` : ''}
       <section class="ev-card rs-table-card" aria-labelledby="rst-h">
         <div class="rs-table-head"><h2 id="rst-h">תוצאות – ${esc(c.name)}</h2>
@@ -2121,6 +2162,8 @@
       if (gi) { openGroupItem(+gi.dataset.gitem); return; }
       const b = ev.target.closest('[data-course]');
       if (b) { rs.course = +b.dataset.course; rs.q = ''; pickDefaults(); renderResultFile(); $(`[data-course="${rs.course}"]`)?.focus(); return; }
+      const lv = ev.target.closest('[data-legview]');
+      if (lv) { rs.legView = lv.dataset.legview; store.set('rsLegView', rs.legView); renderResultFile(); $(`[data-legview="${rs.legView}"]`)?.focus(); return; }
       const m = ev.target.closest('[data-refmode]');
       if (m) { rs.refMode = m.dataset.refmode; store.set('rsRefMode', rs.refMode); renderResultFile(); $(`[data-refmode="${rs.refMode}"]`)?.focus(); return; }
       const u = ev.target.closest('[data-unpick]');

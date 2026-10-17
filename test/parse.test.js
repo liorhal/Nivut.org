@@ -430,6 +430,11 @@ test('results file: transposed splits analysis', () => {
   assert.equal(c.runners[0].name, 'יסעור ניצן');
   assert.equal(c.runners[0].time, 2621);
   assert.equal(c.runners[0].splits.length, c.controls.length);
+  // LapCombat's per-leg sections and summaries
+  assert.deepEqual(c.lap, { speed: true, mistake: true });
+  const n = c.runners[0];
+  assert.deepEqual([n.speed.length, n.speed[0], n.mistake.slice(0, 3)], [c.controls.length, 100.3, [5, -2, 73]]);
+  assert.deepEqual([n.speedAvg, n.mistakeTotal, n.cruise, n.mistakeRatio, n.ideal], [101.2, 176, 95.2, 6.7, 2445]);
 });
 
 test('results file: a results PDF converted to HTML (Hebrew back in reading order)', () => {
