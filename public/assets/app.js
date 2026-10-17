@@ -1957,8 +1957,9 @@
     }));
     const best = c.controls.map((_, i) => Math.min(...legs.map((l) => l[i]).filter((v) => v !== null && v > 0)));
     const rank = (i, v) => (v === null ? null : 1 + legs.filter((l) => l[i] !== null && l[i] < v).length);
-    // overall at each control: place among everyone's time to that point, and the gap to the first there
-    const cum = (i) => c.runners.map((r) => r.splits[i]).filter((v) => v !== null && v !== undefined && v > 0);
+    // overall at each control: place among the valid finishers' times to that point, and the gap to the first there
+    // (a mispunch or non-competitor who skipped controls would otherwise "lead" with a short time)
+    const cum = (i) => c.runners.filter((r) => r.status === 'OK').map((r) => r.splits[i]).filter((v) => v !== null && v !== undefined && v > 0);
     const cumBest = c.controls.map((_, i) => Math.min(...cum(i)));
     const cumRank = (i, v) => (v === null || v === undefined ? null : 1 + cum(i).filter((x) => x < v).length);
     return { legs, best, rank, cumBest, cumRank };
