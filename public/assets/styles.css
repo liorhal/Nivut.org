@@ -1985,7 +1985,7 @@ a.info-btn { text-decoration: none; }
 .rs-legs th.rs-who, .rs-legs tbody.rs-runner th[scope="rowgroup"] { text-align: start; font-family: inherit; position: sticky; inset-inline-start: 0; background: var(--surface); vertical-align: middle; }
 .rs-legs th.rs-kind { position: static; background: none; font-family: inherit; font-weight: 700; font-size: .74rem; color: var(--muted); text-align: start; }
 .rs-legs tr.cum td, .rs-legs tr.cum th.rs-kind { border-bottom-style: dashed; }
-.rs-legs tr.leg td, .rs-legs tr.leg th { background: color-mix(in srgb, var(--text) 3%, transparent); }
+.rs-legs tr.leg td, .rs-legs tr.leg th.rs-kind { background: color-mix(in srgb, var(--text) 3%, transparent); }
 .rs-legs td { min-width: 104px; }
 .rs-legs td > span { display: inline-block; vertical-align: middle; }
 .rs-legs td .lt { font-weight: 800; min-width: 3.2em; text-align: center; }
@@ -2019,3 +2019,7 @@ a.info-btn { text-decoration: none; }
 :root[data-theme="dark"] :is(.rs-legs td.good .lt, .lapk.good) { color: #4ade80; } :root[data-theme="dark"] :is(.rs-legs td.warn .lt, .lapk.warn) { color: #fbbf24; } :root[data-theme="dark"] :is(.rs-legs td.bad .lt, .lapk.bad) { color: #f87171; }
 .tip td.lap.good { color: #86efac; } .tip td.lap.warn { color: #fcd34d; } .tip td.lap.bad { color: #fca5a5; }
 .tip.tip-wide { max-width: min(640px, calc(100vw - 16px)); }
+
+.rs-legs td.tot small { display: inline; margin-inline-start: 6px; font-weight: 600; color: var(--muted); font-size: .7rem; white-space: nowrap; }
+.rs-legs tbody.rs-runner tr:not(:last-child) :is(td, th.rs-kind) { border-bottom-style: dashed; }
+.rs-legs tr.speed td:not(.lapc), .rs-legs tr.mistake td:not(.lapc) { background: none; }
