@@ -1834,6 +1834,7 @@
   }
 
   /* ---------- Results files: a readable table per course, and splits as a SplitsBrowser-style chart ---------- */
+  const RS_PARSER = 3; // bumped when the results parser learns a format, so cached "unknown" answers are not reused
   const RS_COLORS = 6; // categorical slots (validated: light #2a78d6… / dark #3987e5…), in fixed order
   const rs = { key: '', data: null, event: null, course: 0, picked: new Map(), q: '' };
   const fmtSec = (v, plus = false) => {
@@ -1905,7 +1906,7 @@
       page.innerHTML = `${rs.inGroup ? '' : `<div class="section-head"><h1 id="rsTitle">תוצאות</h1>${back}</div>`}<p class="live-status" role="status">טוען את קובץ התוצאות…</p>
         <div class="rk-skeleton" aria-hidden="true">${'<i class="sk-line"></i>'.repeat(8)}</div>`;
       try {
-        rs.data = await loadJson(`api/resultfile?url=${encodeURIComponent(url)}`);
+        rs.data = await loadJson(`api/resultfile?url=${encodeURIComponent(url)}&v=${RS_PARSER}`);
       } catch (err) {
         page.innerHTML = `${rs.inGroup ? '' : `<div class="section-head"><h1 id="rsTitle">תוצאות</h1>${back}</div>`}
           <p class="empty">לא הצלחנו לקרוא את הקובץ. <a href="${esc(url)}" target="_blank" rel="noopener">לפתיחת הקובץ המקורי ↗</a></p>
@@ -2031,7 +2032,8 @@
     const date = ev ? fmtLong(evDate(ev)) : d.date;
     if (!d.courses?.length) {
       page.innerHTML = `${rs.inGroup ? '' : `<div class="section-head"><h1 id="rsTitle">${esc(title)}</h1>${back}</div>`}
-        <p class="empty">את הקובץ הזה עוד לא אנחנו יודעים להציג. <a href="${esc(rs.key)}" target="_blank" rel="noopener">לפתיחת הקובץ המקורי ↗</a></p>`;
+        <p class="empty">את הקובץ הזה עוד לא אנחנו יודעים להציג. <a href="${esc(rs.key)}" target="_blank" rel="noopener">לפתיחת הקובץ המקורי ↗</a></p>
+        ${d.diag ? `<details class="diag"><summary>פרטים טכניים</summary><pre dir="ltr">${esc(JSON.stringify({ url: rs.key, ...d.diag }, null, 2))}</pre></details>` : ''}`;
       return;
     }
     const c = course();
