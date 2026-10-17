@@ -1972,49 +1972,6 @@
   }
   const shortCtl = (label) => (/^finish$/i.test(label) ? 'F' : String(label).split(/\s/)[0]);
 
-  /** Per leg, each picked runner's time against the winner's on that leg: a bar down is time lost, up is time gained. */
-  function legBarsSvg(c, ref, st) {
-    const picked = c.runners.filter((r) => rs.picked.has(rsKey(r)) && r !== ref);
-    if (!picked.length) return `<p class="muted small rs-chart-empty">סמנו מתחרים נוספים בטבלה כדי להשוות אותם ל${esc(ref.name)}.</p>`;
-    const refLegs = st.legs[c.runners.indexOf(ref)];
-    const diffs = picked.map((r) => st.legs[c.runners.indexOf(r)].map((v, i) => (v === null || refLegs[i] === null ? null : v - refLegs[i])));
-    const vals = diffs.flat().filter((v) => v !== null);
-    const W = 860, H = 280, L = 62, R = 18, T = 14, B = 34;
-    const maxY = Math.max(30, ...vals), minY = Math.min(-30, ...vals);
-    const n = refLegs.length, cw = (W - L - R) / n;
-    const y = (v) => T + ((maxY - v) / (maxY - minY)) * (H - T - B);
-    const steps = [15, 30, 60, 120, 300, 600, 900, 1800];
-    const step = steps.find((s) => (maxY - minY) / s <= 6) || 1800;
-    const yt = [];
-    for (let v = Math.ceil(minY / step) * step; v <= maxY; v += step) yt.push(v);
-    // the axis reads as "lost" (below 0) / "gained" (above 0) – in time, so a loss is labelled +, as in the other chart
-    const grid = yt.map((v) => `<line class="rs-grid${v === 0 ? ' zero' : ''}" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="rs-ax" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v === 0 ? '0' : fmtSec(-v, true)}</text>`).join('');
-    const bw = Math.max(2, Math.min(18, (cw - 6) / picked.length));
-    let lastLabel = -Infinity;
-    const cols = refLegs.map((_, i) => {
-      const cx = L + cw * (i + 0.5);
-      const show = cx - lastLabel >= 16 || i === n - 1;
-      if (show) lastLabel = cx;
-      const bars = picked.map((r, k) => {
-        const v = diffs[k][i];
-        if (v === null) return '';
-        const bx = cx - (bw * picked.length) / 2 + k * bw, y0 = y(0), y1 = y(-v);
-        return `<rect class="rs-bar s${rs.picked.get(rsKey(r))}" x="${bx.toFixed(1)}" y="${Math.min(y0, y1).toFixed(1)}" width="${(bw - 1).toFixed(1)}" height="${Math.max(1, Math.abs(y1 - y0)).toFixed(1)}"/>`;
-      }).join('');
-      const from = i ? shortCtl(c.controls[i - 1]) : 'S', to = shortCtl(c.controls[i]);
-      const rows = picked.map((r, k) => ({ r, slot: rs.picked.get(rsKey(r)), leg: st.legs[c.runners.indexOf(r)][i], d: diffs[k][i] }));
-      const html = `<div class="tt-head">מקטע ${esc(from)} ← ${esc(to)} <span>· ${esc(ref.name)}: <bdi dir="ltr">${fmtSec(refLegs[i])}</bdi></span></div>
-        <table class="tt"><thead><tr class="sub"><th></th><th>זמן מקטע</th><th>מול המנצח</th></tr></thead><tbody>${rows.map((x) => `<tr>
-          <th><i class="tt-sw s${x.slot}"></i>${esc(x.r.name)}</th><td class="n">${x.leg === null ? '–' : `<bdi dir="ltr">${fmtSec(x.leg)}</bdi>`}</td>
-          <td class="n">${x.d === null ? '–' : x.d < 0 ? `<span class="tt-top">הרוויח <bdi dir="ltr">${fmtSec(-x.d)}</bdi></span>` : x.d === 0 ? 'אותו זמן' : `הפסיד <bdi dir="ltr">${fmtSec(x.d)}</bdi>`}</td></tr>`).join('')}</tbody></table>`;
-      const tip = [`מקטע ${from} ← ${to} (${ref.name}: ${fmtSec(refLegs[i])}):`, ...rows.map((x) => `${x.r.name}\t${x.d === null ? '–' : x.d < 0 ? `הרוויח ${fmtSec(-x.d)}` : x.d === 0 ? 'אותו זמן' : `הפסיד ${fmtSec(x.d)}`}`)].join('\n');
-      return `<g>${i % 2 ? `<rect class="rs-stripe" x="${(L + cw * i).toFixed(1)}" y="${T}" width="${cw.toFixed(1)}" height="${H - T - B}"/>` : ''}${bars}${show ? `<text class="rs-ax" x="${cx.toFixed(1)}" y="${H - B + 16}" text-anchor="middle">${esc(to)}</text>` : ''}
-        <rect class="rs-band" x="${(L + cw * i).toFixed(1)}" y="${T}" width="${cw.toFixed(1)}" height="${H - T - B}" data-tip="${esc(tip)}" data-tip-html="${esc(html)}" tabindex="-1"/></g>`;
-    }).join('');
-    return `<svg class="rs-chart rs-bars" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`רווח והפסד זמן מול ${ref.name} בכל מקטע`)}">${grid}
-      <text class="rs-ax rs-side" x="${W - R - 4}" y="${T + 12}" text-anchor="end">↑ מהיר מ${esc(ref.name.split(' ')[0])}</text><text class="rs-ax rs-side" x="${W - R - 4}" y="${H - B - 6}" text-anchor="end">↓ איטי מ${esc(ref.name.split(' ')[0])}</text>${cols}</svg>`;
-  }
-
   function chartSvg(c, ref, st) {
     const picked = c.runners.filter((r) => rs.picked.has(rsKey(r)));
     if (!picked.length) return '<p class="muted small rs-chart-empty">סמנו מתחרים בטבלה כדי לראות את הגרף.</p>';
@@ -2105,9 +2062,6 @@
         <p class="muted small">קו שיורד – הפסד זמן מול ${esc(ref.name)} באותו מקטע; קו שטוח – אותו קצב. ריחוף על נקודה מציג מקום כללי ופער, ומקום ופער במקטע.</p>
         <div class="rs-legend">${legend}</div>
         <div class="rs-chart-wrap">${chartSvg(c, ref, st)}</div>
-        <h3 class="rs-sub-h">רווח והפסד מול ${esc(ref.name)} בכל מקטע</h3>
-        <p class="muted small">עמודה למטה – זמן שהמתחרה הפסיד למנצח במקטע; עמודה למעלה – זמן שהרוויח. ריחוף על מקטע מציג את הזמנים.</p>
-        <div class="rs-chart-wrap">${legBarsSvg(c, ref, st)}</div>
         ${picked.length ? `<p class="muted small rs-legs-key">בכל תא: <b>זמן</b> · פער מהראשון · <span class="rs-pl">מקום</span></p>
         <div class="rs-legs-wrap"><table class="rs-legs"><caption class="sr-only">לכל מתחרה מסומן שתי שורות: כללי – הזמן מהזינוק עד הנקודה, הפער מהמוביל והמקום; מקטע – זמן המקטע, הפער מהמהיר והמקום במקטע</caption>
           <thead><tr><th scope="col" colspan="2">מתחרה</th>${c.controls.map((ctl) => `<th scope="col">${esc(shortCtl(ctl))}</th>`).join('')}</tr></thead>
