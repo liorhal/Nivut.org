@@ -394,3 +394,54 @@ test('"ליגת אס"א" is not a league round', () => {
   assert.ok(!ev.find((e) => e.nivutId === '3457').tags.includes('league'));
   assert.ok(ev.find((e) => e.nivutId === '3335').tags.includes('league'));
 });
+
+/* ---------- results files ---------- */
+const R = require('../lib/results');
+const rfx = (n) => fs.readFileSync(path.join(__dirname, "fixtures/results", n), "utf8");
+
+test('results file: SI-Droid split times (cumulative times per control)', () => {
+  const r = R.parseResultFile(rfx('sidroid-splits.html'));
+  assert.equal(r.format, 'sidroid-splits');
+  const c = r.courses[0];
+  assert.equal(c.name, 'Long');
+  assert.equal(c.controls.length, 27);
+  assert.equal(c.controls.at(-1), 'Finish');
+  const w = c.runners[0];
+  assert.deepEqual([w.pos, w.name, w.club, w.time, w.status], ['1', 'יהונתן לוינסון', 'אסא טכניון חיפה', 1027, 'OK']);
+  assert.deepEqual(w.splits.slice(0, 3), [28, 55, 88]);
+  assert.equal(w.splits.at(-1), 1027);
+  assert.equal(c.runners.find((x) => x.status === 'MP').time, null);
+});
+
+test('results file: SI-Droid results (no splits)', () => {
+  const r = R.parseResultFile(rfx('sidroid-results.html'));
+  assert.equal(r.format, 'sidroid-results');
+  assert.equal(r.date, '2026-05-09');
+  assert.equal(r.courses[0].runners.length, 106);
+  assert.equal(r.courses[0].runners[1].time, 1044);
+});
+
+test('results file: transposed splits analysis', () => {
+  const r = R.parseResultFile(rfx('analysis.html'));
+  assert.equal(r.format, 'analysis');
+  assert.equal(r.title, 'BEN SHEMEN MERKAZ');
+  const c = r.courses[0];
+  assert.equal(c.controls.at(-1), 'Finish');
+  assert.equal(c.runners[0].name, 'יסעור ניצן');
+  assert.equal(c.runners[0].time, 2621);
+  assert.equal(c.runners[0].splits.length, c.controls.length);
+});
+
+test('results file: a results PDF converted to HTML (Hebrew back in reading order)', () => {
+  const r = R.parseResultFile(rfx('pdf.html'));
+  assert.equal(r.format, 'pdf');
+  assert.equal(r.courses[0].name, 'D12');
+  assert.deepEqual([r.courses[0].runners[0].name, r.courses[0].runners[0].club, r.courses[0].runners[0].time], ['נגב רותם', 'חבל מודיעין', 2615]);
+  assert.equal(r.courses[1].runners.find((x) => x.status === 'MP').pos, '-');
+});
+
+test('results files are fetched only from the association', () => {
+  assert.ok(L.resultFileUrl('https://cdn.nivut.org.il/uploads/a_results.html'));
+  assert.equal(L.resultFileUrl('https://example.com/a.html'), null);
+  assert.equal(L.resultFileUrl('https://cdn.nivut.org.il/uploads/a.pdf'), null);
+});

@@ -8,7 +8,7 @@ const path = require('path');
 
 const PORT = Number(process.env.PORT || 8080);
 const PUBLIC_DIR = path.join(__dirname, 'public');
-const API = Object.fromEntries(['events', 'event', 'forum', 'news', 'links', 'participants', 'ranking']
+const API = Object.fromEntries(['events', 'event', 'forum', 'news', 'links', 'participants', 'ranking', 'resultfile']
   .map((n) => [`/api/${n}`, require(`./api/${n}`)]));
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.jpg': 'image/jpeg', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 

@@ -99,7 +99,7 @@
   }
 
   /* ---------- Routing ---------- */
-  const VIEWS = ['upcoming', 'annual', 'forum', 'ranking', 'event'];
+  const VIEWS = ['upcoming', 'annual', 'forum', 'ranking', 'event', 'results'];
   function route() {
     const [name, ...rest] = location.hash.slice(1).split('/');
     const param = decodeURIComponent(rest.join('/'));
@@ -109,7 +109,7 @@
     const shown = $(`#view-${view}`);
     shown.classList.remove('view-in'); void shown.offsetWidth; shown.classList.add('view-in');
     $$('.tabs a').forEach((a) => a.setAttribute('aria-selected', String(a.dataset.view === view)));
-    const titles = { upcoming: 'ניווטים קרובים', annual: 'תוכנית שנתית', forum: 'פורום', ranking: 'דירוג', event: 'אירוע' };
+    const titles = { upcoming: 'ניווטים קרובים', annual: 'תוכנית שנתית', forum: 'פורום', ranking: 'דירוג', event: 'אירוע', results: 'תוצאות' };
     document.title = `${titles[view]} – ניווט ישראל`;
     if (view !== 'event') state.lastView = view;
     window.scrollTo(0, 0);
@@ -117,6 +117,7 @@
     if (view === 'forum') markForumSeen();
     if (view === 'forum' && param) { openThread(param); return; }
     if (view === 'ranking') showRanking();
+    if (view === 'results') { showResultFile(param); return; }
     if (name) $('#main').focus({ preventScroll: true });
   }
 
@@ -650,7 +651,10 @@
     const started = daysBetween(new Date(), evDate(e)) <= 0;
     return started ? ['results', 'analysis', 'starts', 'planner', 'other'] : ['planner', 'starts', 'results', 'analysis', 'other'];
   }
-  const fileLink = (f, key = false) => `<a class="ev-file kind-${f.kind}${key ? ' key' : ''}" href="${esc(f.url)}" target="_blank" rel="noopener"${isImageUrl(f.url) ? ` data-lightbox="${esc(f.name)}"` : ''}>
+  /** Results and splits files on the association's hosts open in our own viewer (#results/<event>/<file>). */
+  const viewable = (f) => (f.kind === 'results' || f.kind === 'analysis') && /^https?:\/\/(?:cdn\.|www\.)?nivut\.org\.il\/[^?#]*\.html?(?:[?#]|$)/i.test(f.url);
+  const fileHref = (f, e) => (e && viewable(f) ? `#results/${encodeURIComponent(e.id)}/${encodeURIComponent(f.url)}` : f.url);
+  const fileLink = (f, key = false, e = null) => `<a class="ev-file kind-${f.kind}${key ? ' key' : ''}" href="${esc(fileHref(f, e))}"${fileHref(f, e) === f.url ? ' target="_blank" rel="noopener"' : ''}${isImageUrl(f.url) ? ` data-lightbox="${esc(f.name)}"` : ''}>
       <span class="fi" aria-hidden="true">${FILE_KINDS[f.kind]?.icon || '📎'}</span><span class="fn">${esc(f.name)}</span>${f.kind !== 'other' && f.name !== FILE_KINDS[f.kind].label ? `<span class="fk">${FILE_KINDS[f.kind].label}</span>` : ''}</a>`;
   function filesHtml(e) {
     const files = e.details?.attachments || [];
@@ -659,7 +663,7 @@
     const sorted = [...files].sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
     const lead = order.slice(0, 2); // what matters now
     return `<section class="ev-card ev-files-card" id="ev-files" aria-labelledby="fl-h"><h2 id="fl-h">קבצים ונספחים</h2>
-      <ul class="ev-files">${sorted.map((f) => `<li>${fileLink(f, lead.includes(f.kind))}</li>`).join('')}</ul></section>`;
+      <ul class="ev-files">${sorted.map((f) => `<li>${fileLink(f, lead.includes(f.kind), e)}</li>`).join('')}</ul></section>`;
   }
 
   /** Home page: the three latest events (today included), with only their results and results analysis. */
@@ -681,7 +685,7 @@
         <div class="rr-main">
           <h3><a href="#event/${encodeURIComponent(e.id)}" title="${esc(e.title)}">${esc(e.title)}</a></h3>
           <p class="sr-only">${fmtLong(d)}</p>
-          ${files.length ? `<ul class="rr-files">${files.map((f) => `<li>${fileLink(f, true)}</li>`).join('')}</ul>`
+          ${files.length ? `<ul class="rr-files">${files.map((f) => `<li>${fileLink(f, true, e)}</li>`).join('')}</ul>`
             : `<p class="muted small">${daysBetween(new Date(), d) === 0 ? 'האירוע מתקיים היום – התוצאות יופיעו כאן' : 'התוצאות טרם פורסמו'}</p>`}
         </div></li>`;
     }).join('');
@@ -1565,7 +1569,7 @@
           <button type="button" data-rk-around="0" aria-pressed="${!rk.around}">כל ${rows.length}</button></div>` : '';
       const table = `<details class="rk-table"><summary>טבלה מלאה (${rows.length} מתחרים)</summary><div class="table-wrap"><table>
           <caption class="sr-only">${esc(d.title)} · ${esc(d.category.value)} · ${esc(d.season.value)}${grids.length > 1 ? ` · ${esc(g.title)}` : ''}</caption>
-          <thead><tr><th scope="col">#</th><th scope="col">שם</th><th scope="col">מועדון</th>${g.events.map((e) => `<th scope="col"><a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.name)}</a></th>`).join('')}<th scope="col">דירוג</th><th scope="col">מקדם גיל</th><th scope="col">משוקלל</th></tr></thead>
+          <thead><tr><th scope="col">#</th><th scope="col">שם</th><th scope="col" class="club">מועדון</th>${g.events.map((e) => `<th scope="col"><a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.name)}</a></th>`).join('')}<th scope="col">דירוג</th><th scope="col">מקדם גיל</th><th scope="col">משוקלל</th></tr></thead>
           <tbody>${rows.map((r) => `<tr${mine.has(r.name) ? ' class="mine"' : ''}><td>${r.rank ?? ''}</td><th scope="row">${esc(r.name)}</th><td>${esc(r.club)}</td>${r.scores.map((v) => `<td>${fmtPts(v)}</td>`).join('')}<td>${fmtPts(r.total)}</td><td>${r.ageFactor ?? '–'}</td><td><b>${fmtPts(r.weighted)}</b></td></tr>`).join('')}</tbody>
         </table></div></details>`;
       return `<section class="rk-section" aria-labelledby="rk-h${gi}">
@@ -1805,6 +1809,223 @@
     renderForum();
   }
 
+  /* ---------- Results files: a readable table per course, and splits as a SplitsBrowser-style chart ---------- */
+  const RS_COLORS = 6; // categorical slots (validated: light #2a78d6… / dark #3987e5…), in fixed order
+  const rs = { key: '', data: null, event: null, course: 0, picked: new Map(), q: '' };
+  const fmtSec = (v, plus = false) => {
+    if (v === null || v === undefined || Number.isNaN(v)) return '–';
+    const neg = v < 0, a = Math.abs(Math.round(v));
+    const h = Math.floor(a / 3600), m = Math.floor((a % 3600) / 60), sec = String(a % 60).padStart(2, '0');
+    const body = h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`;
+    return `${neg ? '−' : plus ? '+' : ''}${body}`;
+  };
+  const STATUS_HE = { MP: 'פספוס נקודה', DNF: 'לא סיים', DSQ: 'נפסל', DNS: 'לא זינק', OT: 'חריגת זמן' };
+  const rsKey = (r) => `${r.name}|${r.club}|${r.pos}`;
+  const isMinePerson = (name) => state.people.some((p) => sameName(p, name));
+
+  async function showResultFile(param) {
+    const cut = param.indexOf('/');
+    const evId = cut >= 0 ? param.slice(0, cut) : '', url = cut >= 0 ? param.slice(cut + 1) : param;
+    const page = $('#resultsPage');
+    rs.event = state.events.find((x) => x.id === evId) || null;
+    const back = rs.event ? `<a class="btn ghost" href="#event/${encodeURIComponent(rs.event.id)}">→ לעמוד התחרות</a>` : '';
+    if (rs.key !== url || !rs.data) {
+      rs.key = url; rs.data = null; rs.picked = new Map(); rs.q = '';
+      page.innerHTML = `<div class="section-head"><h1 id="rsTitle">תוצאות</h1>${back}</div><p class="live-status" role="status">טוען את קובץ התוצאות…</p>
+        <div class="rk-skeleton" aria-hidden="true">${'<i class="sk-line"></i>'.repeat(8)}</div>`;
+      try {
+        rs.data = await loadJson(`api/resultfile?url=${encodeURIComponent(url)}`);
+      } catch (err) {
+        page.innerHTML = `<div class="section-head"><h1 id="rsTitle">תוצאות</h1>${back}</div>
+          <p class="empty">לא הצלחנו לקרוא את הקובץ. <a href="${esc(url)}" target="_blank" rel="noopener">לפתיחת הקובץ המקורי ↗</a></p>
+          <details class="diag"><summary>פרטים טכניים</summary><pre dir="ltr">${esc(err.message)}</pre></details>`;
+        return;
+      }
+      if (rs.key !== url) return;
+      const cs = rs.data.courses || [];
+      // the course with my people first, else the first one
+      const mine = cs.findIndex((c) => c.runners.some((r) => isMinePerson(r.name)));
+      rs.course = mine >= 0 ? mine : 0;
+      pickDefaults();
+    }
+    renderResultFile();
+    $('#main').focus({ preventScroll: true });
+  }
+
+  const course = () => rs.data?.courses?.[rs.course];
+  const hasSplits = (c) => c && c.controls.length > 0;
+  /** Default lines: the winner and my people, else the top three. */
+  function pickDefaults() {
+    rs.picked = new Map();
+    const c = course();
+    if (!hasSplits(c)) return;
+    const ok = c.runners.filter((r) => r.status === 'OK' && r.splits.some((v) => v !== null));
+    const mine = c.runners.filter((r) => isMinePerson(r.name));
+    const want = [...new Set([ok[0], ...mine, ...(mine.length ? [] : ok.slice(1, 3))].filter(Boolean))].slice(0, RS_COLORS);
+    want.forEach((r) => togglePick(r));
+  }
+  /** Colour follows the runner: a picked runner keeps its slot until unpicked. */
+  function togglePick(r) {
+    const k = rsKey(r);
+    if (rs.picked.has(k)) { rs.picked.delete(k); return true; }
+    const used = new Set(rs.picked.values());
+    const slot = [...Array(RS_COLORS).keys()].find((i) => !used.has(i));
+    if (slot === undefined) return false;
+    rs.picked.set(k, slot);
+    return true;
+  }
+
+  /** Leg times and, per leg, ranks among everyone with a time there. */
+  function legStats(c) {
+    const legs = c.runners.map((r) => r.splits.map((v, i) => {
+      const prev = i === 0 ? 0 : r.splits[i - 1];
+      return v === null || prev === null || prev === undefined ? null : v - prev;
+    }));
+    const best = c.controls.map((_, i) => Math.min(...legs.map((l) => l[i]).filter((v) => v !== null && v > 0)));
+    const rank = (i, v) => (v === null ? null : 1 + legs.filter((l) => l[i] !== null && l[i] < v).length);
+    return { legs, best, rank };
+  }
+  /** The reference for "time behind": the winner's cumulative times (the fastest finisher with all splits). */
+  function referenceOf(c) {
+    const ok = c.runners.filter((r) => r.status === 'OK' && r.time && r.splits.length === c.controls.length && r.splits.every((v) => v !== null));
+    ok.sort((a, b) => a.time - b.time);
+    return ok[0] || null;
+  }
+  const shortCtl = (label) => (/^finish$/i.test(label) ? 'F' : String(label).split(/\s/)[0]);
+
+  function chartSvg(c, ref, st) {
+    const picked = c.runners.filter((r) => rs.picked.has(rsKey(r)));
+    if (!picked.length) return '<p class="muted small rs-chart-empty">סמנו מתחרים בטבלה כדי לראות את הגרף.</p>';
+    const W = 860, H = 340, L = 62, R = picked.length <= 4 ? 84 : 18, T = 16, B = 34;
+    const xs = [0, ...ref.splits];
+    const maxX = xs[xs.length - 1] || 1;
+    const behind = picked.map((r) => [0, ...r.splits].map((v, i) => (v === null || (i > 0 && r.splits[i - 1] === undefined) ? null : v - xs[i])));
+    const vals = behind.flat().filter((v) => v !== null);
+    const maxY = Math.max(60, ...vals), minY = Math.min(0, ...vals);
+    const x = (t) => L + (t / maxX) * (W - L - R);
+    const y = (v) => T + ((v - minY) / (maxY - minY || 1)) * (H - T - B);
+    // nice y ticks every 1, 2, 5, 10… minutes
+    const steps = [30, 60, 120, 300, 600, 900, 1200, 1800, 3600];
+    const step = steps.find((s) => (maxY - minY) / s <= 6) || 3600;
+    const yt = [];
+    for (let v = Math.ceil(minY / step) * step; v <= maxY; v += step) yt.push(v);
+    const grid = yt.map((v) => `<line class="rs-grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="rs-ax" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v === 0 ? '0' : fmtSec(v, true)}</text>`).join('');
+    // control numbers under the axis; one that would touch the last one shown is skipped (the finish always shows)
+    let lastLabel = -Infinity;
+    const cols = xs.map((t, i) => {
+      const lx = x(t), isFinish = i === xs.length - 1;
+      const show = i === 0 || isFinish ? lx - lastLabel >= 12 || isFinish : lx - lastLabel >= 16 && x(maxX) - lx >= 16;
+      if (show) lastLabel = lx;
+      return `<line class="rs-vgrid" x1="${lx}" x2="${lx}" y1="${T}" y2="${H - B}"/>${show ? `<text class="rs-ax" x="${lx}" y="${H - B + 16}" text-anchor="middle">${esc(i ? shortCtl(c.controls[i - 1]) : 'S')}</text>` : ''}`;
+    }).join('');
+    const lines = picked.map((r, k) => {
+      const slot = rs.picked.get(rsKey(r));
+      const pts = behind[k];
+      let d = '', pen = false;
+      pts.forEach((v, i) => { if (v === null) { pen = false; return; } d += `${pen ? 'L' : 'M'}${x(xs[i]).toFixed(1)} ${y(v).toFixed(1)} `; pen = true; });
+      const last = pts.map((v, i) => [v, i]).filter(([v]) => v !== null).pop();
+      const label = picked.length <= 4 && last ? `<text class="rs-end" x="${x(xs[last[1]]) + 8}" y="${y(last[0]) + 4}">${esc(r.name.split(' ')[0])}</text>` : '';
+      const dots = pts.map((v, i) => (v === null ? '' : `<circle class="rs-dot" cx="${x(xs[i]).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.5"/>`)).join('');
+      return `<g class="rs-line s${slot}"><path d="${d}"/>${dots}${label}</g>`;
+    }).join('');
+    // hover: one band per control with every picked runner's time behind, leg time and leg rank
+    const bands = xs.map((t, i) => {
+      if (!i) return '';
+      const x0 = x((xs[i - 1] + t) / 2), x1 = i < xs.length - 1 ? x((t + xs[i + 1]) / 2) : W - R;
+      const tip = [`נקודה ${shortCtl(c.controls[i - 1])}:`, ...picked.map((r) => {
+        const leg = st.legs[c.runners.indexOf(r)][i - 1];
+        const rk = st.rank(i - 1, leg);
+        const b = behind[picked.indexOf(r)][i];
+        return `${r.name}\t${b === null ? '–' : fmtSec(b, true)} · מקטע ${fmtSec(leg)}${rk ? ` (${rk})` : ''}`;
+      })].join('\n');
+      return `<rect class="rs-band" x="${x0}" y="${T}" width="${Math.max(2, x1 - x0)}" height="${H - T - B}" data-tip="${esc(tip)}" tabindex="-1"/>`;
+    }).join('');
+    return `<svg class="rs-chart" viewBox="0 0 ${W} ${H}" role="img" dir="ltr" aria-label="${esc(`פער מהמנצח (${ref.name}) בכל נקודה, ל-${picked.length} מתחרים. הנתונים בטבלת המקטעים שמתחת.`)}">
+      <g>${grid}${cols}</g><line class="rs-zero" x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}"/>${lines}<g>${bands}</g></svg>`;
+  }
+
+  function renderResultFile() {
+    const d = rs.data, page = $('#resultsPage');
+    const ev = rs.event;
+    const back = ev ? `<a class="btn ghost" href="#event/${encodeURIComponent(ev.id)}">→ לעמוד התחרות</a>` : '';
+    const title = ev ? (ev.calPlace && ev.calDesc ? `${ev.calPlace} – ${ev.calDesc}` : ev.title) : d.title || 'תוצאות';
+    const date = ev ? fmtLong(evDate(ev)) : d.date;
+    if (!d.courses?.length) {
+      page.innerHTML = `<div class="section-head"><h1 id="rsTitle">${esc(title)}</h1>${back}</div>
+        <p class="empty">את הקובץ הזה עוד לא אנחנו יודעים להציג. <a href="${esc(rs.key)}" target="_blank" rel="noopener">לפתיחת הקובץ המקורי ↗</a></p>`;
+      return;
+    }
+    const c = course();
+    const ref = hasSplits(c) ? referenceOf(c) : null;
+    const st = hasSplits(c) ? legStats(c) : null;
+    const lead = c.runners.find((r) => r.status === 'OK' && r.time);
+    const q = rs.q.trim().toLowerCase();
+    const shown = c.runners.filter((r) => !q || `${r.name} ${r.club}`.toLowerCase().includes(q));
+    const picked = c.runners.filter((r) => rs.picked.has(rsKey(r)));
+    const legend = picked.map((r) => `<button type="button" class="rs-chip s${rs.picked.get(rsKey(r))}" data-unpick="${esc(rsKey(r))}" aria-label="${esc(`הסרת ${r.name} מהגרף`)}"><i aria-hidden="true"></i>${esc(r.name)} <span aria-hidden="true">×</span></button>`).join('');
+    page.innerHTML = `
+      <div class="section-head"><div><h1 id="rsTitle">${esc(title)}</h1><p class="muted">${esc(date || '')}${d.format === 'pdf' ? '' : ''}</p></div>
+        <div class="rs-actions">${back}<a class="btn ghost" href="${esc(rs.key)}" target="_blank" rel="noopener">הקובץ המקורי ↗</a></div></div>
+      <div class="seg rs-courses" role="group" aria-label="מסלול / קטגוריה">${d.courses.map((x, i) => `<button type="button" data-course="${i}" aria-pressed="${i === rs.course}">${esc(x.name)}${x.runners.some((r) => isMinePerson(r.name)) ? ' ★' : ''}</button>`).join('')}</div>
+      <p class="muted small rs-info">${[c.info && `<bdi dir="ltr">${esc(c.info)}</bdi>`, `סיימו ${c.runners.filter((r) => r.status === 'OK').length} מתוך ${c.runners.length}`].filter(Boolean).join(' · ')}</p>
+      ${hasSplits(c) && ref ? `<section class="ev-card rs-graph" aria-labelledby="rsg-h">
+        <h2 id="rsg-h">פער מהמנצח בכל נקודה</h2>
+        <p class="muted small">קו שעולה – הפסד זמן מול ${esc(ref.name)} באותו מקטע; קו שטוח – אותו קצב. ריחוף על נקודה מציג זמני מקטע ודירוג.</p>
+        <div class="rs-legend">${legend}</div>
+        <div class="rs-chart-wrap">${chartSvg(c, ref, st)}</div>
+        ${picked.length ? `<div class="rs-legs-wrap"><table class="rs-legs"><caption class="sr-only">זמני מקטעים (ודירוג במקטע) של המתחרים המסומנים</caption>
+          <thead><tr><th scope="col">מתחרה</th>${c.controls.map((ctl) => `<th scope="col">${esc(shortCtl(ctl))}</th>`).join('')}</tr></thead>
+          <tbody>${picked.map((r) => {
+            const legs = st.legs[c.runners.indexOf(r)];
+            return `<tr><th scope="row"><i class="rs-sw s${rs.picked.get(rsKey(r))}" aria-hidden="true"></i>${esc(r.name)}</th>${legs.map((v, i) => {
+              const rk = st.rank(i, v);
+              return `<td class="${v !== null && v === st.best[i] ? 'best' : ''}">${fmtSec(v)}${rk ? `<small>${rk}</small>` : ''}</td>`;
+            }).join('')}</tr>`;
+          }).join('')}</tbody></table></div>` : ''}
+      </section>` : ''}
+      <section class="ev-card rs-table-card" aria-labelledby="rst-h">
+        <div class="rs-table-head"><h2 id="rst-h">תוצאות – ${esc(c.name)}</h2>
+          <label class="rs-search"><span class="sr-only">חיפוש מתחרה או מועדון</span><input type="search" id="rsQ" placeholder="חיפוש שם או מועדון" value="${esc(rs.q)}"></label></div>
+        <div class="rs-table-wrap"><table class="rs-table">
+          <thead><tr>${hasSplits(c) ? '<th scope="col"><span class="sr-only">בגרף</span></th>' : ''}<th scope="col">מקום</th><th scope="col">שם</th><th scope="col">מועדון</th><th scope="col">זמן</th><th scope="col">פער</th></tr></thead>
+          <tbody>${shown.map((r) => {
+            const mine = isMinePerson(r.name);
+            const k = rsKey(r);
+            const slot = rs.picked.get(k);
+            return `<tr class="${mine ? 'mine' : ''}${r.status !== 'OK' ? ' out' : ''}">
+              ${hasSplits(c) ? `<td><label class="rs-pick${slot !== undefined ? ` s${slot}` : ''}"><input type="checkbox" data-pick="${esc(k)}" ${slot !== undefined ? 'checked' : ''} aria-label="${esc(`הצגת ${r.name} בגרף`)}"><i aria-hidden="true"></i></label></td>` : ''}
+              <td class="num">${esc(r.pos || '')}</td>
+              <td>${mine ? '<span class="rs-star" aria-label="מהאנשים שלי">★</span> ' : ''}${esc(r.name)}</td>
+              <td class="muted club">${esc(r.club)}</td>
+              <td class="num"><bdi>${r.status === 'OK' ? fmtSec(r.time) : `<span class="rs-status" title="${esc(STATUS_HE[r.status] || r.status)}">${esc(r.status)}</span>`}</bdi></td>
+              <td class="num muted"><bdi>${r.status === 'OK' && lead && r !== lead ? fmtSec(r.time - lead.time, true) : ''}</bdi></td></tr>`;
+          }).join('') || '<tr><td colspan="6" class="muted">אין תוצאות לחיפוש.</td></tr>'}</tbody></table></div>
+      </section>`;
+  }
+
+  function initResultsView() {
+    const page = $('#resultsPage');
+    page.addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-course]');
+      if (b) { rs.course = +b.dataset.course; rs.q = ''; pickDefaults(); renderResultFile(); $(`[data-course="${rs.course}"]`)?.focus(); return; }
+      const u = ev.target.closest('[data-unpick]');
+      if (u) { rs.picked.delete(u.dataset.unpick); renderResultFile(); }
+    });
+    page.addEventListener('change', (ev) => {
+      const cb = ev.target.closest('[data-pick]');
+      if (!cb) return;
+      const r = course().runners.find((x) => rsKey(x) === cb.dataset.pick);
+      if (r && !togglePick(r)) { cb.checked = false; alert(`אפשר להשוות עד ${RS_COLORS} מתחרים בגרף. הסירו אחד קודם.`); return; }
+      const y = scrollY; renderResultFile(); scrollTo(0, y);
+      $(`[data-pick="${CSS.escape(cb.dataset.pick)}"]`)?.focus();
+    });
+    page.addEventListener('input', (ev) => {
+      if (ev.target.id !== 'rsQ') return;
+      rs.q = ev.target.value; const pos = ev.target.selectionStart;
+      renderResultFile(); const i = $('#rsQ'); i.focus(); i.setSelectionRange(pos, pos);
+    });
+  }
+
   /* ---------- Boot ---------- */
   async function loadJson(path) {
     const r = await fetch(path, { cache: 'no-cache' });
@@ -1831,6 +2052,7 @@
     initMoreEvents();
     initDiscFilter();
     initRegFilter();
+    initResultsView();
     window.addEventListener('hashchange', route);
     route();
     const [links, events, forum, news] = await Promise.all([
