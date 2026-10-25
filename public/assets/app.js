@@ -1415,9 +1415,21 @@
   const RK_LEAGUES = { foot: 'ניווט רגלי', mtbo: 'ניווט רכוב' };
   // What the switch offers: forest and sprint are both the foot league (its sprint categories end in S), bike is MTBO.
   const RK_KINDS = { forest: ['ניווט יער', 'foot'], sprint: ['מאוץ', 'foot'], mtbo: ['אופניים', 'mtbo'] };
-  const kindOf = (league, cat) => (league === 'mtbo' ? 'mtbo' : isSprintCat(cat || '') ? 'sprint' : 'forest');
-  const ofKind = (kind, cat) => kind === 'mtbo' || (kind === 'sprint') === isSprintCat(cat);
+  // A foot category's page may hold the sprint league as a grid of its own ("ליגת מאוץ") next to the forest one.
+  const sprintGrid = (g) => /מאוץ|ספרינט|sprint/i.test(g.title || '');
+  // categories seen with a sprint grid, per league: they are offered under מאוץ too
+  const rkSprintCats = store.get('rkSprintCats', {});
+  const ofKind = (kind, cat, league = 'foot') => kind === 'mtbo' || (kind === 'sprint'
+    ? isSprintCat(cat) || (rkSprintCats[league] || []).includes(cat) : !isSprintCat(cat));
+  /** The grids of the chosen kind: forest without the sprint grid, sprint only it (all grids when there's no split). */
+  function gridsOfKind(d) {
+    const all = d.grids || [];
+    if (rk.kind === 'mtbo' || d.key === 'mtbo') return all;
+    const sp = all.filter(sprintGrid), fo = all.filter((g) => !sprintGrid(g));
+    return rk.kind === 'sprint' ? (sp.length ? sp : all) : (fo.length ? fo : all);
+  }
   const rk = { sel: store.get('rank', { league: 'foot', season: '', category: '' }), data: null, around: true, busy: false, inited: false };
+  rk.kind = store.get('rankKind', null) || (rk.sel.league === 'mtbo' ? 'mtbo' : /\d\s*[A-Z]?S$/i.test(rk.sel.category || '') ? 'sprint' : 'forest');
   if (!RK_LEAGUES[rk.sel.league]) rk.sel = { league: 'foot', season: '', category: '' }; // a league no longer offered
   // Categories where my people were found, remembered per league: { foot: { H21A: ['דנה כהן'] } }
   const rkStars = store.get('rkStars', {});
@@ -1428,19 +1440,24 @@
     if (names.length) lg[d.category.value] = names; else delete lg[d.category.value];
     store.set('rkStars', rkStars);
   }
+  function setKind(kind) {
+    rk.kind = kind;
+    store.set('rankKind', kind);
+    $$('#rkLeagues [data-kind]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.kind === kind)));
+  }
   function renderRkCategories() {
     const d = rk.data;
     const stars = rkStars[d.key] || {};
     // the foot league's categories ending in S are the sprint (מאוץ) league: a group of their own
     const opt = (o) => `<option value="${esc(o)}"${o === d.category.value ? ' selected' : ''}>${stars[o] ? '★ ' : ''}${esc(o)}</option>`;
-    const kind = kindOf(d.key, d.category.value);
-    const shown = d.category.options.filter((o) => ofKind(kind, o));
+    const kind = rk.kind;
+    const shown = d.category.options.filter((o) => ofKind(kind, o, d.key) || o === d.category.value);
     const groups = [['נשים', (o) => /^(D|W)\s?\d/i.test(o)], ['גברים', (o) => /^(H|M)\s?\d/i.test(o)]];
     const rest = shown.filter((o) => !groups.some(([, f]) => f(o)));
     const parts = [...groups.map(([n, f]) => [n, shown.filter(f)]), ['כללי', rest]].filter(([, l]) => l.length);
     $('#rkCategory').innerHTML = parts.length > 1 ? parts.map(([n, l]) => `<optgroup label="${n}">${l.map(opt).join('')}</optgroup>`).join('') : shown.map(opt).join('');
     // Quick picks: the categories of my people
-    const picks = Object.entries(stars).filter(([c]) => d.category.options.includes(c) && ofKind(kindOf(d.key, d.category.value), c));
+    const picks = Object.entries(stars).filter(([c]) => d.category.options.includes(c) && ofKind(rk.kind, c, d.key));
     $('#rkQuick').innerHTML = picks.length ? `<span class="rk-quick-k">הקטגוריות של האנשים שלי:</span>${picks.map(([c, names]) =>
       `<button type="button" class="chip" data-rk-cat="${esc(c)}" aria-pressed="${c === d.category.value}" title="${esc(names.join(', '))}">★ ${esc(c)}<span class="sr-only"> (${esc(names.join(', '))})</span></button>`).join('')}` : '';
     $('#rkQuick').hidden = !picks.length;
@@ -1449,21 +1466,26 @@
   function showRanking() {
     if (!rk.inited) {
       rk.inited = true;
-      const kindNow = kindOf(rk.sel.league, rk.sel.category);
-      $('#rkLeagues').innerHTML = Object.entries(RK_KINDS).map(([k, [t]]) => `<button type="button" data-kind="${k}" aria-pressed="${kindNow === k}">${t}</button>`).join('');
+      $('#rkLeagues').innerHTML = Object.entries(RK_KINDS).map(([k, [t]]) => `<button type="button" data-kind="${k}" aria-pressed="${rk.kind === k}">${t}</button>`).join('');
       $('#rkLeagues').addEventListener('click', (ev) => {
         const b = ev.target.closest('[data-kind]');
         if (!b) return;
         const kind = b.dataset.kind, league = RK_KINDS[kind][1];
-        if (rk.data && kind === kindOf(rk.data.key, rk.data.category.value)) return;
-        $$('#rkLeagues [data-kind]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+        if (kind === rk.kind) return;
         if (rk.data && league === rk.data.key) {
-          // forest ↔ sprint: the same league, another category – one of my people's of that kind, else the first
-          const opts = rk.data.category.options.filter((o) => ofKind(kind, o));
+          // forest ↔ sprint, the same league: the page already shown may hold the other kind's grid
+          const d = rk.data;
+          const here = kind === 'sprint' ? (d.grids || []).some(sprintGrid) || isSprintCat(d.category.value)
+            : !isSprintCat(d.category.value) && (d.grids || []).some((g) => !sprintGrid(g));
+          setKind(kind);
+          if (here) { renderRkCategories(); renderRanking(); return; }
+          // else another category of that kind – one of my people's, else the first
+          const opts = d.category.options.filter((o) => ofKind(kind, o, d.key));
           const mine = Object.keys(rkStars[league] || {}).find((c) => opts.includes(c));
-          if (!opts.length) { rk.wantKind = null; $('#rkStatus').textContent = `אין קטגוריות ${RK_KINDS[kind][0]} בעונה הזו.`; return; }
+          if (!opts.length) { renderRkCategories(); renderRanking(); $('#rkStatus').textContent = `אין קטגוריות ${RK_KINDS[kind][0]} בעונה הזו.`; return; }
           rk.sel = { ...rk.sel, category: mine || opts[0] };
         } else {
+          setKind(kind);
           rk.sel = { league, season: rk.sel.season, category: '' };
           rk.wantKind = kind;
         }
@@ -1516,14 +1538,22 @@
       const opts = (sel, c) => { sel.innerHTML = c.options.map((o) => `<option${o === c.value ? ' selected' : ''}>${esc(o)}</option>`).join(''); };
       opts($('#rkSeason'), d.season);
       rememberStars(d);
+      if (d.key === 'foot' && (d.grids || []).some(sprintGrid)) { // remember: this category has a sprint grid
+        const l = (rkSprintCats.foot ||= []);
+        if (!l.includes(d.category.value)) { l.push(d.category.value); store.set('rkSprintCats', rkSprintCats); }
+      }
       const want = rk.wantKind;
       rk.wantKind = null;
-      if (want && want !== kindOf(d.key, d.category.value)) {
-        const opts = d.category.options.filter((o) => ofKind(want, o));
+      if (d.key === 'mtbo') setKind('mtbo');
+      else if (rk.kind === 'mtbo' || isSprintCat(d.category.value)) setKind(isSprintCat(d.category.value) ? 'sprint' : 'forest');
+      if (want && want !== 'mtbo') {
+        // just switched league: land on a category of the wanted kind
+        const fits = want === 'sprint' ? isSprintCat(d.category.value) || (d.grids || []).some(sprintGrid) : !isSprintCat(d.category.value);
+        const opts = d.category.options.filter((o) => ofKind(want, o, d.key));
         const mine = Object.keys(rkStars[d.key] || {}).find((c) => opts.includes(c));
-        if (opts.length) { rk.sel.category = mine || opts[0]; return loadRanking(); }
+        setKind(want);
+        if (!fits && opts.length) { rk.sel.category = mine || opts[0]; return loadRanking(); }
       }
-      $$('#rkLeagues [data-kind]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.kind === kindOf(d.key, d.category.value))));
       renderRkCategories();
       const t = new Date(d.fetchedAt);
       st.textContent = `מתעדכן מאתר האיגוד · עודכן ב-${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
@@ -1629,7 +1659,7 @@
   function renderRanking() {
     const d = rk.data;
     if (!d) return;
-    const grids = d.grids || [];
+    const grids = gridsOfKind(d);
     const mineAll = [];
     const sections = grids.map((g, gi) => {
       const rows = g.rows;
@@ -1682,7 +1712,7 @@
           <tbody>${rows.map((r) => `<tr${mine.has(r.name) ? ' class="mine"' : ''}><td>${r.rank ?? ''}</td><th scope="row">${esc(r.name)}</th><td>${esc(r.club)}</td>${r.scores.map((v) => (v > top ? `<td class="k1000" title="מעל ${top}"><span class="k1000-k" aria-hidden="true">★</span>${fmtPts(v)}<span class="sr-only"> (מעל ${top})</span></td>` : `<td>${fmtPts(v)}</td>`)).join('')}<td>${fmtPts(r.total)}</td><td>${r.ageFactor ?? '–'}</td><td><b>${fmtPts(r.weighted)}</b></td></tr>`).join('')}</tbody>
         </table></div></details>`;
       return `<section class="rk-section" aria-labelledby="rk-h${gi}">
-        <div class="rk-sec-head"><h2 id="rk-h${gi}">${grids.length > 1 ? esc(g.title) : `${esc(d.category.value)} · ${esc(d.season.value)}`}</h2>${d.key === 'foot' && isSprintCat(d.category.value) ? '<span class="rk-sprint">ליגת מאוץ</span>' : ''}
+        <div class="rk-sec-head"><h2 id="rk-h${gi}">${grids.length > 1 ? esc(g.title) : `${esc(d.category.value)} · ${esc(d.season.value)}`}</h2>${d.key === 'foot' && grids.length === 1 && (isSprintCat(d.category.value) || sprintGrid(g)) ? '<span class="rk-sprint">ליגת מאוץ</span>' : ''}
           ${g.best ? `<p class="muted small">דירוג משוקלל, לפי ${g.best} התוצאות הטובות ביותר ומקדם גיל</p>` : ''}${toggle}</div>
         ${g.events.length ? `<ul class="rk-evkey" aria-label="צבע לכל אירוע">${g.events.map((e, k) => `<li data-ev="${k}" tabindex="0"><i class="e${k % RK_COLORS}" aria-hidden="true"></i>${esc(e.name)}</li>`).join('')}
           <li class="rk-evkey-x"><i class="rk-age" aria-hidden="true"></i>מקדם גיל</li><li class="rk-evkey-x"><i class="rk-spare-k" aria-hidden="true"></i>לא נספר</li>${g.best ? '<li class="rk-evkey-x"><i class="rk-hole-k" aria-hidden="true"></i>חסרה תוצאה</li>' : ''}<li class="rk-evkey-x"><b class="k1000-k" aria-hidden="true">★</b>מעל ${top}</li></ul>` : ''}
