@@ -2155,3 +2155,5 @@ html, body { overflow-x: clip; }
 .rf-name { fill: var(--c); font-size: 12px; font-weight: 800; }
 .rf-key { display: inline-block; width: 16px; height: 3px; border-radius: 2px; background: var(--c); }
 .rf-key.s1 { --c: var(--es-1); } .rf-key.s2 { --c: var(--es-2); } .rf-key.s3 { --c: var(--es-3); } .rf-key.s-other { --c: color-mix(in srgb, var(--text) 30%, transparent); }
+
+.rk-leagues button:disabled { opacity: .45; cursor: not-allowed; }

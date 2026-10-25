@@ -1440,6 +1440,16 @@
     if (names.length) lg[d.category.value] = names; else delete lg[d.category.value];
     store.set('rkStars', rkStars);
   }
+  // the sprint league's categories started in 2022-2023
+  const SPRINT_FROM = 2022;
+  const sprintSeason = (season) => { const y = parseInt(String(season || ''), 10); return !y || y >= SPRINT_FROM; };
+  function syncSprintButton(season) {
+    const b = $('#rkLeagues [data-kind="sprint"]');
+    if (!b) return;
+    const ok = sprintSeason(season);
+    b.disabled = !ok;
+    b.title = ok ? '' : `ליגת המאוץ קיימת החל מעונת ${SPRINT_FROM}-${SPRINT_FROM + 1}`;
+  }
   function setKind(kind) {
     rk.kind = kind;
     store.set('rankKind', kind);
@@ -1471,7 +1481,7 @@
         const b = ev.target.closest('[data-kind]');
         if (!b) return;
         const kind = b.dataset.kind, league = RK_KINDS[kind][1];
-        if (kind === rk.kind) return;
+        if (kind === rk.kind || b.disabled) return;
         if (rk.data && league === rk.data.key) {
           // forest ↔ sprint, the same league: the page already shown may hold the other kind's grid
           const d = rk.data;
@@ -1544,6 +1554,8 @@
       }
       const want = rk.wantKind;
       rk.wantKind = null;
+      syncSprintButton(d.season.value);
+      if (rk.kind === 'sprint' && !sprintSeason(d.season.value)) setKind('forest'); // no sprint league that season
       if (d.key === 'mtbo') setKind('mtbo');
       else if (rk.kind === 'mtbo' || isSprintCat(d.category.value)) setKind(isSprintCat(d.category.value) ? 'sprint' : 'forest');
       if (want && want !== 'mtbo') {
