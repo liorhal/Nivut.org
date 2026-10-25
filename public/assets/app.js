@@ -1411,7 +1411,12 @@
   /* ---------- Ranking (#ranking) ---------- */
   // League ranking from the association's ranking page: a bar per competitor (weighted ranking),
   // my people in the brand colour and named, everyone else muted; the full table below.
+  const isSprintCat = (c) => /\d\s*[A-Z]?S$/i.test(String(c).trim());
   const RK_LEAGUES = { foot: 'ניווט רגלי', mtbo: 'ניווט רכוב' };
+  // What the switch offers: forest and sprint are both the foot league (its sprint categories end in S), bike is MTBO.
+  const RK_KINDS = { forest: ['ניווט יער', 'foot'], sprint: ['מאוץ', 'foot'], mtbo: ['אופניים', 'mtbo'] };
+  const kindOf = (league, cat) => (league === 'mtbo' ? 'mtbo' : isSprintCat(cat || '') ? 'sprint' : 'forest');
+  const ofKind = (kind, cat) => kind === 'mtbo' || (kind === 'sprint') === isSprintCat(cat);
   const rk = { sel: store.get('rank', { league: 'foot', season: '', category: '' }), data: null, around: true, busy: false, inited: false };
   if (!RK_LEAGUES[rk.sel.league]) rk.sel = { league: 'foot', season: '', category: '' }; // a league no longer offered
   // Categories where my people were found, remembered per league: { foot: { H21A: ['דנה כהן'] } }
@@ -1423,32 +1428,45 @@
     if (names.length) lg[d.category.value] = names; else delete lg[d.category.value];
     store.set('rkStars', rkStars);
   }
-  const isSprintCat = (c) => /\d\s*[A-Z]?S$/i.test(String(c).trim());
   function renderRkCategories() {
     const d = rk.data;
     const stars = rkStars[d.key] || {};
     // the foot league's categories ending in S are the sprint (מאוץ) league: a group of their own
     const opt = (o) => `<option value="${esc(o)}"${o === d.category.value ? ' selected' : ''}>${stars[o] ? '★ ' : ''}${esc(o)}</option>`;
-    const groups = [['נשים', (o) => /^(D|W)\s?\d/i.test(o) && !isSprintCat(o)], ['גברים', (o) => /^(H|M)\s?\d/i.test(o) && !isSprintCat(o)], ['ליגת מאוץ', isSprintCat]];
-    const rest = d.category.options.filter((o) => !groups.some(([, f]) => f(o)));
-    const parts = [...groups.map(([n, f]) => [n, d.category.options.filter(f)]), ['כללי', rest]].filter(([, l]) => l.length);
-    $('#rkCategory').innerHTML = parts.length > 1 ? parts.map(([n, l]) => `<optgroup label="${n}">${l.map(opt).join('')}</optgroup>`).join('') : d.category.options.map(opt).join('');
+    const kind = kindOf(d.key, d.category.value);
+    const shown = d.category.options.filter((o) => ofKind(kind, o));
+    const groups = [['נשים', (o) => /^(D|W)\s?\d/i.test(o)], ['גברים', (o) => /^(H|M)\s?\d/i.test(o)]];
+    const rest = shown.filter((o) => !groups.some(([, f]) => f(o)));
+    const parts = [...groups.map(([n, f]) => [n, shown.filter(f)]), ['כללי', rest]].filter(([, l]) => l.length);
+    $('#rkCategory').innerHTML = parts.length > 1 ? parts.map(([n, l]) => `<optgroup label="${n}">${l.map(opt).join('')}</optgroup>`).join('') : shown.map(opt).join('');
     // Quick picks: the categories of my people
-    const picks = Object.entries(stars).filter(([c]) => d.category.options.includes(c));
+    const picks = Object.entries(stars).filter(([c]) => d.category.options.includes(c) && ofKind(kindOf(d.key, d.category.value), c));
     $('#rkQuick').innerHTML = picks.length ? `<span class="rk-quick-k">הקטגוריות של האנשים שלי:</span>${picks.map(([c, names]) =>
-      `<button type="button" class="chip" data-rk-cat="${esc(c)}" aria-pressed="${c === d.category.value}" title="${esc(names.join(', '))}">★ ${esc(c)}${isSprintCat(c) ? ' · מאוץ' : ''}<span class="sr-only"> (${esc(names.join(', '))})</span></button>`).join('')}` : '';
+      `<button type="button" class="chip" data-rk-cat="${esc(c)}" aria-pressed="${c === d.category.value}" title="${esc(names.join(', '))}">★ ${esc(c)}<span class="sr-only"> (${esc(names.join(', '))})</span></button>`).join('')}` : '';
     $('#rkQuick').hidden = !picks.length;
   }
 
   function showRanking() {
     if (!rk.inited) {
       rk.inited = true;
-      $('#rkLeagues').innerHTML = Object.entries(RK_LEAGUES).map(([k, t]) => `<button type="button" data-league="${k}" aria-pressed="${rk.sel.league === k}">${t}</button>`).join('');
+      const kindNow = kindOf(rk.sel.league, rk.sel.category);
+      $('#rkLeagues').innerHTML = Object.entries(RK_KINDS).map(([k, [t]]) => `<button type="button" data-kind="${k}" aria-pressed="${kindNow === k}">${t}</button>`).join('');
       $('#rkLeagues').addEventListener('click', (ev) => {
-        const b = ev.target.closest('[data-league]');
-        if (!b || b.dataset.league === rk.sel.league) return;
-        rk.sel = { league: b.dataset.league, season: '', category: '' };
-        $$('#rkLeagues [data-league]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+        const b = ev.target.closest('[data-kind]');
+        if (!b) return;
+        const kind = b.dataset.kind, league = RK_KINDS[kind][1];
+        if (rk.data && kind === kindOf(rk.data.key, rk.data.category.value)) return;
+        $$('#rkLeagues [data-kind]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+        if (rk.data && league === rk.data.key) {
+          // forest ↔ sprint: the same league, another category – one of my people's of that kind, else the first
+          const opts = rk.data.category.options.filter((o) => ofKind(kind, o));
+          const mine = Object.keys(rkStars[league] || {}).find((c) => opts.includes(c));
+          if (!opts.length) { rk.wantKind = null; $('#rkStatus').textContent = `אין קטגוריות ${RK_KINDS[kind][0]} בעונה הזו.`; return; }
+          rk.sel = { ...rk.sel, category: mine || opts[0] };
+        } else {
+          rk.sel = { league, season: rk.sel.season, category: '' };
+          rk.wantKind = kind;
+        }
         loadRanking();
       });
       $('#rkSeason').addEventListener('change', (ev) => { rk.sel.season = ev.target.value; loadRanking(); });
@@ -1498,6 +1516,14 @@
       const opts = (sel, c) => { sel.innerHTML = c.options.map((o) => `<option${o === c.value ? ' selected' : ''}>${esc(o)}</option>`).join(''); };
       opts($('#rkSeason'), d.season);
       rememberStars(d);
+      const want = rk.wantKind;
+      rk.wantKind = null;
+      if (want && want !== kindOf(d.key, d.category.value)) {
+        const opts = d.category.options.filter((o) => ofKind(want, o));
+        const mine = Object.keys(rkStars[d.key] || {}).find((c) => opts.includes(c));
+        if (opts.length) { rk.sel.category = mine || opts[0]; return loadRanking(); }
+      }
+      $$('#rkLeagues [data-kind]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.kind === kindOf(d.key, d.category.value))));
       renderRkCategories();
       const t = new Date(d.fetchedAt);
       st.textContent = `מתעדכן מאתר האיגוד · עודכן ב-${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
@@ -1656,7 +1682,7 @@
           <tbody>${rows.map((r) => `<tr${mine.has(r.name) ? ' class="mine"' : ''}><td>${r.rank ?? ''}</td><th scope="row">${esc(r.name)}</th><td>${esc(r.club)}</td>${r.scores.map((v) => (v > top ? `<td class="k1000" title="מעל ${top}"><span class="k1000-k" aria-hidden="true">★</span>${fmtPts(v)}<span class="sr-only"> (מעל ${top})</span></td>` : `<td>${fmtPts(v)}</td>`)).join('')}<td>${fmtPts(r.total)}</td><td>${r.ageFactor ?? '–'}</td><td><b>${fmtPts(r.weighted)}</b></td></tr>`).join('')}</tbody>
         </table></div></details>`;
       return `<section class="rk-section" aria-labelledby="rk-h${gi}">
-        <div class="rk-sec-head"><h2 id="rk-h${gi}">${grids.length > 1 ? esc(g.title) : `${esc(d.category.value)} · ${esc(d.season.value)}`}</h2>${isSprintCat(d.category.value) ? '<span class="rk-sprint">ליגת מאוץ</span>' : ''}
+        <div class="rk-sec-head"><h2 id="rk-h${gi}">${grids.length > 1 ? esc(g.title) : `${esc(d.category.value)} · ${esc(d.season.value)}`}</h2>${d.key === 'foot' && isSprintCat(d.category.value) ? '<span class="rk-sprint">ליגת מאוץ</span>' : ''}
           ${g.best ? `<p class="muted small">דירוג משוקלל, לפי ${g.best} התוצאות הטובות ביותר ומקדם גיל</p>` : ''}${toggle}</div>
         ${g.events.length ? `<ul class="rk-evkey" aria-label="צבע לכל אירוע">${g.events.map((e, k) => `<li data-ev="${k}" tabindex="0"><i class="e${k % RK_COLORS}" aria-hidden="true"></i>${esc(e.name)}</li>`).join('')}
           <li class="rk-evkey-x"><i class="rk-age" aria-hidden="true"></i>מקדם גיל</li><li class="rk-evkey-x"><i class="rk-spare-k" aria-hidden="true"></i>לא נספר</li>${g.best ? '<li class="rk-evkey-x"><i class="rk-hole-k" aria-hidden="true"></i>חסרה תוצאה</li>' : ''}<li class="rk-evkey-x"><b class="k1000-k" aria-hidden="true">★</b>מעל ${top}</li></ul>` : ''}
@@ -1679,7 +1705,8 @@
           <span class="muted small">${r === leader ? 'במקום הראשון' : `${fmtPts(leader.weighted - r.weighted)} מאחורי הראשון${above && above !== leader ? ` · ${fmtPts(above.weighted - r.weighted)} מאחורי מקום ${above.rank}` : ''}`}</span>
         </li>`).join('')}</ul>`
       : `<p class="muted small">אף אחד מהאנשים שלך לא מופיע ב${esc(d.category.value)} בעונה ${esc(d.season.value)}. בחרו את הקטגוריה שלהם.</p>`;
-    const ins = state.people.length ? rkInsightsHtml(mineAll) : '';
+    // a season other than the newest one listed is over: facts only, no "next result"
+    const ins = rkInsightsHtml(mineAll, grids, d.season.options.length > 0 && d.season.value !== d.season.options[0]);
     $('#rkInsights').innerHTML = ins;
     $('#rkInsights').classList.remove('open');
     $('#rkInsights').hidden = !ins;
@@ -1701,76 +1728,121 @@
     while (hi - lo > 1) { const m = (lo + hi) >> 1; if (withResult(r, g, m) > target) hi = m; else lo = m; }
     return hi;
   }
-  function rkInsightsHtml(mineAll) {
+  const median = (vals) => { const a = [...vals].sort((x, z) => x - z); const m = a.length >> 1; return a.length ? (a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2) : null; };
+  /** Facts about one of my people's season (no "what if"). */
+  function factLines(r, g) {
+    const rows = g.rows, top = topMark(g), ev = (k) => esc(g.events[k]?.name || '');
     const pts = (n) => `<b>${fmtPts(Math.round(n))}</b>`;
-    const people = [];
-    const general = new Map();
-    for (const { r, g } of mineAll) {
-      const rows = g.rows, i = rows.indexOf(r), top = topMark(g);
-      const cap = Math.round(Math.max(top * 1.3, ...rows.flatMap((x) => x.scores)) * 1.05); // the most anyone could score
-      const best = new Set(bestIdx(r, g));
-      const pos = r.scores.map((v, k) => [v, k]).filter(([v]) => v > 0);
-      const have = pos.length, N = g.best || have;
-      const ev = (k) => esc(g.events[k]?.name || '');
-      const lines = [];
-      // 1. what the next result must be to move up (one place, and to the top)
-      const above = rows[i - 1];
-      if (above) {
-        const need = resultToPass(r, g, above.weighted, cap);
-        const weakest = [...best].sort((a, b) => r.scores[a] - r.scores[b])[0];
-        lines.push(need === null
-          ? `גם תוצאה מקסימלית לא תספיק לעקיפה של ${esc(above.name)} (מקום ${above.rank}) – ${pts(above.weighted - r.weighted)} נקודות הפרש.`
-          : `תוצאה של ${pts(need)} ומעלה בתחרות הבאה (${have < N ? 'נוספת לדירוג' : `במקום ${pts(r.scores[weakest])} מ${ev(weakest)}`}) – עלייה למקום ${above.rank}, מעל ${esc(above.name)}.`);
-        const leader = rows[0];
-        if (leader !== above) {
-          const toTop = resultToPass(r, g, leader.weighted, cap);
-          lines.push(toTop === null ? 'למקום הראשון כבר אין דרך להגיע בתחרות אחת.' : `כדי להגיע למקום הראשון צריך תוצאה של ${pts(toTop)} ומעלה.`);
-        }
-      } else if (rows[1]) {
-        const second = rows[1];
-        const need = resultToPass(second, g, r.weighted, cap);
-        lines.push(need === null
-          ? `במקום הראשון, ול${esc(second.name)} (מקום 2) אין דרך לעקוף בתחרות אחת.`
-          : `במקום הראשון, ${pts(r.weighted - second.weighted)} נקודות לפני ${esc(second.name)}. לעקיפה תידרש ל${esc(second.name)} תוצאה של ${pts(need)} ומעלה.`);
+    const pos = r.scores.map((v, k) => [v, k]).filter(([v]) => v > 0);
+    const lines = [];
+    if (!pos.length) return lines;
+    const field = (k) => rows.map((x) => x.scores[k]).filter((v) => v > 0);
+    const [bv, bk] = [...pos].sort((a, b) => b[0] - a[0])[0];
+    const f = field(bk);
+    lines.push(`התוצאה הטובה ביותר: ${pts(bv)} ב${ev(bk)} – מקום ${1 + f.filter((v) => v > bv).length} מתוך ${f.length}${bv > top ? ` ★ מעל ${top}` : ''}.`);
+    const vsMed = pos.map(([v, k]) => v / median(field(k)) - 1);
+    const above = vsMed.filter((x) => x > 0).length;
+    const avg = vsMed.reduce((t, x) => t + x, 0) / vsMed.length;
+    lines.push(`מעל חציון המתחרים ב-${above} מתוך ${pos.length} תחרויות; בממוצע ${Math.round(Math.abs(avg) * 100)}% ${avg >= 0 ? 'מעל החציון' : 'מתחת לחציון'}.`);
+    if (g.best && pos.length < g.best) lines.push(`${pos.length} תוצאות מתוך ${g.best} שנספרות.`);
+    return lines;
+  }
+  /** "What next" for the running season: the result that moves them up, to first, and whether the one below can pass. */
+  function nextLines(r, g) {
+    const rows = g.rows, i = rows.indexOf(r), top = topMark(g), ev = (k) => esc(g.events[k]?.name || '');
+    const pts = (n) => `<b>${fmtPts(Math.round(n))}</b>`;
+    const cap = Math.round(Math.max(top * 1.3, ...rows.flatMap((x) => x.scores)) * 1.05); // the most anyone could score
+    const best = new Set(bestIdx(r, g));
+    const pos = r.scores.map((v, k) => [v, k]).filter(([v]) => v > 0);
+    const have = pos.length, N = g.best || have;
+    const weakest = [...best].sort((a, b) => r.scores[a] - r.scores[b])[0];
+    const lines = [];
+    const above = rows[i - 1];
+    if (above) {
+      const need = resultToPass(r, g, above.weighted, cap);
+      lines.push(need === null
+        ? `גם תוצאה מקסימלית בתחרות הבאה לא תספיק לעקיפה של ${esc(above.name)} (מקום ${above.rank}).`
+        : `תוצאה של ${pts(need)} ומעלה בתחרות הבאה (${have < N ? 'נוספת לדירוג' : `במקום ${pts(r.scores[weakest])} מ${ev(weakest)}`}) – עלייה למקום ${above.rank}, מעל ${esc(above.name)}.`);
+      if (rows[0] !== above) {
+        const toTop = resultToPass(r, g, rows[0].weighted, cap);
+        lines.push(toTop === null ? 'למקום הראשון אין דרך להגיע בתחרות אחת.' : `כדי להגיע למקום הראשון צריך תוצאה של ${pts(toTop)} ומעלה.`);
       }
-      // 2. the result that almost counted
-      const out = pos.filter(([, k]) => !best.has(k)).sort((a, b) => b[0] - a[0])[0];
-      if (out && best.size) {
-        const weakest = [...best].sort((a, b) => r.scores[a] - r.scores[b])[0];
-        const d = r.scores[weakest] - out[0];
-        lines.push(`התוצאה ב${ev(out[1])} (${pts(out[0])}) לא נספרה – ${d > 0 ? `חסרו לה ${pts(d)} נקודות כדי להחליף את ${ev(weakest)}` : `שווה בדיוק לתוצאה ב${ev(weakest)}`}.`);
-      }
-      // 3. short of N results: where an average result of yours would put you
-      if (g.best && have < g.best && have) {
-        const avg = pos.reduce((t, [v]) => t + v, 0) / have;
-        let w = r.weighted;
-        for (let n = have; n < g.best; n++) w += avg * rkRatio(r);
-        const place = 1 + rows.filter((x) => x !== r && x.weighted > w).length;
-        const miss = g.best - have;
-        lines.push(`${miss === 1 ? 'חסרה תוצאה אחת' : `חסרות ${miss} תוצאות`} מתוך ${g.best}. עם ${miss === 1 ? 'עוד תוצאה' : `עוד ${miss} תוצאות`} כמו הממוצע (${pts(avg)}) – ${place < r.rank ? `מקום ${place}, ${r.rank - place === 1 ? 'מקום אחד' : `${r.rank - place} מקומות`} למעלה` : `עדיין מקום ${r.rank}`}.`);
-      }
-      // 4. safe from below?
-      const below = rows[i + 1];
-      if (below && i > 0 && lines.length < 4) { // (the leader's line above already covers place 2)
-        const need = resultToPass(below, g, r.weighted, cap);
-        lines.push(need === null ? `ל${esc(below.name)} (מקום ${below.rank}) אין דרך לעקוף בתחרות אחת – המקום בטוח עד התחרות הבאה.` : `ל${esc(below.name)} (מקום ${below.rank}) תידרש תוצאה של ${pts(need)} ומעלה כדי לעקוף.`);
-      }
-      people.push(`<li class="rk-ins-p"><h3>★ ${esc(r.name)}<span class="muted"> · מקום ${r.rank}${mineAll.some((x) => x.g !== g) ? ` · ${esc(g.title)}` : ''}</span></h3><ul>${lines.slice(0, 4).map((l) => `<li>${l}</li>`).join('')}</ul></li>`);
-      // the race at the top of this grid, once
-      if (!general.has(g) && rows.length >= 3) {
-        const [a, b] = rows, lead = a.weighted - b.weighted;
-        const close = rows.filter((x) => a.weighted - x.weighted <= a.weighted * 0.03).length;
-        const catch2 = resultToPass(b, g, a.weighted, cap);
-        general.set(g, close >= 3
-          ? `${esc(g.title)}: מרוץ צמוד – ${close} מתחרים בטווח של 3% מהמקום הראשון.`
-          : `${esc(g.title)}: ${esc(a.name)} במקום הראשון, ${pts(lead)} נקודות לפני מקום 2${catch2 === null ? ', ולמקום 2 אין דרך לעקוף בתחרות אחת' : `; לעקיפה תידרש למקום 2 תוצאה של ${pts(catch2)} ומעלה`}.`);
-      }
+    } else if (rows[1]) {
+      const need = resultToPass(rows[1], g, r.weighted, cap);
+      lines.push(need === null ? `ל${esc(rows[1].name)} (מקום 2) אין דרך לעקוף בתחרות אחת.` : `לעקיפה תידרש ל${esc(rows[1].name)} (מקום 2) תוצאה של ${pts(need)} ומעלה.`);
     }
-    if (!people.length) return '';
-    return `<h2 id="rkIns-h">תובנות</h2>
-      <ul class="rk-ins-list">${people.join('')}${general.size ? `<li class="rk-ins-g"><h3>מצב המרוץ</h3><ul>${[...general.values()].map((l) => `<li>${l}</li>`).join('')}</ul></li>` : ''}</ul>
+    if (rows[i + 1] && i > 0) {
+      const need = resultToPass(rows[i + 1], g, r.weighted, cap);
+      lines.push(need === null ? `ל${esc(rows[i + 1].name)} (מקום ${rows[i + 1].rank}) אין דרך לעקוף בתחרות אחת.` : `ל${esc(rows[i + 1].name)} (מקום ${rows[i + 1].rank}) תידרש תוצאה של ${pts(need)} ומעלה כדי לעקוף.`);
+    }
+    return lines;
+  }
+  /** The result that didn't count, by how much (a fact either way). */
+  function nearLine(r, g) {
+    const ev = (k) => esc(g.events[k]?.name || ''), pts = (n) => `<b>${fmtPts(Math.round(n))}</b>`;
+    const best = new Set(bestIdx(r, g));
+    const out = r.scores.map((v, k) => [v, k]).filter(([v, k]) => v > 0 && !best.has(k)).sort((a, b) => b[0] - a[0])[0];
+    if (!out || !best.size) return '';
+    const weakest = [...best].sort((a, b) => r.scores[a] - r.scores[b])[0];
+    const d = r.scores[weakest] - out[0];
+    return `התוצאה ב${ev(out[1])} (${pts(out[0])}) לא נספרה – ${d > 0 ? `${pts(d)} נקודות פחות מהתוצאה החלשה שנספרה (${ev(weakest)})` : `שווה לתוצאה ב${ev(weakest)}`}.`;
+  }
+  /** The league (one grid) as a whole. */
+  function leagueLines(g, past) {
+    const rows = g.rows, top = topMark(g), ev = g.events, pts = (n) => `<b>${fmtPts(Math.round(n))}</b>`;
+    const lines = [];
+    if (rows.length >= 2) {
+      const [a, b] = rows, lead = a.weighted - b.weighted;
+      const close = rows.filter((x) => a.weighted - x.weighted <= a.weighted * 0.03).length;
+      lines.push(past
+        ? `בסוף העונה במקום הראשון: ${esc(a.name)}${a.club ? ` (${esc(a.club)})` : ''}, ${pts(lead)} נקודות לפני ${esc(b.name)}.`
+        : close >= 3 ? `מרוץ צמוד בראש: ${close} מתחרים בטווח של 3% מהמקום הראשון (${esc(a.name)}).`
+          : `${esc(a.name)} במקום הראשון, ${pts(lead)} נקודות לפני ${esc(b.name)}.`);
+    }
+    const counts = ev.map((e, k) => rows.filter((r) => r.scores[k] > 0).length);
+    if (ev.length) {
+      const most = counts.indexOf(Math.max(...counts)), least = counts.indexOf(Math.min(...counts));
+      lines.push(`${ev.length} תחרויות, ${rows.length} מתחרים; בממוצע ${Math.round(counts.reduce((t, n) => t + n, 0) / ev.length)} בתחרות${ev.length > 1 ? ` (הכי הרבה: ${esc(ev[most].name)}, ${counts[most]}; הכי מעט: ${esc(ev[least].name)}, ${counts[least]})` : ''}.`);
+    }
+    const meds = ev.map((e, k) => median(rows.map((r) => r.scores[k]).filter((v) => v > 0)));
+    if (ev.length >= 3) {
+      const ok = meds.map((m, k) => [m, k]).filter(([m]) => m);
+      const lo = ok.reduce((x, y) => (y[0] < x[0] ? y : x)), hi = ok.reduce((x, y) => (y[0] > x[0] ? y : x));
+      if (lo[1] !== hi[1]) lines.push(`הניקוד הנמוך ביותר ב${esc(ev[lo[1]].name)} (חציון ${pts(lo[0])}), הגבוה ביותר ב${esc(ev[hi[1]].name)} (חציון ${pts(hi[0])}).`);
+    }
+    // who scored highest in the most events, and who went over the top mark most often
+    const wins = new Map(), overs = new Map();
+    ev.forEach((e, k) => {
+      const mx = Math.max(0, ...rows.map((r) => r.scores[k] || 0));
+      if (mx > 0) rows.filter((r) => r.scores[k] === mx).forEach((r) => wins.set(r, (wins.get(r) || 0) + 1));
+      rows.filter((r) => r.scores[k] > top).forEach((r) => overs.set(r, (overs.get(r) || 0) + 1));
+    });
+    const lead = (m) => { const mx = Math.max(0, ...m.values()); return [mx, [...m].filter(([, n]) => n === mx).map(([r]) => esc(r.name))]; };
+    const [wn, wr] = lead(wins);
+    if (wn > 1) lines.push(`הכי הרבה ניצחונות בתחרויות: ${wr.slice(0, 3).join(', ')} (${wn}).`);
+    const [on, orr] = lead(overs);
+    if (on) lines.push(`הכי הרבה תוצאות מעל ${top}: ${orr.slice(0, 3).join(', ')} (${on}).`);
+    if (rows.length >= 10) {
+      const clubs = new Map();
+      rows.slice(0, 10).forEach((r) => r.club && clubs.set(r.club, (clubs.get(r.club) || 0) + 1));
+      const [cn, cl] = (() => { const mx = Math.max(0, ...clubs.values()); return [mx, [...clubs].filter(([, n]) => n === mx).map(([c]) => esc(c))]; })();
+      if (cn >= 2) lines.push(`בעשירייה הראשונה: ${cl.slice(0, 2).join(', ')} עם ${cn} מתחרים.`);
+    }
+    return lines;
+  }
+  function rkInsightsHtml(mineAll, grids, past) {
+    const multi = grids.length > 1;
+    const people = mineAll.map(({ r, g }) => {
+      const lines = [...(past ? [] : nextLines(r, g)), nearLine(r, g), ...factLines(r, g)].filter(Boolean).slice(0, 4);
+      return lines.length ? `<li class="rk-ins-p"><h3>★ ${esc(r.name)}<span class="muted"> · מקום ${r.rank}${multi ? ` · ${esc(g.title)}` : ''}</span></h3><ul>${lines.map((l) => `<li>${l}</li>`).join('')}</ul></li>` : '';
+    }).filter(Boolean);
+    const leagues = grids.map((g) => [g, leagueLines(g, past)]).filter(([, l]) => l.length)
+      .map(([g, l]) => `<li class="rk-ins-g"><h3>${multi ? esc(g.title) : 'הליגה'}${past ? '<span class="muted"> · סיכום העונה</span>' : ''}</h3><ul>${l.map((x) => `<li>${x}</li>`).join('')}</ul></li>`);
+    if (!people.length && !leagues.length) return '';
+    return `<h2 id="rkIns-h">תובנות${past ? '<span class="muted small"> · עונה שהסתיימה</span>' : ''}</h2>
+      <ul class="rk-ins-list">${people.join('')}${leagues.join('')}</ul>
       <button type="button" class="linklike rk-ins-more" data-ins-more aria-expanded="false">עוד תובנות</button>
-      <p class="muted small">החישובים מניחים ששאר המתחרים לא משפרים את הדירוג שלהם.</p>`;
+      ${past ? '' : '<p class="muted small">"מה צריך כדי לעלות" מניח ששאר המתחרים לא משפרים את הדירוג שלהם.</p>'}`;
   }
 
   /* ---------- Annual ---------- */
