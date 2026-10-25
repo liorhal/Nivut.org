@@ -2368,6 +2368,63 @@
         <thead><tr><th scope="col" colspan="2">מתחרה</th>${c.controls.map((ctl) => `<th scope="col">${esc(shortCtl(ctl))}</th>`).join('')}${lap ? '<th scope="col">סיכום</th>' : ''}</tr></thead>${body}</table></div>`;
   }
 
+  /**
+   * Every leg of the course: the three fastest, the average and median leg time, how far the fastest was ahead of the
+   * median, and how many missed that control's punch; from a LapCombat analysis also the average time lost to mistakes.
+   */
+  function controlsHtml(c, st) {
+    const n = c.controls.length;
+    if (!n) return '';
+    const med = (a) => { const s = [...a].sort((x, z) => x - z); const m = s.length >> 1; return s.length ? (s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2) : null; };
+    const statuses = {};
+    c.runners.forEach((r) => { statuses[r.status] = (statuses[r.status] || 0) + 1; });
+    const out = Object.entries(statuses).filter(([k]) => k !== 'OK').map(([k, v]) => `${esc(STATUS_HE[k] || k)} ${v}`);
+    let odd = 0;
+    const rows = c.controls.map((ctl, i) => {
+      const legs = c.runners.map((r, k) => [st.legs[k][i], r]).filter(([v]) => v !== null && v > 0).sort((a, b) => a[0] - b[0]);
+      const times = legs.map(([v]) => v);
+      const m = med(times);
+      // the average leaves out impossible times (a timing error: hours on a leg), far beyond the median
+      const sane = times.filter((v) => v <= Math.max(5 * m, m + 600));
+      const avg = sane.length ? sane.reduce((a, b) => a + b, 0) / sane.length : null;
+      odd += times.length - sane.length;
+      // a punch missed here: no time at this control, but a time at a later one
+      const missed = c.runners.filter((r) => (r.splits[i] === null || r.splits[i] === undefined) && r.splits.slice(i + 1).some((v) => v !== null && v !== undefined)).length;
+      const top = legs.slice(0, 3).map(([v, r], k) => `<li${isMinePerson(r.name) ? ' class="mine"' : ''}><span class="rs-pl">${1 + legs.filter(([w]) => w < v).length}</span>${isMinePerson(r.name) ? '★ ' : ''}${esc(r.name)} <bdi dir="ltr">${fmtSec(v)}</bdi></li>`).join('');
+      const mistakes = c.lap?.mistake ? c.runners.map((r) => r.mistake?.[i]).filter((v) => v !== null && v !== undefined) : [];
+      const mAvg = mistakes.length ? mistakes.reduce((a, b) => a + b, 0) / mistakes.length : null;
+      return { i, ctl, top, avg, m, spread: m !== null && times.length ? m - times[0] : null, count: times.length, missed, mAvg,
+        firsts: legs.filter(([v]) => v === legs[0][0]).map(([, r]) => r) };
+    });
+    // the legs where the field lost the most: the largest gap between the fastest and the median
+    const hard = new Set(rows.filter((x) => x.spread !== null).sort((a, b) => b.spread / (b.m || 1) - a.spread / (a.m || 1)).slice(0, Math.min(3, Math.floor(n / 4))).map((x) => x.i));
+    const from = (i) => (i ? shortCtl(c.controls[i - 1]) : 'S');
+    const legName = (i) => `<bdi dir="ltr">${esc(from(i))}→${esc(shortCtl(c.controls[i]))}</bdi>`;
+    // the gist, shown while the table is folded: the hardest legs, and the legs my people were fastest on
+    const myWins = new Map();
+    rows.forEach((x) => x.firsts.filter((r) => isMinePerson(r.name)).forEach((r) => myWins.set(r.name, [...(myWins.get(r.name) || []), x.i])));
+    const most = new Map();
+    rows.forEach((x) => x.firsts.forEach((r) => most.set(r.name, (most.get(r.name) || 0) + 1)));
+    const [topName, topN] = [...most].sort((a, b) => b[1] - a[1])[0] || [];
+    const gist = [hard.size ? `הקשים ביותר: ${[...hard].sort((a, b) => a - b).map(legName).join(', ')}` : '',
+      topN > 1 ? `הכי הרבה מקטעים מהירים: ${esc(topName)} (${topN} מתוך ${n})` : '',
+      ...[...myWins].map(([name, l]) => `★ ${esc(name)} הכי מהיר ב-${l.map(legName).join(', ')}`)].filter(Boolean);
+    return `<details class="ev-card rs-ctl-card">
+      <summary><h2 id="rsc-h">ניתוח מקטעים</h2>${gist.length ? `<span class="rs-gist">${gist.join(' · ')}</span>` : ''}</summary>
+      <p class="muted small">${c.runners.length} מתחרים · סיימו ${statuses.OK || 0}${out.length ? ` · ${out.join(' · ')}` : ''}. <span class="rs-hard-k">⚠</span> המקטעים עם הפער הגדול ביותר בין המהיר לחציון.${odd ? ` ${odd === 1 ? 'זמן חריג אחד (טעות מדידה) לא נכלל' : `${odd} זמנים חריגים (טעות מדידה) לא נכללו`} בממוצע.` : ''}</p>
+      <div class="rs-table-wrap"><table class="rs-table rs-ctl">
+        <thead><tr><th scope="col">מקטע</th><th scope="col">המהירים ביותר</th><th scope="col">ממוצע</th><th scope="col">חציון</th><th scope="col" title="החציון פחות הזמן המהיר">המהיר לפני החציון</th><th scope="col">עם זמן</th><th scope="col" title="ניקוב חסר בנקודה הזו (עם זמן בנקודה מאוחרת יותר)">פספסו</th>${c.lap?.mistake ? '<th scope="col" title="Leg mistake time – ממוצע">טעות ממוצעת</th>' : ''}</tr></thead>
+        <tbody>${rows.map((x) => `<tr${hard.has(x.i) ? ' class="hard"' : ''}>
+          <th scope="row"><bdi dir="ltr">${esc(from(x.i))}→${esc(shortCtl(x.ctl))}</bdi>${hard.has(x.i) ? ' <span class="rs-hard-k" title="פער גדול בין המהיר לחציון">⚠</span>' : ''}</th>
+          <td><ol class="rs-top3">${x.top}</ol></td>
+          <td class="num"><bdi dir="ltr">${fmtSec(x.avg)}</bdi></td><td class="num"><bdi dir="ltr">${fmtSec(x.m)}</bdi></td>
+          <td class="num"><bdi dir="ltr">${x.spread === null ? '–' : fmtSec(x.spread)}</bdi></td>
+          <td class="num">${x.count}</td><td class="num${x.missed ? ' warn' : ''}">${x.missed || '–'}</td>
+          ${c.lap?.mistake ? `<td class="num ${mistakeCls(x.mAvg)}"><bdi dir="ltr">${x.mAvg === null ? '–' : fmtMistake(Math.round(x.mAvg))}</bdi></td>` : ''}</tr>`).join('')}</tbody>
+      </table></div>
+    </details>`;
+  }
+
   function chartSvg(c, ref, st) {
     const picked = c.runners.filter((r) => rs.picked.has(rsKey(r)));
     if (!picked.length) return '<p class="muted small rs-chart-empty">סמנו מתחרים בטבלה כדי לראות את הגרף.</p>';
@@ -2463,6 +2520,7 @@
         <div class="rs-chart-wrap">${chartSvg(c, ref, st)}</div>
         ${picked.length ? legsTableHtml(c, st, picked) : ''}
       </section>` : ''}
+      ${hasSplits(c) ? controlsHtml(c, st) : ''}
       <section class="ev-card rs-table-card" aria-labelledby="rst-h">
         <div class="rs-table-head"><h2 id="rst-h">תוצאות – ${esc(c.name)}</h2>
           <label class="rs-search"><span class="sr-only">חיפוש מתחרה או מועדון</span><input type="search" id="rsQ" placeholder="חיפוש שם או מועדון" value="${esc(rs.q)}"></label></div>

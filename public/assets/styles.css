@@ -2157,3 +2157,27 @@ html, body { overflow-x: clip; }
 .rf-key.s1 { --c: var(--es-1); } .rf-key.s2 { --c: var(--es-2); } .rf-key.s3 { --c: var(--es-3); } .rf-key.s-other { --c: color-mix(in srgb, var(--text) 30%, transparent); }
 
 .rk-leagues button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* legs analysis */
+.rs-ctl-card h2 { margin: 0 0 4px; font-size: 1.15rem; }
+.rs-ctl { font-size: .86rem; }
+.rs-ctl th[scope="row"] { white-space: nowrap; font-family: var(--num, inherit); }
+.rs-ctl td.num { text-align: center; font-family: var(--num, inherit); font-variant-numeric: tabular-nums; }
+.rs-ctl td.num.warn { color: #b45309; font-weight: 800; }
+.rs-ctl td.good { color: #15803d; } .rs-ctl td.warn:not(.num) , .rs-ctl td.num.warn { color: #b45309; } .rs-ctl td.bad { color: #b91c1c; font-weight: 800; }
+.rs-ctl tr.hard { background: color-mix(in srgb, #f59e0b 9%, transparent); }
+.rs-hard-k { color: #d97706; }
+.rs-top3 { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.rs-top3 li { white-space: nowrap; }
+.rs-top3 li bdi { color: var(--muted); font-family: var(--num, inherit); margin-inline-start: 4px; }
+.rs-top3 li.mine { font-weight: 800; }
+.rs-top3 .rs-pl { margin-inline-end: 6px; }
+
+.rs-ctl-card > summary { cursor: pointer; list-style: none; display: grid; gap: 4px; }
+.rs-ctl-card > summary::-webkit-details-marker { display: none; }
+.rs-ctl-card > summary h2 { display: inline; }
+.rs-ctl-card > summary h2::before { content: '▸ '; color: var(--brand); }
+.rs-ctl-card[open] > summary h2::before { content: '▾ '; }
+.rs-gist { font-size: .88rem; color: var(--muted); line-height: 1.5; }
+.rs-ctl-card[open] > summary { margin-bottom: 6px; }
+.rs-top3 { gap: 0; line-height: 1.35; }
