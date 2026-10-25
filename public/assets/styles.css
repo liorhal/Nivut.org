@@ -2102,3 +2102,12 @@ a.info-btn { text-decoration: none; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .rk-sprint { color: #f59e72; } }
 :root[data-theme="dark"] .rk-sprint { color: #f59e72; }
 .rs-cgroups .rs-courses[hidden] { display: none; }
+
+/* every bar on one scale: its share of the track left after the room kept for the marks that follow it */
+.rk-stack { flex: none; width: calc((100% - var(--rk-extra, 0px)) * var(--p, 0)); }
+/* phones: the name above its bar, so the bar gets the row's full width */
+@media (max-width: 640px) {
+  .rk-row { grid-template-columns: 1.8em minmax(0, 1fr) auto; grid-template-areas: "rank who val" "rank bar bar"; row-gap: 3px; padding-block: 5px; }
+  .rk-rank { grid-area: rank; } .rk-who { grid-area: who; display: flex; align-items: baseline; gap: 6px; } .rk-val { grid-area: val; } .rk-bar { grid-area: bar; }
+  .rk-who .rk-name { flex: none; max-width: 60%; }
+}

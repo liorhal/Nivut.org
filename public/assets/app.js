@@ -1516,6 +1516,13 @@
   /** Indexes of a runner's results that count toward the ranking: the best N (all when N is unknown). */
   const bestIdx = (r, g) => r.scores.map((v, k) => [v, k]).filter(([v]) => v > 0).sort((a, b) => b[0] - a[0]).slice(0, g.best || Infinity).map(([, k]) => k);
   const RK_COLORS = 10;
+  /** Room kept after the bars for the marks of results that don't count and of missing ones (the widest row's),
+   *  so every bar is drawn on the same scale. */
+  const extraPx = (g, rows) => Math.max(0, ...rows.map((r) => {
+    const have = r.scores.filter((v) => v > 0).length;
+    const spare = Math.max(0, have - (g.best || have)), missing = g.best && have < g.best ? g.best - have : 0;
+    return (spare ? 6 + spare * 12 : 0) + (missing ? 6 + missing * 18 : 0);
+  }));
   /** The "full marks" line of a grid: 1000 in most seasons, 100 in seasons scored out of 100. */
   const topMark = (g) => (Math.max(0, ...g.rows.flatMap((r) => r.scores)) <= 200 ? 100 : 1000);
 
@@ -1624,7 +1631,7 @@
         return `${gap}<li class="rk-row${isMine ? ' mine' : ''}">
           <span class="rk-rank">${r.rank ?? i + 1}</span>
           <span class="rk-who"><span class="rk-name">${isMine ? '<span class="rk-star" aria-hidden="true">★</span>' : ''}${esc(r.name)}</span><span class="rk-club">${esc(r.club)}${missing ? ` <span class="rk-few">${have}/${g.best} תוצאות</span>` : ''}</span></span>
-          <span class="rk-bar" data-tip="${esc(tip)}" tabindex="0" role="img" aria-label="${esc(`${r.name}: ${fmtPts(r.weighted)} נקודות, מקום ${r.rank ?? i + 1} מתוך ${rows.length}`)}"><span class="rk-stack" style="width:${pct.toFixed(1)}%">${segs}</span>${holes}${spare ? `<span class="rk-spares">${spare}</span>` : ''}</span>
+          <span class="rk-bar" data-tip="${esc(tip)}" tabindex="0" role="img" aria-label="${esc(`${r.name}: ${fmtPts(r.weighted)} נקודות, מקום ${r.rank ?? i + 1} מתוך ${rows.length}`)}"><span class="rk-stack" style="--p:${(pct / 100).toFixed(4)}">${segs}</span>${holes}${spare ? `<span class="rk-spares">${spare}</span>` : ''}</span>
           <span class="rk-val">${fmtPts(r.weighted)}</span>
         </li>`;
       }).join('');
@@ -1641,7 +1648,7 @@
           ${g.best ? `<p class="muted small">דירוג משוקלל, לפי ${g.best} התוצאות הטובות ביותר ומקדם גיל</p>` : ''}${toggle}</div>
         ${g.events.length ? `<ul class="rk-evkey" aria-label="צבע לכל אירוע">${g.events.map((e, k) => `<li data-ev="${k}" tabindex="0"><i class="e${k % RK_COLORS}" aria-hidden="true"></i>${esc(e.name)}</li>`).join('')}
           <li class="rk-evkey-x"><i class="rk-age" aria-hidden="true"></i>מקדם גיל</li><li class="rk-evkey-x"><i class="rk-spare-k" aria-hidden="true"></i>לא נספר</li>${g.best ? '<li class="rk-evkey-x"><i class="rk-hole-k" aria-hidden="true"></i>חסרה תוצאה</li>' : ''}<li class="rk-evkey-x"><b class="k1000-k" aria-hidden="true">★</b>מעל ${top}</li></ul>` : ''}
-        <ol class="rk-chart" aria-label="דירוג משוקלל">${bars}</ol>
+        <ol class="rk-chart" aria-label="דירוג משוקלל" style="--rk-extra:${extraPx(g, shown)}px">${bars}</ol>
         ${eventStripHtml(g, mine)}
         ${table}
       </section>`;
