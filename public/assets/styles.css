@@ -2034,3 +2034,27 @@ a.info-btn { text-decoration: none; }
 .rs-legs td .rs-pl { min-width: 1.7em; }
 .rs-legs td.none { text-align: center; }
 .rs-legs td, .rs-legs thead th:not(:first-child) { border-inline-start: 1px solid color-mix(in srgb, var(--text) 12%, transparent); }
+
+/* ranking bars split by event: a colour per event of the season (in the key above), the age factor's share hatched,
+   results that don't count as small hollow marks after the bar */
+:root { --e0: #2a78d6; --e1: #eb6834; --e2: #1baf7a; --e3: #eda100; --e4: #e87ba4; --e5: #6250d6; --e6: #13a3b5; --e7: #9a6b3f; --e8: #8a9a2b; --e9: #6b7f99; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --e0: #3987e5; --e1: #d95926; --e2: #199e70; --e3: #c98500; --e4: #d55181; --e5: #9085e9; --e6: #1fb3c4; --e7: #b88454; --e8: #9db03a; --e9: #8597b0; } }
+:root[data-theme="dark"] { --e0: #3987e5; --e1: #d95926; --e2: #199e70; --e3: #c98500; --e4: #d55181; --e5: #9085e9; --e6: #1fb3c4; --e7: #b88454; --e8: #9db03a; --e9: #8597b0; }
+.e0 { --ec: var(--e0); } .e1 { --ec: var(--e1); } .e2 { --ec: var(--e2); } .e3 { --ec: var(--e3); } .e4 { --ec: var(--e4); }
+.e5 { --ec: var(--e5); } .e6 { --ec: var(--e6); } .e7 { --ec: var(--e7); } .e8 { --ec: var(--e8); } .e9 { --ec: var(--e9); }
+.rk-bar { display: flex; align-items: center; gap: 6px; height: 16px; }
+.rk-stack { display: flex; height: 100%; min-width: 2px; border-radius: 4px 0 0 4px; overflow: hidden; gap: 1px; background: var(--surface); }
+.rk-seg { height: 100%; background: var(--ec); flex: none; transition: opacity .15s; }
+.rk-seg:last-child { border-radius: 4px 0 0 4px; }
+.rk-age, .rk-evkey i.rk-age { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--text) 45%, transparent) 0 2px, transparent 2px 5px); }
+.rk-spares { display: flex; gap: 3px; flex: none; }
+.rk-spare { width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--ec); background: var(--surface); flex: none; transition: opacity .15s; }
+.rk-row.mine .rk-stack { outline: 2px solid var(--rk-mine); outline-offset: 2px; }
+.rk-evkey { list-style: none; margin: 4px 0 10px; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: .78rem; color: var(--muted); }
+.rk-evkey li { display: inline-flex; align-items: center; gap: 5px; cursor: default; border-radius: 6px; padding: 1px 4px; }
+.rk-evkey li[data-ev]:hover, .rk-evkey li[data-ev]:focus-visible { background: var(--surface-2); color: var(--text); }
+.rk-evkey i { width: 12px; height: 12px; border-radius: 3px; background: var(--ec); flex: none; }
+.rk-evkey i.rk-spare-k { border-radius: 50%; border: 2px solid var(--muted); background: none; width: 9px; height: 9px; }
+.rk-hl .rk-seg:not(.on), .rk-hl .rk-spare:not(.on) { opacity: .18; }
+.rk-hl .rk-evkey li[data-ev]:not(.on) { opacity: .5; }
+:root[data-contrast="high"] .rk-seg { box-shadow: inset 0 0 0 1px var(--text); }

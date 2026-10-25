@@ -1450,6 +1450,17 @@
         const t = ev.target.closest('[data-rk-around]');
         if (t) { rk.around = t.dataset.rkAround === '1'; renderRanking(); }
       });
+      // an event in the colour key (or a segment of it): its segments stand out in every bar of that section, the rest fade
+      const highlight = (ev) => {
+        const li = ev.target.closest?.('.rk-evkey [data-ev], .rk-seg[data-ev], .rk-spare[data-ev]');
+        $$('.rk-section.rk-hl').forEach((sec) => { sec.classList.remove('rk-hl'); sec.querySelectorAll('.on').forEach((x) => x.classList.remove('on')); });
+        if (!li) return;
+        const sec = li.closest('.rk-section');
+        sec.classList.add('rk-hl');
+        sec.querySelectorAll(`[data-ev="${li.dataset.ev}"]`).forEach((x) => x.classList.add('on'));
+      };
+      ['mouseover', 'focusin'].forEach((t) => $('#rkBody').addEventListener(t, highlight));
+      $('#rkBody').addEventListener('mouseleave', highlight);
     }
     if (!rk.data) loadRanking();
   }
@@ -1496,6 +1507,10 @@
     }
   }
 
+  /** Indexes of a runner's results that count toward the ranking: the best N (all when N is unknown). */
+  const bestIdx = (r, g) => r.scores.map((v, k) => [v, k]).filter(([v]) => v > 0).sort((a, b) => b[0] - a[0]).slice(0, g.best || Infinity).map(([, k]) => k);
+  const RK_COLORS = 10;
+
   /**
    * "By event": a column per event of the season (first on the right). Everyone's points are small
    * grey dots, the field's median a short line, and up to three highlighted people (mine, else the top
@@ -1519,10 +1534,7 @@
     const min = Math.max(0, lo - pad), max = hi + pad;
     const y = (v) => Math.max(0, ((v - min) / (max - min)) * 100).toFixed(1);
     const ticks = [0, 0.5, 1].map((t) => Math.round((min + (max - min) * t) / 10) * 10);
-    const counted = (r) => {
-      const idx = r.scores.map((v, k) => [v, k]).filter(([v]) => v > 0).sort((a, b) => b[0] - a[0]).slice(0, g.best || Infinity).map(([, k]) => k);
-      return new Set(idx);
-    };
+    const counted = (r) => new Set(bestIdx(r, g));
     const series = [...focus.map((r, i) => ({ r, cls: `s${i + 1}` })), ...extra.map((r) => ({ r, cls: 's-more' }))].map((x) => ({ ...x, counted: counted(x.r) }));
     const median = (vals) => { const a = [...vals].sort((x, z) => x - z); const m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; };
     const cols = ev.map((e, k) => {
@@ -1575,6 +1587,8 @@
       rows.forEach((r, i) => { if (mine.has(r.name)) for (let k = i - 3; k <= i + 3; k++) if (rows[k]) near.add(rows[k]); });
       const compact = rk.around && mine.size > 0 && rows.length > 15;
       const shown = compact ? rows.filter((r, i) => i < 3 || near.has(r)) : rows;
+      // place in one event among this grid's runners who scored there
+      const evPlace = (k, v) => { const all = rows.map((x) => x.scores[k]).filter((x) => x > 0); return `${1 + all.filter((x) => x > v).length} מתוך ${all.length}`; };
       let prev = -1;
       const bars = shown.map((r) => {
         const i = rows.indexOf(r);
@@ -1583,10 +1597,20 @@
         const isMine = mine.has(r.name);
         const tip = ['נקודות לפי אירוע:', ...g.events.map((e, k) => `${e.name}\t${fmtPts(r.scores[k])}`), `מקדם גיל\t${r.ageFactor ?? '–'}`].join('\n');
         const pct = ((r.weighted || 0) / max) * 100;
+        // the bar is built from the counted results, an event colour each, in season order; then the age factor's share
+        const best = bestIdx(r, g);
+        const sum = best.reduce((t, k) => t + r.scores[k], 0);
+        const scale = sum > (r.weighted || 0) && sum ? (r.weighted || 0) / sum : 1;
+        const age = Math.max(0, (r.weighted || 0) - sum);
+        const whole = r.weighted || sum || 1;
+        const segs = [...best].sort((a, b) => a - b).map((k) => `<span class="rk-seg e${k % RK_COLORS}" data-ev="${k}" style="width:${((r.scores[k] * scale) / whole * 100).toFixed(2)}%" data-tip="${esc(`${g.events[k].name}:\nנקודות\t${fmtPts(r.scores[k])}\nמקום באירוע\t${evPlace(k, r.scores[k])}`)}"></span>`).join('')
+          + (age >= 1 ? `<span class="rk-seg rk-age" style="width:${(age / whole * 100).toFixed(2)}%" data-tip="${esc(`תוספת מקדם גיל (${r.ageFactor ?? '–'}):\nנקודות\t+${fmtPts(age)}`)}"></span>` : '');
+        const spare = r.scores.map((v, k) => [v, k]).filter(([v, k]) => v > 0 && !best.includes(k))
+          .map(([v, k]) => `<span class="rk-spare e${k % RK_COLORS}" data-ev="${k}" data-tip="${esc(`${g.events[k].name} (לא נספר):\nנקודות\t${fmtPts(v)}\nמקום באירוע\t${evPlace(k, v)}`)}"></span>`).join('');
         return `${gap}<li class="rk-row${isMine ? ' mine' : ''}">
           <span class="rk-rank">${r.rank ?? i + 1}</span>
           <span class="rk-who"><span class="rk-name">${isMine ? '<span class="rk-star" aria-hidden="true">★</span>' : ''}${esc(r.name)}</span><span class="rk-club">${esc(r.club)}</span></span>
-          <span class="rk-bar" data-tip="${esc(tip)}" tabindex="0" role="img" aria-label="${esc(`${r.name}: ${fmtPts(r.weighted)} נקודות, מקום ${r.rank ?? i + 1} מתוך ${rows.length}`)}"><span class="rk-fill" style="width:${pct.toFixed(1)}%"></span></span>
+          <span class="rk-bar" data-tip="${esc(tip)}" tabindex="0" role="img" aria-label="${esc(`${r.name}: ${fmtPts(r.weighted)} נקודות, מקום ${r.rank ?? i + 1} מתוך ${rows.length}`)}"><span class="rk-stack" style="width:${pct.toFixed(1)}%">${segs}</span>${spare ? `<span class="rk-spares">${spare}</span>` : ''}</span>
           <span class="rk-val">${fmtPts(r.weighted)}</span>
         </li>`;
       }).join('');
@@ -1601,6 +1625,8 @@
       return `<section class="rk-section" aria-labelledby="rk-h${gi}">
         <div class="rk-sec-head"><h2 id="rk-h${gi}">${grids.length > 1 ? esc(g.title) : `${esc(d.category.value)} · ${esc(d.season.value)}`}</h2>
           ${g.best ? `<p class="muted small">דירוג משוקלל, לפי ${g.best} התוצאות הטובות ביותר ומקדם גיל</p>` : ''}${toggle}</div>
+        ${g.events.length ? `<ul class="rk-evkey" aria-label="צבע לכל אירוע">${g.events.map((e, k) => `<li data-ev="${k}" tabindex="0"><i class="e${k % RK_COLORS}" aria-hidden="true"></i>${esc(e.name)}</li>`).join('')}
+          <li class="rk-evkey-x"><i class="rk-age" aria-hidden="true"></i>מקדם גיל</li><li class="rk-evkey-x"><i class="rk-spare-k" aria-hidden="true"></i>לא נספר</li></ul>` : ''}
         <ol class="rk-chart" aria-label="דירוג משוקלל">${bars}</ol>
         ${eventStripHtml(g, mine)}
         ${table}
