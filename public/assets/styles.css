@@ -2088,9 +2088,17 @@ a.info-btn { text-decoration: none; }
 .rk-table td.k1000 { font-weight: 800; }
 .rk-table .k1000-k { color: #f5b301; margin-inline-end: 3px; }
 
-/* categories in rows: women, men, the rest */
-.rs-cgroups { display: grid; gap: 8px; margin: 14px 0 6px; }
-.rs-cgroup { display: grid; grid-template-columns: 4em minmax(0, 1fr); align-items: start; gap: 10px; }
-.rs-cg-k { font-weight: 800; font-size: .85rem; color: var(--muted); padding-top: 10px; }
-.rs-cgroups .rs-courses { margin: 0; }
-@media (max-width: 640px) { .rs-cgroup { grid-template-columns: 1fr; gap: 4px; } .rs-cg-k { padding-top: 0; } }
+/* categories: a small group switch (נשים / גברים / כללי) and one group's buttons */
+.rs-cgroups { display: grid; gap: 6px; margin: 12px 0 6px; }
+.rs-cgroups .rs-courses { margin: 0; gap: 4px; }
+.rs-cgroups .rs-courses button { min-height: 34px; padding: 5px 11px; }
+.rs-cg-tabs { display: flex; gap: 4px; }
+.rs-cg-tabs button { font: inherit; font-size: .85rem; font-weight: 700; padding: 4px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); cursor: pointer; }
+.rs-cg-tabs button[aria-pressed="true"] { background: var(--text); color: var(--surface); border-color: var(--text); }
+.rs-cg-tabs button .muted { font-weight: 600; font-size: .75rem; }
+.rs-cg-tabs button[aria-pressed="true"] .muted { color: inherit; opacity: .7; }
+@media (max-width: 640px) { .rs-cgroups .rs-courses { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; } .rs-cgroups .rs-courses button { flex: none; } }
+.rk-sprint { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .8rem; font-weight: 800; background: color-mix(in srgb, #eb6834 16%, transparent); color: #b2461c; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .rk-sprint { color: #f59e72; } }
+:root[data-theme="dark"] .rk-sprint { color: #f59e72; }
+.rs-cgroups .rs-courses[hidden] { display: none; }

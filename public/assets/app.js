@@ -1417,14 +1417,20 @@
     if (names.length) lg[d.category.value] = names; else delete lg[d.category.value];
     store.set('rkStars', rkStars);
   }
+  const isSprintCat = (c) => /\d\s*[A-Z]?S$/i.test(String(c).trim());
   function renderRkCategories() {
     const d = rk.data;
     const stars = rkStars[d.key] || {};
-    $('#rkCategory').innerHTML = d.category.options.map((o) => `<option value="${esc(o)}"${o === d.category.value ? ' selected' : ''}>${stars[o] ? '★ ' : ''}${esc(o)}</option>`).join('');
+    // the foot league's categories ending in S are the sprint (מאוץ) league: a group of their own
+    const opt = (o) => `<option value="${esc(o)}"${o === d.category.value ? ' selected' : ''}>${stars[o] ? '★ ' : ''}${esc(o)}</option>`;
+    const groups = [['נשים', (o) => /^(D|W)\s?\d/i.test(o) && !isSprintCat(o)], ['גברים', (o) => /^(H|M)\s?\d/i.test(o) && !isSprintCat(o)], ['ליגת מאוץ', isSprintCat]];
+    const rest = d.category.options.filter((o) => !groups.some(([, f]) => f(o)));
+    const parts = [...groups.map(([n, f]) => [n, d.category.options.filter(f)]), ['כללי', rest]].filter(([, l]) => l.length);
+    $('#rkCategory').innerHTML = parts.length > 1 ? parts.map(([n, l]) => `<optgroup label="${n}">${l.map(opt).join('')}</optgroup>`).join('') : d.category.options.map(opt).join('');
     // Quick picks: the categories of my people
     const picks = Object.entries(stars).filter(([c]) => d.category.options.includes(c));
     $('#rkQuick').innerHTML = picks.length ? `<span class="rk-quick-k">הקטגוריות של האנשים שלי:</span>${picks.map(([c, names]) =>
-      `<button type="button" class="chip" data-rk-cat="${esc(c)}" aria-pressed="${c === d.category.value}" title="${esc(names.join(', '))}">★ ${esc(c)}<span class="sr-only"> (${esc(names.join(', '))})</span></button>`).join('')}` : '';
+      `<button type="button" class="chip" data-rk-cat="${esc(c)}" aria-pressed="${c === d.category.value}" title="${esc(names.join(', '))}">★ ${esc(c)}${isSprintCat(c) ? ' · מאוץ' : ''}<span class="sr-only"> (${esc(names.join(', '))})</span></button>`).join('')}` : '';
     $('#rkQuick').hidden = !picks.length;
   }
 
@@ -1631,7 +1637,7 @@
           <tbody>${rows.map((r) => `<tr${mine.has(r.name) ? ' class="mine"' : ''}><td>${r.rank ?? ''}</td><th scope="row">${esc(r.name)}</th><td>${esc(r.club)}</td>${r.scores.map((v) => (v > top ? `<td class="k1000" title="מעל ${top}"><span class="k1000-k" aria-hidden="true">★</span>${fmtPts(v)}<span class="sr-only"> (מעל ${top})</span></td>` : `<td>${fmtPts(v)}</td>`)).join('')}<td>${fmtPts(r.total)}</td><td>${r.ageFactor ?? '–'}</td><td><b>${fmtPts(r.weighted)}</b></td></tr>`).join('')}</tbody>
         </table></div></details>`;
       return `<section class="rk-section" aria-labelledby="rk-h${gi}">
-        <div class="rk-sec-head"><h2 id="rk-h${gi}">${grids.length > 1 ? esc(g.title) : `${esc(d.category.value)} · ${esc(d.season.value)}`}</h2>
+        <div class="rk-sec-head"><h2 id="rk-h${gi}">${grids.length > 1 ? esc(g.title) : `${esc(d.category.value)} · ${esc(d.season.value)}`}</h2>${isSprintCat(d.category.value) ? '<span class="rk-sprint">ליגת מאוץ</span>' : ''}
           ${g.best ? `<p class="muted small">דירוג משוקלל, לפי ${g.best} התוצאות הטובות ביותר ומקדם גיל</p>` : ''}${toggle}</div>
         ${g.events.length ? `<ul class="rk-evkey" aria-label="צבע לכל אירוע">${g.events.map((e, k) => `<li data-ev="${k}" tabindex="0"><i class="e${k % RK_COLORS}" aria-hidden="true"></i>${esc(e.name)}</li>`).join('')}
           <li class="rk-evkey-x"><i class="rk-age" aria-hidden="true"></i>מקדם גיל</li><li class="rk-evkey-x"><i class="rk-spare-k" aria-hidden="true"></i>לא נספר</li>${g.best ? '<li class="rk-evkey-x"><i class="rk-hole-k" aria-hidden="true"></i>חסרה תוצאה</li>' : ''}<li class="rk-evkey-x"><b class="k1000-k" aria-hidden="true">★</b>מעל ${top}</li></ul>` : ''}
@@ -2025,14 +2031,18 @@
   const mistakeCls = (v) => (v === null || v === undefined ? '' : v < 0 ? 'good' : v < 15 ? '' : v < 45 ? 'warn' : 'bad');
   const fmtSpeed = (v) => (v === null || v === undefined ? '–' : v.toFixed(1));
   const fmtMistake = (v) => (v === null || v === undefined ? '–' : v === 0 ? '0:00' : fmtSec(v, true));
-  /** Course / category buttons; with both women's (D…) and men's (H…) categories, in rows: women, men, the rest. */
+  /** Course / category buttons. With both women's (D…) and men's (H…) categories: a small switch נשים / גברים / כללי
+   *  and only that group's buttons (the group of the shown category first) – one compact row instead of four. */
   const CAT_GROUPS = [['נשים', /^(D|W)\s?\d/i], ['גברים', /^(H|M)\s?\d/i]];
   function categoryBar(items, label, cls = '') {
-    const bar = (list, aria) => `<div class="seg rs-courses ${cls}" role="group" aria-label="${esc(aria)}">${list.map((x) => x.html).join('')}</div>`;
+    const bar = (list, aria, hidden = false) => `<div class="seg rs-courses ${cls}" role="group" aria-label="${esc(aria)}"${hidden ? ' hidden' : ''}>${list.map((x) => x.html).join('')}</div>`;
     const groups = CAT_GROUPS.map(([name, re]) => [name, items.filter((x) => re.test(x.name))]);
-    const rest = items.filter((x) => !CAT_GROUPS.some(([, re]) => re.test(x.name)));
     if (groups.some(([, list]) => !list.length)) return bar(items, label);
-    return `<div class="rs-cgroups">${[...groups, ['כללי', rest]].filter(([, list]) => list.length).map(([name, list]) => `<div class="rs-cgroup"><span class="rs-cg-k" aria-hidden="true">${name}</span>${bar(list, `${label}: ${name}`)}</div>`).join('')}</div>`;
+    const all = [...groups, ['כללי', items.filter((x) => !CAT_GROUPS.some(([, re]) => re.test(x.name)))]].filter(([, list]) => list.length);
+    const cur = Math.max(0, all.findIndex(([, list]) => list.some((x) => /aria-pressed="true"/.test(x.html))));
+    return `<div class="rs-cgroups">
+      <div class="rs-cg-tabs" role="group" aria-label="${esc(`${label}: קבוצה`)}">${all.map(([name, list], i) => `<button type="button" data-cgroup="${i}" aria-pressed="${i === cur}">${name}${list.some((x) => x.html.includes('★')) ? ' ★' : ''} <span class="muted">${list.length}</span></button>`).join('')}</div>
+      ${all.map(([name, list], i) => bar(list, `${label}: ${name}`, i !== cur)).join('')}</div>`;
   }
   const shortCtl = (label) => (/^finish$/i.test(label) ? 'F' : String(label).split(/\s/)[0]);
 
@@ -2204,6 +2214,13 @@
   function initResultsView() {
     const page = $('#resultsPage');
     page.addEventListener('click', (ev) => {
+      const cg = ev.target.closest('[data-cgroup]');
+      if (cg) { // switch the shown group of category buttons (no reload)
+        const box = cg.closest('.rs-cgroups');
+        box.querySelectorAll('[data-cgroup]').forEach((b) => b.setAttribute('aria-pressed', String(b === cg)));
+        box.querySelectorAll('.rs-courses').forEach((bar, i) => { bar.hidden = i !== +cg.dataset.cgroup; });
+        return;
+      }
       const gi = ev.target.closest('[data-gitem]');
       if (gi) { openGroupItem(+gi.dataset.gitem); return; }
       const b = ev.target.closest('[data-course]');
