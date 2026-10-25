@@ -1917,7 +1917,7 @@
     const remembered = store.get('fileGroups', {})[g.prefix.toLowerCase()];
     const sel = Math.max(0, g.items.findIndex((it) => it.label === remembered));
     page.innerHTML = `<div class="section-head"><div><h1 id="rsTitle">${esc(g.prefix)}</h1>${title ? `<p class="muted">${esc(title)}${e ? ` · ${esc(fmtLong(evDate(e)))}` : ''}</p>` : ''}</div><div class="rs-actions">${back}</div></div>
-      <div class="seg rs-courses rs-group-bar" role="group" aria-label="קטגוריה">${g.items.map((it, i) => `<button type="button" data-gitem="${i}" aria-pressed="${i === sel}">${esc(it.label)}</button>`).join('')}</div>
+      ${categoryBar(g.items.map((it, i) => ({ name: it.label, html: `<button type="button" data-gitem="${i}" aria-pressed="${i === sel}">${esc(it.label)}</button>` })), 'קטגוריה', 'rs-group-bar')}
       <div id="rsBody"></div>`;
     rs.group = g;
     openGroupItem(sel);
@@ -2025,6 +2025,15 @@
   const mistakeCls = (v) => (v === null || v === undefined ? '' : v < 0 ? 'good' : v < 15 ? '' : v < 45 ? 'warn' : 'bad');
   const fmtSpeed = (v) => (v === null || v === undefined ? '–' : v.toFixed(1));
   const fmtMistake = (v) => (v === null || v === undefined ? '–' : v === 0 ? '0:00' : fmtSec(v, true));
+  /** Course / category buttons; with both women's (D…) and men's (H…) categories, in rows: women, men, the rest. */
+  const CAT_GROUPS = [['נשים', /^(D|W)\s?\d/i], ['גברים', /^(H|M)\s?\d/i]];
+  function categoryBar(items, label, cls = '') {
+    const bar = (list, aria) => `<div class="seg rs-courses ${cls}" role="group" aria-label="${esc(aria)}">${list.map((x) => x.html).join('')}</div>`;
+    const groups = CAT_GROUPS.map(([name, re]) => [name, items.filter((x) => re.test(x.name))]);
+    const rest = items.filter((x) => !CAT_GROUPS.some(([, re]) => re.test(x.name)));
+    if (groups.some(([, list]) => !list.length)) return bar(items, label);
+    return `<div class="rs-cgroups">${[...groups, ['כללי', rest]].filter(([, list]) => list.length).map(([name, list]) => `<div class="rs-cgroup"><span class="rs-cg-k" aria-hidden="true">${name}</span>${bar(list, `${label}: ${name}`)}</div>`).join('')}</div>`;
+  }
   const shortCtl = (label) => (/^finish$/i.test(label) ? 'F' : String(label).split(/\s/)[0]);
 
   /** The legs table under the chart: per picked runner a row for each chosen measure – overall time, leg time,
@@ -2160,7 +2169,7 @@
     page.innerHTML = `
       ${rs.inGroup ? `<p class="rs-orig"><a href="${esc(rs.key)}" target="_blank" rel="noopener">הקובץ המקורי ↗</a></p>` : `<div class="section-head"><div><h1 id="rsTitle">${esc(title)}</h1><p class="muted">${esc(date || '')}</p></div>
         <div class="rs-actions">${back}<a class="btn ghost" href="${esc(rs.key)}" target="_blank" rel="noopener">הקובץ המקורי ↗</a></div></div>`}
-      <div class="seg rs-courses" role="group" aria-label="מסלול / קטגוריה">${d.courses.map((x, i) => `<button type="button" data-course="${i}" aria-pressed="${i === rs.course}">${esc(x.name)}${x.runners.some((r) => isMinePerson(r.name)) ? ' ★' : ''}</button>`).join('')}</div>
+      ${categoryBar(d.courses.map((x, i) => ({ name: x.name, html: `<button type="button" data-course="${i}" aria-pressed="${i === rs.course}">${esc(x.name)}${x.runners.some((r) => isMinePerson(r.name)) ? ' ★' : ''}</button>` })), 'מסלול / קטגוריה')}
       <p class="muted small rs-info">${[c.info && `<bdi dir="ltr">${esc(c.info)}</bdi>`, `סיימו ${c.runners.filter((r) => r.status === 'OK').length} מתוך ${c.runners.length}`].filter(Boolean).join(' · ')}</p>
       ${hasSplits(c) && ref ? `<section class="ev-card rs-graph" aria-labelledby="rsg-h">
         <div class="rs-graph-head"><h2 id="rsg-h">${ref.mode === 'winner' ? 'פער מהמנצח בכל נקודה' : 'פער מהמהיר ביותר בכל מקטע'}</h2>

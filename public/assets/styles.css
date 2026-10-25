@@ -2087,3 +2087,10 @@ a.info-btn { text-decoration: none; }
 .es-1000 span { position: absolute; inset-inline-end: 2px; top: -15px; font-size: .65rem; font-weight: 800; color: #b45309; }
 .rk-table td.k1000 { font-weight: 800; }
 .rk-table .k1000-k { color: #f5b301; margin-inline-end: 3px; }
+
+/* categories in rows: women, men, the rest */
+.rs-cgroups { display: grid; gap: 8px; margin: 14px 0 6px; }
+.rs-cgroup { display: grid; grid-template-columns: 4em minmax(0, 1fr); align-items: start; gap: 10px; }
+.rs-cg-k { font-weight: 800; font-size: .85rem; color: var(--muted); padding-top: 10px; }
+.rs-cgroups .rs-courses { margin: 0; }
+@media (max-width: 640px) { .rs-cgroup { grid-template-columns: 1fr; gap: 4px; } .rs-cg-k { padding-top: 0; } }
