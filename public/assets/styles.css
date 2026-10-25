@@ -2085,3 +2085,5 @@ a.info-btn { text-decoration: none; }
 .es-key.s-1000 { color: #f5b301; width: auto; height: auto; border-radius: 0; background: none; font-size: .9rem; line-height: 1; }
 .es-1000 { position: absolute; inset-inline: 0; height: 0; border-top: 1.5px dashed #f5b301; }
 .es-1000 span { position: absolute; inset-inline-end: 2px; top: -15px; font-size: .65rem; font-weight: 800; color: #b45309; }
+.rk-table td.k1000 { font-weight: 800; }
+.rk-table .k1000-k { color: #f5b301; margin-inline-end: 3px; }

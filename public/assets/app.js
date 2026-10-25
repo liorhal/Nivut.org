@@ -1510,6 +1510,8 @@
   /** Indexes of a runner's results that count toward the ranking: the best N (all when N is unknown). */
   const bestIdx = (r, g) => r.scores.map((v, k) => [v, k]).filter(([v]) => v > 0).sort((a, b) => b[0] - a[0]).slice(0, g.best || Infinity).map(([, k]) => k);
   const RK_COLORS = 10;
+  /** The "full marks" line of a grid: 1000 in most seasons, 100 in seasons scored out of 100. */
+  const topMark = (g) => (Math.max(0, ...g.rows.flatMap((r) => r.scores)) <= 200 ? 100 : 1000);
 
   /**
    * "By event": a column per event of the season (first on the right). Everyone's points are small
@@ -1519,6 +1521,7 @@
   function eventStripHtml(g, mineNames) {
     const ev = g.events;
     if (!ev.length) return '';
+    const top = topMark(g);
     const rows = g.rows;
     const mineRows = rows.filter((r) => mineNames.has(r.name));
     const focus = (mineRows.length ? mineRows : rows.slice(0, 3)).slice(0, 3);
@@ -1547,8 +1550,8 @@
         const v = r.scores[k];
         if (!(v > 0)) return '';
         const place = sorted.indexOf(v) + 1;
-        const tip = [`${r.name}:`, `${e.name}\t${fmtPts(v)}`, `מקום בתחרות\t${place} מתוך ${vals.length}`, `נספר בדירוג\t${c.has(k) ? 'כן' : 'לא'}`, ...(v > 1000 ? ['★ מעל 1000 נקודות'] : [])].join('\n');
-        return `<span class="es-me ${cls}${c.has(k) ? ' counted' : ''}${v > 1000 ? ' k1000' : ''}" style="--c:var(--e${k % RK_COLORS});bottom:${y(v)}%;--jx:${(si - (series.length - 1) / 2) * 11}px" data-tip="${esc(tip)}" tabindex="0" role="img" aria-label="${esc(`${r.name}, ${e.name}: ${fmtPts(v)} נקודות, מקום ${place} מתוך ${vals.length}${c.has(k) ? '' : ', לא נספר בדירוג'}`)}"></span>`;
+        const tip = [`${r.name}:`, `${e.name}\t${fmtPts(v)}`, `מקום בתחרות\t${place} מתוך ${vals.length}`, `נספר בדירוג\t${c.has(k) ? 'כן' : 'לא'}`, ...(v > top ? [`★ מעל ${top} נקודות`] : [])].join('\n');
+        return `<span class="es-me ${cls}${c.has(k) ? ' counted' : ''}${v > top ? ' k1000' : ''}" style="--c:var(--e${k % RK_COLORS});bottom:${y(v)}%;--jx:${(si - (series.length - 1) / 2) * 11}px" data-tip="${esc(tip)}" tabindex="0" role="img" aria-label="${esc(`${r.name}, ${e.name}: ${fmtPts(v)} נקודות, מקום ${place} מתוך ${vals.length}${c.has(k) ? '' : ', לא נספר בדירוג'}`)}"></span>`;
       }).join('');
       return `<div class="es-col e${k % RK_COLORS}" data-ev="${k}" role="group" aria-label="${esc(`${e.name}: ${vals.length} מתחרים${med ? `, חציון ${fmtPts(Math.round(med))}` : ''}`)}">
           <div class="es-track">${field}${med ? `<b class="es-med" style="bottom:${y(med)}%" title="חציון ${fmtPts(Math.round(med))}"></b>` : ''}${me}</div>
@@ -1557,14 +1560,14 @@
     }).join('');
     const legend = [...series.filter((x) => x.cls !== 's-more').map(({ r, cls }) => `<li><span class="es-key ${cls} counted"></span>${esc(r.name)}</li>`),
       extra.length ? `<li><span class="es-key s-more counted"></span>עוד מהאנשים שלי (${extra.length})</li>` : '',
-      '<li class="muted"><span class="es-key s-hollow"></span>לא נספר בדירוג</li>', '<li class="muted"><span class="es-key s-1000">★</span>מעל 1000</li>',
+      '<li class="muted"><span class="es-key s-hollow"></span>לא נספר בדירוג</li>', `<li class="muted"><span class="es-key s-1000">★</span>מעל ${top}</li>`,
       '<li class="muted"><span class="es-key s-field"></span>שאר המתחרים</li>', '<li class="muted"><span class="es-key s-med"></span>חציון</li>'].join('');
     return `<figure class="es">
       <figcaption><h3>פירוט לפי תחרות</h3><span class="muted small">${mineRows.length ? 'האנשים שלי' : 'שלושת הראשונים'} מול כל המתחרים בכל תחרות בעונה${g.best ? ` · נספרות ${g.best} התוצאות הטובות` : ''}</span></figcaption>
       <ul class="es-legend">${legend}</ul>
       <div class="es-scroll"><div class="es-plot" style="--n:${ev.length}">
         <div class="es-axis" aria-hidden="true">${ticks.map((t) => `<span style="bottom:${y(t)}%">${fmtPts(t)}</span>`).join('')}</div>
-        <div class="es-grid" aria-hidden="true">${ticks.map((t) => `<i style="bottom:${y(t)}%"></i>`).join('')}${min < 1000 && max > 1000 ? `<b class="es-1000" style="bottom:${y(1000)}%"><span>1000</span></b>` : ''}</div>
+        <div class="es-grid" aria-hidden="true">${ticks.map((t) => `<i style="bottom:${y(t)}%"></i>`).join('')}${min < top && max > top ? `<b class="es-1000" style="bottom:${y(top)}%"><span>${top}</span></b>` : ''}</div>
         <div class="es-cols">${cols}</div>
       </div></div>
     </figure>`;
@@ -1579,6 +1582,7 @@
     const mineAll = [];
     const sections = grids.map((g, gi) => {
       const rows = g.rows;
+      const top = topMark(g);
       const max = Math.max(1, ...rows.map((r) => r.weighted || 0));
       const mine = new Set(rows.filter((r) => state.people.some((p) => sameName(p, r.name))).map((r) => r.name));
       rows.filter((r) => mine.has(r.name)).forEach((r) => mineAll.push({ r, g, n: rows.length, leader: rows[0], above: rows[rows.indexOf(r) - 1] }));
@@ -1603,14 +1607,14 @@
         const scale = sum > (r.weighted || 0) && sum ? (r.weighted || 0) / sum : 1;
         const age = Math.max(0, (r.weighted || 0) - sum);
         const whole = r.weighted || sum || 1;
-        const segs = [...best].sort((a, b) => a - b).map((k) => `<span class="rk-seg e${k % RK_COLORS}${r.scores[k] > 1000 ? ' k1000' : ''}" data-ev="${k}" style="width:${((r.scores[k] * scale) / whole * 100).toFixed(2)}%" data-tip="${esc(`${g.events[k].name}:\nנקודות\t${fmtPts(r.scores[k])}\nמקום באירוע\t${evPlace(k, r.scores[k])}${r.scores[k] > 1000 ? '\n★ מעל 1000 נקודות' : ''}`)}"></span>`).join('')
+        const segs = [...best].sort((a, b) => a - b).map((k) => `<span class="rk-seg e${k % RK_COLORS}${r.scores[k] > top ? ' k1000' : ''}" data-ev="${k}" style="width:${((r.scores[k] * scale) / whole * 100).toFixed(2)}%" data-tip="${esc(`${g.events[k].name}:\nנקודות\t${fmtPts(r.scores[k])}\nמקום באירוע\t${evPlace(k, r.scores[k])}${r.scores[k] > top ? `\n★ מעל ${top} נקודות` : ''}`)}"></span>`).join('')
           + (age >= 1 ? `<span class="rk-seg rk-age" style="width:${(age / whole * 100).toFixed(2)}%" data-tip="${esc(`תוספת מקדם גיל (${r.ageFactor ?? '–'}):\nנקודות\t+${fmtPts(age)}`)}"></span>` : '');
         // fewer results than the ranking counts: an empty slot for each one missing
         const have = r.scores.filter((v) => v > 0).length;
         const missing = g.best && have < g.best ? g.best - have : 0;
         const holes = missing ? `<span class="rk-holes" data-tip="${esc(`חסרות ${missing === 1 ? 'תוצאה אחת' : `${missing} תוצאות`}:\nיש\t${have} מתוך ${g.best}`)}">${'<i></i>'.repeat(missing)}</span>` : '';
         const spare = r.scores.map((v, k) => [v, k]).filter(([v, k]) => v > 0 && !best.includes(k))
-          .map(([v, k]) => `<span class="rk-spare e${k % RK_COLORS}${v > 1000 ? ' k1000' : ''}" data-ev="${k}" data-tip="${esc(`${g.events[k].name} (לא נספר):\nנקודות\t${fmtPts(v)}\nמקום באירוע\t${evPlace(k, v)}`)}"></span>`).join('');
+          .map(([v, k]) => `<span class="rk-spare e${k % RK_COLORS}${v > top ? ' k1000' : ''}" data-ev="${k}" data-tip="${esc(`${g.events[k].name} (לא נספר):\nנקודות\t${fmtPts(v)}\nמקום באירוע\t${evPlace(k, v)}${v > top ? `\n★ מעל ${top} נקודות` : ''}`)}"></span>`).join('');
         return `${gap}<li class="rk-row${isMine ? ' mine' : ''}">
           <span class="rk-rank">${r.rank ?? i + 1}</span>
           <span class="rk-who"><span class="rk-name">${isMine ? '<span class="rk-star" aria-hidden="true">★</span>' : ''}${esc(r.name)}</span><span class="rk-club">${esc(r.club)}${missing ? ` <span class="rk-few">${have}/${g.best} תוצאות</span>` : ''}</span></span>
@@ -1624,13 +1628,13 @@
       const table = `<details class="rk-table"><summary>טבלה מלאה (${rows.length} מתחרים)</summary><div class="table-wrap"><table>
           <caption class="sr-only">${esc(d.title)} · ${esc(d.category.value)} · ${esc(d.season.value)}${grids.length > 1 ? ` · ${esc(g.title)}` : ''}</caption>
           <thead><tr><th scope="col">#</th><th scope="col">שם</th><th scope="col" class="club">מועדון</th>${g.events.map((e) => `<th scope="col"><a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.name)}</a></th>`).join('')}<th scope="col">דירוג</th><th scope="col">מקדם גיל</th><th scope="col">משוקלל</th></tr></thead>
-          <tbody>${rows.map((r) => `<tr${mine.has(r.name) ? ' class="mine"' : ''}><td>${r.rank ?? ''}</td><th scope="row">${esc(r.name)}</th><td>${esc(r.club)}</td>${r.scores.map((v) => `<td>${fmtPts(v)}</td>`).join('')}<td>${fmtPts(r.total)}</td><td>${r.ageFactor ?? '–'}</td><td><b>${fmtPts(r.weighted)}</b></td></tr>`).join('')}</tbody>
+          <tbody>${rows.map((r) => `<tr${mine.has(r.name) ? ' class="mine"' : ''}><td>${r.rank ?? ''}</td><th scope="row">${esc(r.name)}</th><td>${esc(r.club)}</td>${r.scores.map((v) => (v > top ? `<td class="k1000" title="מעל ${top}"><span class="k1000-k" aria-hidden="true">★</span>${fmtPts(v)}<span class="sr-only"> (מעל ${top})</span></td>` : `<td>${fmtPts(v)}</td>`)).join('')}<td>${fmtPts(r.total)}</td><td>${r.ageFactor ?? '–'}</td><td><b>${fmtPts(r.weighted)}</b></td></tr>`).join('')}</tbody>
         </table></div></details>`;
       return `<section class="rk-section" aria-labelledby="rk-h${gi}">
         <div class="rk-sec-head"><h2 id="rk-h${gi}">${grids.length > 1 ? esc(g.title) : `${esc(d.category.value)} · ${esc(d.season.value)}`}</h2>
           ${g.best ? `<p class="muted small">דירוג משוקלל, לפי ${g.best} התוצאות הטובות ביותר ומקדם גיל</p>` : ''}${toggle}</div>
         ${g.events.length ? `<ul class="rk-evkey" aria-label="צבע לכל אירוע">${g.events.map((e, k) => `<li data-ev="${k}" tabindex="0"><i class="e${k % RK_COLORS}" aria-hidden="true"></i>${esc(e.name)}</li>`).join('')}
-          <li class="rk-evkey-x"><i class="rk-age" aria-hidden="true"></i>מקדם גיל</li><li class="rk-evkey-x"><i class="rk-spare-k" aria-hidden="true"></i>לא נספר</li>${g.best ? '<li class="rk-evkey-x"><i class="rk-hole-k" aria-hidden="true"></i>חסרה תוצאה</li>' : ''}<li class="rk-evkey-x"><b class="k1000-k" aria-hidden="true">★</b>מעל 1000</li></ul>` : ''}
+          <li class="rk-evkey-x"><i class="rk-age" aria-hidden="true"></i>מקדם גיל</li><li class="rk-evkey-x"><i class="rk-spare-k" aria-hidden="true"></i>לא נספר</li>${g.best ? '<li class="rk-evkey-x"><i class="rk-hole-k" aria-hidden="true"></i>חסרה תוצאה</li>' : ''}<li class="rk-evkey-x"><b class="k1000-k" aria-hidden="true">★</b>מעל ${top}</li></ul>` : ''}
         <ol class="rk-chart" aria-label="דירוג משוקלל">${bars}</ol>
         ${eventStripHtml(g, mine)}
         ${table}
