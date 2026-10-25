@@ -1458,6 +1458,12 @@
         if (!b || b.dataset.rkCat === rk.sel.category) return;
         rk.sel.category = b.dataset.rkCat; loadRanking();
       });
+      $('#rkInsights').addEventListener('click', (ev) => {
+        const m = ev.target.closest('[data-ins-more]');
+        if (!m) return;
+        const open = $('#rkInsights').classList.toggle('open');
+        m.setAttribute('aria-expanded', String(open)); m.textContent = open ? 'פחות' : 'עוד תובנות';
+      });
       $('#rkBody').addEventListener('click', (ev) => {
         const t = ev.target.closest('[data-rk-around]');
         if (t) { rk.around = t.dataset.rkAround === '1'; renderRanking(); }
@@ -1673,6 +1679,98 @@
           <span class="muted small">${r === leader ? 'במקום הראשון' : `${fmtPts(leader.weighted - r.weighted)} מאחורי הראשון${above && above !== leader ? ` · ${fmtPts(above.weighted - r.weighted)} מאחורי מקום ${above.rank}` : ''}`}</span>
         </li>`).join('')}</ul>`
       : `<p class="muted small">אף אחד מהאנשים שלך לא מופיע ב${esc(d.category.value)} בעונה ${esc(d.season.value)}. בחרו את הקטגוריה שלהם.</p>`;
+    const ins = state.people.length ? rkInsightsHtml(mineAll) : '';
+    $('#rkInsights').innerHTML = ins;
+    $('#rkInsights').classList.remove('open');
+    $('#rkInsights').hidden = !ins;
+  }
+
+  /* ---------- Ranking insights: a few sentences picked from the numbers ---------- */
+  // All "what if" sentences assume nobody else improves; the age factor is the ratio weighted / total.
+  const rkRatio = (r) => (r.total > 0 && r.weighted > 0 ? r.weighted / r.total : r.ageFactor || 1);
+  /** The weighted ranking with one more result x: it adds while short of N, else it replaces the weakest counted one. */
+  function withResult(r, g, x) {
+    const pos = r.scores.filter((v) => v > 0).sort((a, b) => b - a);
+    const top = [...pos, x].sort((a, b) => b - a).slice(0, g.best || Infinity);
+    return top.reduce((t, v) => t + v, 0) * rkRatio(r);
+  }
+  /** The smallest result that lifts r above `target` weighted points (null: none can). */
+  function resultToPass(r, g, target, cap) {
+    if (withResult(r, g, cap) <= target) return null;
+    let lo = 0, hi = cap;
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (withResult(r, g, m) > target) hi = m; else lo = m; }
+    return hi;
+  }
+  function rkInsightsHtml(mineAll) {
+    const pts = (n) => `<b>${fmtPts(Math.round(n))}</b>`;
+    const people = [];
+    const general = new Map();
+    for (const { r, g } of mineAll) {
+      const rows = g.rows, i = rows.indexOf(r), top = topMark(g);
+      const cap = Math.round(Math.max(top * 1.3, ...rows.flatMap((x) => x.scores)) * 1.05); // the most anyone could score
+      const best = new Set(bestIdx(r, g));
+      const pos = r.scores.map((v, k) => [v, k]).filter(([v]) => v > 0);
+      const have = pos.length, N = g.best || have;
+      const ev = (k) => esc(g.events[k]?.name || '');
+      const lines = [];
+      // 1. what the next result must be to move up (one place, and to the top)
+      const above = rows[i - 1];
+      if (above) {
+        const need = resultToPass(r, g, above.weighted, cap);
+        const weakest = [...best].sort((a, b) => r.scores[a] - r.scores[b])[0];
+        lines.push(need === null
+          ? `גם תוצאה מקסימלית לא תספיק לעקיפה של ${esc(above.name)} (מקום ${above.rank}) – ${pts(above.weighted - r.weighted)} נקודות הפרש.`
+          : `תוצאה של ${pts(need)} ומעלה בתחרות הבאה (${have < N ? 'נוספת לדירוג' : `במקום ${pts(r.scores[weakest])} מ${ev(weakest)}`}) – עלייה למקום ${above.rank}, מעל ${esc(above.name)}.`);
+        const leader = rows[0];
+        if (leader !== above) {
+          const toTop = resultToPass(r, g, leader.weighted, cap);
+          lines.push(toTop === null ? 'למקום הראשון כבר אין דרך להגיע בתחרות אחת.' : `כדי להגיע למקום הראשון צריך תוצאה של ${pts(toTop)} ומעלה.`);
+        }
+      } else if (rows[1]) {
+        const second = rows[1];
+        const need = resultToPass(second, g, r.weighted, cap);
+        lines.push(need === null
+          ? `במקום הראשון, ול${esc(second.name)} (מקום 2) אין דרך לעקוף בתחרות אחת.`
+          : `במקום הראשון, ${pts(r.weighted - second.weighted)} נקודות לפני ${esc(second.name)}. לעקיפה תידרש ל${esc(second.name)} תוצאה של ${pts(need)} ומעלה.`);
+      }
+      // 2. the result that almost counted
+      const out = pos.filter(([, k]) => !best.has(k)).sort((a, b) => b[0] - a[0])[0];
+      if (out && best.size) {
+        const weakest = [...best].sort((a, b) => r.scores[a] - r.scores[b])[0];
+        const d = r.scores[weakest] - out[0];
+        lines.push(`התוצאה ב${ev(out[1])} (${pts(out[0])}) לא נספרה – ${d > 0 ? `חסרו לה ${pts(d)} נקודות כדי להחליף את ${ev(weakest)}` : `שווה בדיוק לתוצאה ב${ev(weakest)}`}.`);
+      }
+      // 3. short of N results: where an average result of yours would put you
+      if (g.best && have < g.best && have) {
+        const avg = pos.reduce((t, [v]) => t + v, 0) / have;
+        let w = r.weighted;
+        for (let n = have; n < g.best; n++) w += avg * rkRatio(r);
+        const place = 1 + rows.filter((x) => x !== r && x.weighted > w).length;
+        const miss = g.best - have;
+        lines.push(`${miss === 1 ? 'חסרה תוצאה אחת' : `חסרות ${miss} תוצאות`} מתוך ${g.best}. עם ${miss === 1 ? 'עוד תוצאה' : `עוד ${miss} תוצאות`} כמו הממוצע (${pts(avg)}) – ${place < r.rank ? `מקום ${place}, ${r.rank - place === 1 ? 'מקום אחד' : `${r.rank - place} מקומות`} למעלה` : `עדיין מקום ${r.rank}`}.`);
+      }
+      // 4. safe from below?
+      const below = rows[i + 1];
+      if (below && i > 0 && lines.length < 4) { // (the leader's line above already covers place 2)
+        const need = resultToPass(below, g, r.weighted, cap);
+        lines.push(need === null ? `ל${esc(below.name)} (מקום ${below.rank}) אין דרך לעקוף בתחרות אחת – המקום בטוח עד התחרות הבאה.` : `ל${esc(below.name)} (מקום ${below.rank}) תידרש תוצאה של ${pts(need)} ומעלה כדי לעקוף.`);
+      }
+      people.push(`<li class="rk-ins-p"><h3>★ ${esc(r.name)}<span class="muted"> · מקום ${r.rank}${mineAll.some((x) => x.g !== g) ? ` · ${esc(g.title)}` : ''}</span></h3><ul>${lines.slice(0, 4).map((l) => `<li>${l}</li>`).join('')}</ul></li>`);
+      // the race at the top of this grid, once
+      if (!general.has(g) && rows.length >= 3) {
+        const [a, b] = rows, lead = a.weighted - b.weighted;
+        const close = rows.filter((x) => a.weighted - x.weighted <= a.weighted * 0.03).length;
+        const catch2 = resultToPass(b, g, a.weighted, cap);
+        general.set(g, close >= 3
+          ? `${esc(g.title)}: מרוץ צמוד – ${close} מתחרים בטווח של 3% מהמקום הראשון.`
+          : `${esc(g.title)}: ${esc(a.name)} במקום הראשון, ${pts(lead)} נקודות לפני מקום 2${catch2 === null ? ', ולמקום 2 אין דרך לעקוף בתחרות אחת' : `; לעקיפה תידרש למקום 2 תוצאה של ${pts(catch2)} ומעלה`}.`);
+      }
+    }
+    if (!people.length) return '';
+    return `<h2 id="rkIns-h">תובנות</h2>
+      <ul class="rk-ins-list">${people.join('')}${general.size ? `<li class="rk-ins-g"><h3>מצב המרוץ</h3><ul>${[...general.values()].map((l) => `<li>${l}</li>`).join('')}</ul></li>` : ''}</ul>
+      <button type="button" class="linklike rk-ins-more" data-ins-more aria-expanded="false">עוד תובנות</button>
+      <p class="muted small">החישובים מניחים ששאר המתחרים לא משפרים את הדירוג שלהם.</p>`;
   }
 
   /* ---------- Annual ---------- */

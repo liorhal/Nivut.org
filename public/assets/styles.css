@@ -2115,3 +2115,22 @@ a.info-btn { text-decoration: none; }
 @media (max-width: 400px) { .tabs a { padding: 6px 9px; font-size: .95rem; } }
 /* nothing may push the page wider than the screen */
 html, body { overflow-x: clip; }
+
+/* ranking insights */
+.rk-insights { margin: 0 0 18px; padding: 14px 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); }
+.rk-insights h2 { margin: 0 0 8px; font-size: 1.2rem; }
+.rk-ins-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px 20px; }
+.rk-ins-list h3 { margin: 0 0 4px; font-size: .95rem; }
+.rk-ins-list h3 .muted { font-weight: 600; }
+.rk-ins-list ul { margin: 0; padding-inline-start: 18px; display: grid; gap: 4px; font-size: .9rem; line-height: 1.45; }
+.rk-ins-list ul b { font-family: var(--num); font-weight: 800; }
+.rk-ins-g h3 { color: var(--muted); }
+.rk-insights > p { margin: 10px 0 0; }
+
+.rk-ins-more { display: none; margin-top: 8px; }
+/* phones: two sentences per person until "עוד תובנות" */
+@media (max-width: 640px) {
+  .rk-ins-more { display: inline-block; }
+  .rk-insights:not(.open) .rk-ins-p ul > li:nth-child(n+3) { display: none; }
+  .rk-ins-list { gap: 10px; }
+}
