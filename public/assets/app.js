@@ -1654,6 +1654,52 @@
     </figure>`;
   }
 
+  /**
+   * "Place after each event": the standing as it would have been after every event, taking the events in the
+   * table's order (best N so far, times each runner's age factor). My people (else the top three) in colour,
+   * the rest of the top ten as thin grey lines; first event on the right, like the strip above.
+   */
+  function rankFlowHtml(g, mineNames) {
+    const ev = g.events, rows = g.rows;
+    if (ev.length < 2 || rows.length < 2) return '';
+    const N = g.best || Infinity;
+    const standing = ev.map((_, t) => {
+      const sums = rows.map((r) => {
+        const sofar = r.scores.slice(0, t + 1).filter((v) => v > 0).sort((a, b) => b - a).slice(0, N);
+        return sofar.length ? sofar.reduce((a, b) => a + b, 0) * rkRatio(r) : null;
+      });
+      return sums.map((v) => (v === null ? null : { v, rank: 1 + sums.filter((x) => x !== null && x > v).length, n: sums.filter((x) => x !== null).length }));
+    });
+    const mineRows = rows.filter((r) => mineNames.has(r.name));
+    const focus = (mineRows.length ? mineRows : rows.slice(0, 3)).slice(0, 3);
+    const others = rows.slice(0, 10).filter((r) => !focus.includes(r));
+    const shown = [...others, ...focus];
+    const maxRank = Math.max(3, ...shown.flatMap((r) => standing.map((st) => st[rows.indexOf(r)]?.rank || 0)));
+    const W = 860, H = 40 + Math.min(14, maxRank) * 22, L = 110, R = 40, T = 16, B = 30;
+    const x = (t) => W - R - (t / (ev.length - 1)) * (W - L - R);
+    const y = (rank) => T + ((Math.min(rank, maxRank) - 1) / Math.max(1, maxRank - 1)) * (H - T - B);
+    const line = (r, cls, label) => {
+      const i = rows.indexOf(r);
+      const pts = standing.map((st, t) => (st[i] ? [x(t), y(st[i].rank), st[i], t] : null)).filter(Boolean);
+      if (!pts.length) return '';
+      const d = pts.map(([px, py], k) => `${k ? 'L' : 'M'}${px.toFixed(1)} ${py.toFixed(1)}`).join(' ');
+      const dots = label ? pts.map(([px, py, st, t]) => `<circle class="rf-dot" cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="4.5" tabindex="-1" data-tip="${esc(`${r.name} – אחרי ${ev[t].name}:\nמקום\t${st.rank} מתוך ${st.n}\nנקודות\t${fmtPts(Math.round(st.v))}`)}"/>`).join('') : '';
+      const last = pts[pts.length - 1];
+      return `<g class="rf-line ${cls}"><path d="${d}"/>${dots}${label ? `<text class="rf-name" x="${(last[0] - 8).toFixed(1)}" y="${(last[1] + 4).toFixed(1)}" text-anchor="end">${esc(r.name.split(' ')[0])} ${last[2].rank}</text>` : ''}</g>`;
+    };
+    const ticks = [...new Set([1, ...Array.from({ length: maxRank }, (_, k) => k + 1).filter((k) => maxRank <= 12 || k % 5 === 0), maxRank])];
+    const grid = ticks.map((k) => `<line class="rf-grid" x1="${L}" x2="${W - R}" y1="${y(k)}" y2="${y(k)}"/><text class="rf-ax" x="${W - R + 8}" y="${y(k) + 4}">${k}</text>`).join('');
+    const cols = ev.map((e, t) => `<text class="rf-ax rf-ev" x="${x(t).toFixed(1)}" y="${H - 10}" text-anchor="middle">${esc(e.name.length > 12 ? `${e.name.slice(0, 11)}…` : e.name)}<title>${esc(e.name)}</title></text>`).join('');
+    const legend = focus.map((r, k) => `<li><span class="rf-key s${k + 1}"></span>${esc(r.name)}</li>`).join('') + (others.length ? '<li class="muted"><span class="rf-key s-other"></span>שאר העשירייה</li>' : '');
+    return `<figure class="rf">
+      <figcaption><h3>מיקום אחרי כל תחרות</h3><span class="muted small">בהנחה שהתחרויות התקיימו לפי סדר הטבלה · ${g.best ? `${g.best} התוצאות הטובות עד אותה תחרות` : 'כל התוצאות עד אותה תחרות'}</span></figcaption>
+      <ul class="es-legend">${legend}</ul>
+      <div class="rf-scroll"><svg class="rf-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`המיקום בדירוג אחרי כל תחרות: ${focus.map((r) => `${r.name} – ${standing.map((st) => st[rows.indexOf(r)]?.rank ?? '–').join(', ')}`).join('; ')}`)}">
+        ${grid}${cols}${others.map((r) => line(r, 's-other', false)).join('')}${focus.map((r, k) => line(r, `s${k + 1}`, true)).join('')}
+      </svg></div>
+    </figure>`;
+  }
+
   const fmtPts = (n) => (n === null || n === undefined ? '–' : Number(n).toLocaleString('he-IL'));
 
   function renderRanking() {
@@ -1718,6 +1764,7 @@
           <li class="rk-evkey-x"><i class="rk-age" aria-hidden="true"></i>מקדם גיל</li><li class="rk-evkey-x"><i class="rk-spare-k" aria-hidden="true"></i>לא נספר</li>${g.best ? '<li class="rk-evkey-x"><i class="rk-hole-k" aria-hidden="true"></i>חסרה תוצאה</li>' : ''}<li class="rk-evkey-x"><b class="k1000-k" aria-hidden="true">★</b>מעל ${top}</li></ul>` : ''}
         <ol class="rk-chart" aria-label="דירוג משוקלל" style="--rk-extra:${extraPx(g, shown)}px">${bars}</ol>
         ${eventStripHtml(g, mine)}
+        ${rankFlowHtml(g, mine)}
         ${table}
       </section>`;
     });
