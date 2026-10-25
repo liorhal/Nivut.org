@@ -226,8 +226,8 @@ main:focus { outline: none; }
   .site-header { position: static; }
   .header-inner { gap: 8px; }
   .brand { flex: 1; }
-  nav { order: 3; flex-basis: 100%; }
-  .tabs { flex-wrap: nowrap; overflow-x: auto; }
+  nav { order: 3; flex-basis: 100%; min-width: 0; max-width: 100%; } /* never wider than the screen: the tabs scroll instead */
+  .tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .tabs a { white-space: nowrap; padding: 6px 12px; }
   .a11y-tools .icon-btn { min-width: 36px; min-height: 36px; }
 }
@@ -2111,3 +2111,7 @@ a.info-btn { text-decoration: none; }
   .rk-rank { grid-area: rank; } .rk-who { grid-area: who; display: flex; align-items: baseline; gap: 6px; } .rk-val { grid-area: val; } .rk-bar { grid-area: bar; }
   .rk-who .rk-name { flex: none; max-width: 60%; }
 }
+
+@media (max-width: 400px) { .tabs a { padding: 6px 9px; font-size: .95rem; } }
+/* nothing may push the page wider than the screen */
+html, body { overflow-x: clip; }

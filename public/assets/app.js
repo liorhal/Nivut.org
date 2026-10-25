@@ -109,6 +109,12 @@
     const shown = $(`#view-${view}`);
     shown.classList.remove('view-in'); void shown.offsetWidth; shown.classList.add('view-in');
     $$('.tabs a').forEach((a) => a.setAttribute('aria-selected', String(a.dataset.view === view)));
+    // on a phone the tabs scroll: keep the selected one in sight (without moving the page)
+    const sel = $(`.tabs a[data-view="${view}"]`), bar = $('.tabs');
+    if (sel && bar && bar.scrollWidth > bar.clientWidth) {
+      const r = sel.getBoundingClientRect(), b = bar.getBoundingClientRect();
+      if (r.left < b.left || r.right > b.right) bar.scrollLeft += r.left < b.left ? r.left - b.left - 8 : r.right - b.right + 8;
+    }
     const titles = { upcoming: 'ניווטים קרובים', annual: 'תוכנית שנתית', forum: 'פורום', ranking: 'דירוג', event: 'אירוע', results: 'תוצאות' };
     document.title = `${titles[view]} – ניווט ישראל`;
     if (view !== 'event') state.lastView = view;
