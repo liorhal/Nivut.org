@@ -2396,8 +2396,15 @@
       return { i, ctl, top, avg, m, spread: m !== null && times.length ? m - times[0] : null, count: times.length, missed, mAvg,
         firsts: legs.filter(([v]) => v === legs[0][0]).map(([, r]) => r) };
     });
-    // the legs where the field lost the most: the largest gap between the fastest and the median
-    const hard = new Set(rows.filter((x) => x.spread !== null).sort((a, b) => b.spread / (b.m || 1) - a.spread / (a.m || 1)).slice(0, Math.min(3, Math.floor(n / 4))).map((x) => x.i));
+    // The hardest legs: with LapCombat, the most time lost to mistakes on average (its own measure, net of each
+    // runner's pace); otherwise where the field lost the most to the fastest – the median's gap to the fastest, relative.
+    const byMistake = !!c.lap?.mistake && rows.some((x) => x.mAvg !== null);
+    const score = (x) => (byMistake ? x.mAvg : x.spread !== null && x.m ? x.spread / x.m : null);
+    const hard = new Set(rows.filter((x) => score(x) !== null && score(x) > 0).sort((a, b) => score(b) - score(a)).slice(0, Math.min(3, Math.floor(n / 4))).map((x) => x.i));
+    const why = (x) => (byMistake
+      ? `בממוצע ${fmtSec(Math.round(x.mAvg))} טעות למתחרה במקטע הזה`
+      : (() => { const fast = x.m - x.spread, k = x.m / fast; // how many times the fastest the median took
+        return `החציון ${k >= 1.5 ? `פי ${k.toFixed(1)} מ` : `איטי ב-${Math.round((k - 1) * 100)}% מ`}הזמן המהיר (${fmtSec(x.m)} מול ${fmtSec(fast)})`; })());
     const from = (i) => (i ? shortCtl(c.controls[i - 1]) : 'S');
     const legName = (i) => `<bdi dir="ltr">${esc(from(i))}→${esc(shortCtl(c.controls[i]))}</bdi>`;
     // the gist, shown while the table is folded: the hardest legs, and the legs my people were fastest on
@@ -2411,11 +2418,11 @@
       ...[...myWins].map(([name, l]) => `★ ${esc(name)} הכי מהיר ב-${l.map(legName).join(', ')}`)].filter(Boolean);
     return `<details class="ev-card rs-ctl-card">
       <summary><h2 id="rsc-h">ניתוח מקטעים</h2>${gist.length ? `<span class="rs-gist">${gist.join(' · ')}</span>` : ''}</summary>
-      <p class="muted small">${c.runners.length} מתחרים · סיימו ${statuses.OK || 0}${out.length ? ` · ${out.join(' · ')}` : ''}. <span class="rs-hard-k">⚠</span> המקטעים עם הפער הגדול ביותר בין המהיר לחציון.${odd ? ` ${odd === 1 ? 'זמן חריג אחד (טעות מדידה) לא נכלל' : `${odd} זמנים חריגים (טעות מדידה) לא נכללו`} בממוצע.` : ''}</p>
+      <p class="muted small">${c.runners.length} מתחרים · סיימו ${statuses.OK || 0}${out.length ? ` · ${out.join(' · ')}` : ''}. <span class="rs-hard-k">⚠</span> המקטעים הקשים ביותר – ${byMistake ? 'זמן הטעות הממוצע הגבוה ביותר (LapCombat)' : 'הפער היחסי הגדול ביותר בין החציון לזמן המהיר'}.${odd ? ` ${odd === 1 ? 'זמן חריג אחד (טעות מדידה) לא נכלל' : `${odd} זמנים חריגים (טעות מדידה) לא נכללו`} בממוצע.` : ''}</p>
       <div class="rs-table-wrap"><table class="rs-table rs-ctl">
         <thead><tr><th scope="col">מקטע</th><th scope="col">המהירים ביותר</th><th scope="col">ממוצע</th><th scope="col">חציון</th><th scope="col" title="החציון פחות הזמן המהיר">המהיר לפני החציון</th><th scope="col">עם זמן</th><th scope="col" title="ניקוב חסר בנקודה הזו (עם זמן בנקודה מאוחרת יותר)">פספסו</th>${c.lap?.mistake ? '<th scope="col" title="Leg mistake time – ממוצע">טעות ממוצעת</th>' : ''}</tr></thead>
         <tbody>${rows.map((x) => `<tr${hard.has(x.i) ? ' class="hard"' : ''}>
-          <th scope="row"><bdi dir="ltr">${esc(from(x.i))}→${esc(shortCtl(x.ctl))}</bdi>${hard.has(x.i) ? ' <span class="rs-hard-k" title="פער גדול בין המהיר לחציון">⚠</span>' : ''}</th>
+          <th scope="row"><bdi dir="ltr">${esc(from(x.i))}→${esc(shortCtl(x.ctl))}</bdi>${hard.has(x.i) ? ` <span class="rs-hard-k" aria-hidden="true">⚠</span><span class="rs-why">${esc(why(x))}</span>` : ''}</th>
           <td><ol class="rs-top3">${x.top}</ol></td>
           <td class="num"><bdi dir="ltr">${fmtSec(x.avg)}</bdi></td><td class="num"><bdi dir="ltr">${fmtSec(x.m)}</bdi></td>
           <td class="num"><bdi dir="ltr">${x.spread === null ? '–' : fmtSec(x.spread)}</bdi></td>
