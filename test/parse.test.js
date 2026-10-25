@@ -461,3 +461,10 @@ test('results file: a results PDF itself (text read from the PDF, Hebrew back in
   assert.deepEqual([d12.runners[0].name, d12.runners[0].club, d12.runners[0].time], ['פרלמן מידן זהר', 'חבל מודיעין', 2749]);
   assert.equal(r.courses.find((c) => c.name === 'D16A').runners.at(-1).status, 'MP');
 });
+
+test('parseParticipants: the requested start list (RadGrid), the asked-for time as the start', () => {
+  const p = L.parseParticipants(fs.readFileSync(path.join(__dirname, 'fixtures', 'startlist-requested.html'), 'utf8'));
+  assert.equal(p.length, 8);
+  assert.deepEqual(p.find((x) => x.name === 'הלחמי ליאור'), { name: 'הלחמי ליאור', club: 'חבל מודיעין', category: 'ארוך', course: '', start: '10:00' });
+  assert.equal(p[0].start, '10:30');
+});
