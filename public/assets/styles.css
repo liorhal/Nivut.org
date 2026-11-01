@@ -2216,3 +2216,6 @@ html, body { overflow-x: clip; }
   background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--brand) !important; }
 .planner-link svg { width: 14px; height: 14px; }
 .planner-link:hover, .planner-link:focus-visible { background: color-mix(in srgb, var(--brand) 22%, transparent); }
+
+/* registering without an account: the secondary way */
+.ev-facts .fact-reg .reg-actions .btn.reg-guest, .fact-reg .reg-actions .btn.reg-guest { background: transparent; color: var(--brand); border: 2px solid var(--brand); }
