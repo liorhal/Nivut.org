@@ -2231,3 +2231,12 @@ html, body { overflow-x: clip; }
 .top-card.tk .tk-stub:has(.tk-live) { justify-content: flex-start; }
 .top-card.tk .tk-stub:has(.tk-live) .tk-star { margin-top: auto; }
 .top-card.tk .tk-stub .tk-live { margin-top: -2px; }
+
+/* the planner's notes beside the start-times diagram */
+.top-tl.has-planner { display: flex; align-items: center; gap: 10px; }
+.top-tl.has-planner > .planner-link { flex: none; order: 2; }
+.top-tl.has-planner > :not(.planner-link) { flex: 1; min-width: 0; }
+/* files: live results and Livelox */
+.ev-file .fi .live-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #dc2626; box-shadow: 0 0 0 3px rgb(220 38 38 / .2); }
+@media (prefers-reduced-motion: no-preference) { .ev-file .fi .live-dot { animation: live-blink 1.1s ease-in-out infinite; } }
+.ev-file .fk.fk-live { background: #dc2626; color: #fff; letter-spacing: .06em; font-weight: 900; }

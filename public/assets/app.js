@@ -654,6 +654,21 @@
     analysis: { label: 'ניתוח תוצאות', icon: '📈' },
     other: { label: 'קובץ', icon: '📎' },
   };
+  // live results go by several names ("Live results", "קישור לתוצאות בזמן אמת"…): one row, "תוצאות חיות"
+  const isLiveFile = (f) => f.kind === 'results' && /live|זמן\s*אמת|חיות|real\s*-?\s*time/i.test(`${f.name} ${f.url}`);
+  const isLivelox = (f) => /livelox/i.test(`${f.name} ${f.url}`);
+  const isLapCombat = (f) => /lap\s*combat/i.test(`${f.name} ${f.url}`);
+  /** One live-results row; and with a LapCombat analysis, the plain split-times file adds nothing. */
+  function tidyFiles(files) {
+    const live = files.find(isLiveFile);
+    const lap = files.some(isLapCombat);
+    return files.filter((f) => !(isLiveFile(f) && f !== live))
+      .filter((f) => !(lap && f.kind === 'analysis' && !isLapCombat(f) && !isLivelox(f) && /זמני\s*ביניים|split/i.test(`${f.name} ${f.url}`)))
+      .map((f) => (f === live ? { ...f, name: 'תוצאות חיות', live: true } : f));
+  }
+  /** Icon and kind label of a file: live results, Livelox (analysis on the map), else by its kind. */
+  const fileMeta = (f) => (f.live ? { icon: '<i class="live-dot"></i>', label: 'LIVE' }
+    : isLivelox(f) ? { icon: '🗺️', label: 'ניתוח על מפה' } : FILE_KINDS[f.kind] || FILE_KINDS.other);
   /** Before the event the planner's notes and start times lead; from the day itself, results and analysis. */
   function fileOrder(e) {
     const started = daysBetween(new Date(), evDate(e)) <= 0;
@@ -663,7 +678,7 @@
   const viewable = (f) => (f.kind === 'results' || f.kind === 'analysis') && /^https?:\/\/(?:cdn\.|www\.)?nivut\.org\.il\/[^?#]*\.(?:html?|pdf)(?:[?#]|$)/i.test(f.url);
   const fileHref = (f, e) => (e && viewable(f) ? `#results/${encodeURIComponent(e.id)}/${encodeURIComponent(f.url)}` : f.url);
   const fileLink = (f, key = false, e = null) => `<a class="ev-file kind-${f.kind}${key ? ' key' : ''}" href="${esc(fileHref(f, e))}"${fileHref(f, e) === f.url ? ' target="_blank" rel="noopener"' : ''}${isImageUrl(f.url) ? ` data-lightbox="${esc(f.name)}"` : ''}>
-      <span class="fi" aria-hidden="true">${FILE_KINDS[f.kind]?.icon || '📎'}</span><span class="fn">${esc(f.name)}</span>${f.kind !== 'other' && f.name !== FILE_KINDS[f.kind].label ? `<span class="fk">${FILE_KINDS[f.kind].label}</span>` : ''}</a>`;
+      <span class="fi" aria-hidden="true">${fileMeta(f).icon}</span><span class="fn">${esc(f.name)}</span>${f.kind !== 'other' && f.name !== fileMeta(f).label ? `<span class="fk${f.live ? ' fk-live' : ''}">${fileMeta(f).label}</span>` : ''}</a>`;
   /**
    * A run of files named "<prefix>-<category>" (LapCombat-Long, LapCombat-MediumA, …) is one row with a category picker.
    * The last category picked for that prefix is remembered.
@@ -689,7 +704,7 @@
   const filesListHtml = (files, keyOf, e) => groupFiles(files).map((x) => `<li>${x.group ? fileGroupHtml(x, keyOf(x), e) : fileLink(x, keyOf(x), e)}</li>`).join('');
 
   function filesHtml(e) {
-    const files = e.details?.attachments || [];
+    const files = tidyFiles(e.details?.attachments || []);
     if (!files.length) return '';
     const order = fileOrder(e);
     const sorted = [...files].sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
@@ -710,8 +725,8 @@
     box.hidden = false;
     $('#rrList').innerHTML = recent.map((e) => {
       const d = evDate(e);
-      const files = (e.details?.attachments || []).filter((f) => f.kind === 'results' || f.kind === 'analysis')
-        .sort((a, b) => (a.kind === 'results' ? 0 : 1) - (b.kind === 'results' ? 0 : 1));
+      const files = tidyFiles((e.details?.attachments || []).filter((f) => f.kind === 'results' || f.kind === 'analysis'))
+        .sort((a, b) => (b.live ? 1 : 0) - (a.live ? 1 : 0) || (a.kind === 'results' ? 0 : 1) - (b.kind === 'results' ? 0 : 1));
       return `<li class="rr-card" style="--c:${disc(e).color}">
         <div class="rr-date" aria-hidden="true"><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span></div>
         <div class="rr-main">
@@ -1112,7 +1127,7 @@
   function liveLink(e, now = new Date()) {
     if (daysBetween(now, evDate(e)) !== 0) return '';
     const files = (e.details?.attachments || []).filter((f) => f.kind === 'results');
-    const f = files.find((x) => /live|חיות|חי\b/i.test(`${x.name} ${x.url}`)) || files[0];
+    const f = files.find(isLiveFile) || files[0];
     return f ? `<a class="live-link" href="${esc(f.url)}" target="_blank" rel="noopener" aria-label="תוצאות חיות – ${esc(e.title)}"><i aria-hidden="true"></i>LIVE</a>` : '';
   }
   /** The planner's latest notes (the last one attached – they are added as the event nears). */
@@ -1127,14 +1142,12 @@
     const tlMini = e.details && e.source !== 'closed-area' ? timelineHtml(e.details, e, { mini: true }) : '';
     const left = daysBetween(now, d);
     const where = `${distParen(e).trim()} ${wazeLink(e)}`.trim();
-    // bottom left: the planner's notes beside the register button
+    // the planner's notes sit beside the start-times diagram (on the place line when there is none)
     const planner = plannerLink(e);
-    const ctaLink = `<a class="top-cta" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד"><span class="cta-tx">הרשמה </span>↗</a>`;
-    const cta = planner ? `<span class="cta-group">${planner}${ctaLink}</span>` : ctaLink;
+    const cta = `<a class="top-cta" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד"><span class="cta-tx">הרשמה </span>↗</a>`;
     const counting = regDeadline(e) && regDeadline(e) > now;
     const reg = counting ? regBlock(e, 'cd-card', cta)
-      : `${regBlock(e, 'cd-card')}${regOpen(e) ? `<p class="top-foot">${regDeadline(e) ? `<span>${inDays(left)}</span>` : ''}${cta}</p>`
-        : planner ? `<p class="top-foot">${planner}</p>` : ''}`;
+      : `${regBlock(e, 'cd-card')}${regOpen(e) ? `<p class="top-foot">${regDeadline(e) ? `<span>${inDays(left)}</span>` : ''}${cta}</p>` : ''}`;
     // A card rises in the first time it appears (load, "show more", a new filter result), not on redraws.
     const fresh = !seenCards.has(e.id);
     const enter = fresh ? ' is-new' : '';
@@ -1151,8 +1164,8 @@
           <p class="top-when">${[!tlMini && e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`,
             // Phones hide the diagram in the four nearest; this short line takes its place there.
             tlMini && e.details?.startFrom && `<strong class="start-time start-alt">זינוק <bdi dir="ltr">${esc(e.details.startFrom)}${e.details.startTo ? `–${esc(e.details.startTo)}` : ''}</bdi></strong>`,
-            where].filter(Boolean).join(' ')}<span class="sr-only">${e.time || where ? ', ' : ''}${today ? 'היום, ' : ''}${fmtLong(d)}, ${esc(disc(e).label)}${e.location ? `, ${esc(e.location)}` : ''}</span></p>
-          ${tlMini ? `<p class="top-tl">${tlMini}</p>` : ''}
+            where, !tlMini && planner].filter(Boolean).join(' ')}<span class="sr-only">${e.time || where ? ', ' : ''}${today ? 'היום, ' : ''}${fmtLong(d)}, ${esc(disc(e).label)}${e.location ? `, ${esc(e.location)}` : ''}</span></p>
+          ${tlMini ? `<p class="top-tl${planner ? ' has-planner' : ''}">${planner}${tlMini}</p>` : ''}
           ${lead && e.summary ? `<p class="lead-summary">${esc(e.summary)}</p>` : ''}
           ${reg}
         </div>
