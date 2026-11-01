@@ -726,8 +726,12 @@
     box.hidden = false;
     $('#rrList').innerHTML = recent.map((e) => {
       const d = evDate(e);
-      const files = tidyFiles((e.details?.attachments || []).filter((f) => f.kind === 'results' || f.kind === 'analysis'))
-        .sort((a, b) => (b.live ? 1 : 0) - (a.live ? 1 : 0) || (a.kind === 'results' ? 0 : 1) - (b.kind === 'results' ? 0 : 1));
+      // the live link only stands in for results until they are out: with results or LapCombat it is left out,
+      // and on its own it is just "תוצאות"
+      const all = tidyFiles((e.details?.attachments || []).filter((f) => f.kind === 'results' || f.kind === 'analysis'));
+      const settled = all.some((f) => !f.live && (f.kind === 'results' || isLapCombat(f)));
+      const files = all.filter((f) => !(f.live && settled)).map((f) => (f.live ? { ...f, name: 'תוצאות', live: false } : f))
+        .sort((a, b) => (a.kind === 'results' ? 0 : 1) - (b.kind === 'results' ? 0 : 1));
       return `<li class="rr-card" style="--c:${disc(e).color}">
         <div class="rr-date" aria-hidden="true"><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span></div>
         <div class="rr-main">
