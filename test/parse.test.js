@@ -469,7 +469,7 @@ test('parseParticipants: the requested start list (RadGrid), the asked-for time 
   assert.equal(p[0].start, '10:30');
 });
 
-test('results file: LapCombat interactive page (windows-1255, a table per course)', () => {
+test('results file: LapCombat interactive page (windows-1255 without a charset, a table per course, standouts)', () => {
   const r = R.parseResultFile(fs.readFileSync(path.join(__dirname, 'fixtures', 'results', 'lapcombat.html')));
   assert.equal(r.format, 'lapcombat');
   assert.equal(r.title, 'עמק המצלבה וניות');
@@ -483,6 +483,7 @@ test('results file: LapCombat interactive page (windows-1255, a table per course
   assert.deepEqual([a.pos, a.name, a.club, a.time, a.status], ['1', 'עמוס יערי', 'אסא ירושלים', 1379, 'OK']);
   assert.deepEqual([a.splits.slice(0, 3), a.splits.at(-1)], [[59, 125, 194], 1379]);
   assert.deepEqual([a.mistake.slice(0, 2), a.speed[0], a.ideal, a.speedAvg, a.mistakeRatio], [[18, 2], 136.2, 1303, 94.6, 5.51]);
+  assert.deepEqual(long.standouts.map((x) => [x.he, ...x.values]).slice(0, 3), [['השעון השווייצרי', 'עמוס יערי', '5.51%'], ['המרוויח הגדול', 'שאול ויסמן', '24 -->14'], ['המחמיץ הגדול', 'ליאור הלחמי', '10 -->26']]);
   const dnf = mid.runners[0];
   assert.deepEqual([dnf.pos, dnf.name, dnf.status, dnf.time], ['-', 'ולדימיר פדוסין', 'DNF', null]);
 });

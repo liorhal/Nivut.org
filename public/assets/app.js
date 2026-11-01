@@ -2148,7 +2148,7 @@
   }
 
   /* ---------- Results files: a readable table per course, and splits as a SplitsBrowser-style chart ---------- */
-  const RS_PARSER = 5; // bumped when the results parser learns a format, so cached "unknown" answers are not reused
+  const RS_PARSER = 6; // bumped when the results parser learns a format, so cached "unknown" answers are not reused
   const RS_COLORS = 6; // categorical slots (validated: light #2a78d6… / dark #3987e5…), in fixed order
   const rs = { key: '', data: null, event: null, course: 0, picked: new Map(), q: '', refMode: store.get('rsRefMode', 'fastest'), legRows: store.get('rsLegRows', ['cum', 'leg']) };
   const fmtSec = (v, plus = false) => {
@@ -2368,6 +2368,20 @@
         <thead><tr><th scope="col" colspan="2">מתחרה</th>${c.controls.map((ctl) => `<th scope="col">${esc(shortCtl(ctl))}</th>`).join('')}${lap ? '<th scope="col">סיכום</th>' : ''}</tr></thead>${body}</table></div>`;
   }
 
+  /** LapCombat's "standouts" of a course: a small card each (the Hebrew title, who, the number, and what it means). */
+  const STANDOUT_ICON = { 'the swiss clock': '⏱', 'the biggest gain': '📈', 'the biggest miss': '📉', 'the road runner': '🏃', 'the obstacle': '⚠' };
+  function standoutsHtml(c) {
+    if (!c.standouts?.length) return '';
+    return `<section class="rs-standouts" aria-label="בולטים במסלול (LapCombat)">${c.standouts.map((x) => {
+      const [who, val] = x.values;
+      const mine = who && isMinePerson(who);
+      return `<div class="rs-so${mine ? ' mine' : ''}"${x.info ? ` data-tip="${esc(`${x.he || x.en}:\n${x.info}`)}" tabindex="0"` : ''}>
+        <span class="rs-so-t"><span aria-hidden="true">${STANDOUT_ICON[x.en.toLowerCase()] || '★'}</span> ${esc(x.he || x.en)}</span>
+        <b class="rs-so-who">${mine ? '★ ' : ''}${/^\d+\s*\(code/i.test(who || '') ? `נקודה ${esc(who.replace(/\s*\(code\s*(\d+)\)/i, ' (קוד $1)'))}` : esc(who || '')}</b>${val ? `<span class="rs-so-v"><bdi dir="ltr">${esc(val.replace(/\s*-->\s*/, ' → '))}</bdi></span>` : ''}
+        ${x.info ? `<span class="sr-only">${esc(x.info)}</span>` : ''}</div>`;
+    }).join('')}</section>`;
+  }
+
   /**
    * Every leg of the course: the three fastest, the average and median leg time, how far the fastest was ahead of the
    * median, and how many missed that control's punch; from a LapCombat analysis also the average time lost to mistakes.
@@ -2517,6 +2531,7 @@
         <div class="rs-actions">${back}<a class="btn ghost" href="${esc(rs.key)}" target="_blank" rel="noopener">הקובץ המקורי ↗</a></div></div>`}
       ${categoryBar(d.courses.map((x, i) => ({ name: x.name, html: `<button type="button" data-course="${i}" aria-pressed="${i === rs.course}">${esc(x.name)}${x.runners.some((r) => isMinePerson(r.name)) ? ' ★' : ''}</button>` })), 'מסלול / קטגוריה')}
       <p class="muted small rs-info">${[c.info && `<bdi dir="ltr">${esc(c.info)}</bdi>`, `סיימו ${c.runners.filter((r) => r.status === 'OK').length} מתוך ${c.runners.length}`].filter(Boolean).join(' · ')}</p>
+      ${standoutsHtml(c)}
       ${hasSplits(c) && ref ? `<section class="ev-card rs-graph" aria-labelledby="rsg-h">
         <div class="rs-graph-head"><h2 id="rsg-h">${ref.mode === 'winner' ? 'פער מהמנצח בכל נקודה' : 'פער מהמהיר ביותר בכל מקטע'}</h2>
           <div class="seg rs-refmode" role="group" aria-label="קו הייחוס של הגרף">${[['fastest', 'מול המהיר בכל מקטע'], ['winner', 'מול המנצח']].map(([m, t]) => `<button type="button" data-refmode="${m}" aria-pressed="${ref.mode === m}">${t}</button>`).join('')}</div></div>
