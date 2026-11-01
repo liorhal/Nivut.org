@@ -2240,3 +2240,8 @@ html, body { overflow-x: clip; }
 .ev-file .fi .live-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #dc2626; box-shadow: 0 0 0 3px rgb(220 38 38 / .2); }
 @media (prefers-reduced-motion: no-preference) { .ev-file .fi .live-dot { animation: live-blink 1.1s ease-in-out infinite; } }
 .ev-file .fk.fk-live { background: #dc2626; color: #fff; letter-spacing: .06em; font-weight: 900; }
+
+/* the tooltip's pointer at what it belongs to */
+.tip::before { content: ''; position: absolute; left: calc(var(--ax, 50%) - 9px); width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent; }
+.tip[data-side="below"]::before { top: -9px; border-bottom: 10px solid #111; }
+.tip[data-side="above"]::before { bottom: -9px; border-top: 10px solid #111; }

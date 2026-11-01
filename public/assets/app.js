@@ -443,11 +443,14 @@
         return `<span class="tip-row"><span>${esc(name)}</span>${time ? `<b>${esc(time)}</b>` : ''}</span>`;
       }).join('');
       tip.hidden = false;
+      // the tip comes out of what it explains (the star of my people…): right by it, with a pointer at its middle
       const r = el.getBoundingClientRect(), t = tip.getBoundingClientRect();
-      const left = Math.min(Math.max(8, r.left + r.width / 2 - t.width / 2), innerWidth - t.width - 8);
-      const below = r.bottom + 8 + t.height < innerHeight;
+      const cx = r.left + r.width / 2;
+      const left = Math.min(Math.max(8, cx - t.width / 2), innerWidth - t.width - 8);
+      const below = r.bottom + 12 + t.height < innerHeight;
       tip.style.left = `${left}px`;
-      tip.style.top = `${below ? r.bottom + 8 : r.top - t.height - 8}px`;
+      tip.style.top = `${below ? r.bottom + 12 : r.top - t.height - 12}px`;
+      tip.style.setProperty('--ax', `${Math.min(Math.max(14, cx - left), t.width - 14)}px`);
       tip.dataset.side = below ? 'below' : 'above';
     };
     const hide = () => { tip.hidden = true; owner = null; };
