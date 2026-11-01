@@ -729,10 +729,10 @@
     box.hidden = false;
     $('#rrList').innerHTML = recent.map((e) => {
       const d = evDate(e);
-      // the live link only stands in for results until they are out: with results or LapCombat it is left out,
-      // and on its own it is just "תוצאות"
+      // the live link stands in for the results until they are out – then it is left out – and is just "תוצאות"
+      // (LapCombat doesn't replace them: it goes by course, results by category)
       const all = tidyFiles((e.details?.attachments || []).filter((f) => f.kind === 'results' || f.kind === 'analysis'));
-      const settled = all.some((f) => !f.live && (f.kind === 'results' || isLapCombat(f)));
+      const settled = all.some((f) => !f.live && f.kind === 'results');
       const files = all.filter((f) => !(f.live && settled)).map((f) => (f.live ? { ...f, name: 'תוצאות', live: false } : f))
         .sort((a, b) => (a.kind === 'results' ? 0 : 1) - (b.kind === 'results' ? 0 : 1));
       return `<li class="rr-card" style="--c:${disc(e).color}">
