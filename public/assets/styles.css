@@ -2211,3 +2211,8 @@ html, body { overflow-x: clip; }
 }
 @keyframes live-blink { 50% { opacity: .15; } }
 @keyframes live-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgb(220 38 38 / .5); } 60% { box-shadow: 0 0 0 7px rgb(220 38 38 / 0); } }
+
+.planner-link { display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px; border-radius: 999px; font-size: .8rem; font-weight: 800; text-decoration: none; vertical-align: middle;
+  background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--brand) !important; }
+.planner-link svg { width: 14px; height: 14px; }
+.planner-link:hover, .planner-link:focus-visible { background: color-mix(in srgb, var(--brand) 22%, transparent); }

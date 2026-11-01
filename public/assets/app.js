@@ -1115,13 +1115,18 @@
     const f = files.find((x) => /live|חיות|חי\b/i.test(`${x.name} ${x.url}`)) || files[0];
     return f ? `<a class="live-link" href="${esc(f.url)}" target="_blank" rel="noopener" aria-label="תוצאות חיות – ${esc(e.title)}"><i aria-hidden="true"></i>LIVE</a>` : '';
   }
+  /** The planner's latest notes (the last one attached – they are added as the event nears). */
+  function plannerLink(e) {
+    const f = (e.details?.attachments || []).filter((x) => x.kind === 'planner').pop();
+    return f ? `<a class="planner-link" href="${esc(f.url)}" target="_blank" rel="noopener" title="${esc(f.name)}" aria-label="${esc(`${f.name} – ${e.title}`)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 2v6h6M9 13h7M9 17h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>דבר המתכנן</a>` : '';
+  }
   function hudCardHtml(e, { lead = false, now = new Date(), tag = 'h2' } = {}) {
     const d = evDate(e);
     const today = daysBetween(now, d) === 0;
     const live = liveLink(e, now);
     const tlMini = e.details && e.source !== 'closed-area' ? timelineHtml(e.details, e, { mini: true }) : '';
     const left = daysBetween(now, d);
-    const where = `${live} ${distParen(e).trim()} ${wazeLink(e)}`.trim();
+    const where = `${live} ${distParen(e).trim()} ${wazeLink(e)} ${plannerLink(e)}`.trim();
     const cta = `<a class="top-cta" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד"><span class="cta-tx">הרשמה </span>↗</a>`;
     const counting = regDeadline(e) && regDeadline(e) > now;
     const reg = counting ? regBlock(e, 'cd-card', cta)
@@ -1173,6 +1178,7 @@
     ['.tk-kind', 'מאפייני התחרות – ליגה, אליפות, ספרינט, שליחים.'],
     ['.tk-club-name', 'המועדון המארגן.'],
     ['.top-when .waze-link', 'המרחק ממך, ו־Waze לנקודת הכינוס.', 'left'],
+    ['.top-when .planner-link', 'דבר המתכנן האחרון שפורסם. ביום הניווט מופיע כאן גם LIVE – קישור לתוצאות החיות.', 'left'],
     ['.tlm', 'זינוק ראשון, זינוק אחרון ושעת גג.', 'left'],
     ['.reg-cd', 'הרשמה: הזמן שנשאר להרשמה מוקדמת. ההרשמה עצמה מתבצעת באתר הרשמי של האיגוד.'],
   ];
@@ -1183,7 +1189,7 @@
     return {
       id: 'help-sample', title: 'יער בן שמן – ליגה מחזור 3', calPlace: 'יער בן שמן', calDesc: 'ליגה מחזור 3', location: 'יער בן שמן', time: '09:00', date: iso(day),
       disciplines: ['foot'], tags: ['league'], clubName: 'חבל מודיעין', clubId: 'help-sample', url: '#',
-      details: { description: ['אימון לכל הרמות, מתאים גם למתחילים.'], registrationDeadline: `${iso(reg)}T23:59`, startFrom: '09:00', startTo: '11:00', cutoff: '13:30', lat: 31.95, lng: 34.93, club: { pageLogo: SAMPLE_LOGO } },
+      details: { attachments: [{ name: 'דבר המתכנן', url: '#', kind: 'planner' }], description: ['אימון לכל הרמות, מתאים גם למתחילים.'], registrationDeadline: `${iso(reg)}T23:59`, startFrom: '09:00', startTo: '11:00', cutoff: '13:30', lat: 31.95, lng: 34.93, club: { pageLogo: SAMPLE_LOGO } },
     };
   }
   function renderHelpCard() {
