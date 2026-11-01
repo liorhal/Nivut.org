@@ -723,11 +723,6 @@
     }).join('');
   }
 
-  /** The association's sign-in page, coming back to the event's page once signed in (members register signed in;
-   *  the event page alone registers people without an account). */
-  function loginUrl(e) {
-    try { const u = new URL(e.url); return new URL(`/login.aspx?ReturnUrl=${encodeURIComponent(u.pathname + u.search)}`, u).href; } catch { return e.url; }
-  }
   /** Top of the event page: just the countdown, the register button and my registrations. */
   function regTopHtml(e, reg) {
     const dl = reg.deadline;
@@ -736,8 +731,7 @@
       ${e.nivutId && reg.state !== 'none' ? '<div class="reg-mine" id="regMine" aria-live="polite"></div>' : ''}
       ${open && dl ? `<div class="reg-when"><span class="reg-cd-label">הרשמה מוקדמת נסגרת בעוד</span>${countdownHtml(dl, 'cd-reg')}</div>` : `<strong>${esc(reg.title)}</strong>`}
       <div class="reg-actions">
-        ${open ? `<a class="btn btn-xl" href="${esc(loginUrl(e))}" target="_blank" rel="noopener">כניסה והרשמה – חברי איגוד ↗</a>
-          <a class="btn reg-guest" href="${esc(e.url)}" target="_blank" rel="noopener">הרשמה בלי חשבון ↗</a>` : ''}
+        ${open ? `<a class="btn btn-xl" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(reg.cta)} ↗</a>` : ''}
         <button type="button" class="linklike" data-scroll="ev-reg-full">${reg.state === 'none' ? 'פרטים' : 'כל פרטי ההרשמה'} ↓</button>
       </div>
 </li>`;

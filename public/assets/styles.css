@@ -2217,9 +2217,6 @@ html, body { overflow-x: clip; }
 .planner-link svg { width: 14px; height: 14px; }
 .planner-link:hover, .planner-link:focus-visible { background: color-mix(in srgb, var(--brand) 22%, transparent); }
 
-/* registering without an account: the secondary way */
-.ev-facts .fact-reg .reg-actions .btn.reg-guest, .fact-reg .reg-actions .btn.reg-guest { background: transparent; color: var(--brand); border: 2px solid var(--brand); }
-
 /* LIVE under the date in the stub; the planner's notes beside the register button */
 .tk-live { display: flex; justify-content: center; margin-top: 6px; }
 .tk-live .live-link { font-size: .72rem; padding: 2px 8px; box-shadow: 0 0 0 2px rgb(255 255 255 / .9); }
