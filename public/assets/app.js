@@ -2148,7 +2148,7 @@
   }
 
   /* ---------- Results files: a readable table per course, and splits as a SplitsBrowser-style chart ---------- */
-  const RS_PARSER = 4; // bumped when the results parser learns a format, so cached "unknown" answers are not reused
+  const RS_PARSER = 5; // bumped when the results parser learns a format, so cached "unknown" answers are not reused
   const RS_COLORS = 6; // categorical slots (validated: light #2a78d6… / dark #3987e5…), in fixed order
   const rs = { key: '', data: null, event: null, course: 0, picked: new Map(), q: '', refMode: store.get('rsRefMode', 'fastest'), legRows: store.get('rsLegRows', ['cum', 'leg']) };
   const fmtSec = (v, plus = false) => {

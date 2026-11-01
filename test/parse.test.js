@@ -468,3 +468,21 @@ test('parseParticipants: the requested start list (RadGrid), the asked-for time 
   assert.deepEqual(p.find((x) => x.name === 'הלחמי ליאור'), { name: 'הלחמי ליאור', club: 'חבל מודיעין', category: 'ארוך', course: '', start: '10:00' });
   assert.equal(p[0].start, '10:30');
 });
+
+test('results file: LapCombat interactive page (windows-1255, a table per course)', () => {
+  const r = R.parseResultFile(fs.readFileSync(path.join(__dirname, 'fixtures', 'results', 'lapcombat.html')));
+  assert.equal(r.format, 'lapcombat');
+  assert.equal(r.title, 'עמק המצלבה וניות');
+  assert.deepEqual(r.courses.map((c) => c.name), ['Long', 'Middle']);
+  const [long, mid] = r.courses;
+  assert.equal(long.controls.length, 22);
+  assert.equal(long.controls[0], '1 (31)');
+  assert.equal(long.controls.at(-1), 'Finish');
+  assert.deepEqual(long.lap, { speed: true, mistake: true });
+  const a = long.runners[0];
+  assert.deepEqual([a.pos, a.name, a.club, a.time, a.status], ['1', 'עמוס יערי', 'אסא ירושלים', 1379, 'OK']);
+  assert.deepEqual([a.splits.slice(0, 3), a.splits.at(-1)], [[59, 125, 194], 1379]);
+  assert.deepEqual([a.mistake.slice(0, 2), a.speed[0], a.ideal, a.speedAvg, a.mistakeRatio], [[18, 2], 136.2, 1303, 94.6, 5.51]);
+  const dnf = mid.runners[0];
+  assert.deepEqual([dnf.pos, dnf.name, dnf.status, dnf.time], ['-', 'ולדימיר פדוסין', 'DNF', null]);
+});
