@@ -2227,3 +2227,7 @@ html, body { overflow-x: clip; }
 .top-foot:has(> .cta-group:only-child) { justify-content: flex-end; }
 @media (max-width: 640px) { .tk-live .live-link { font-size: .62rem; padding: 1px 6px; gap: 4px; letter-spacing: .04em; } .tk-live .live-link i { width: 6px; height: 6px; } }
 .top-foot > .cta-group, .top-foot > .planner-link:only-child { margin-inline-start: auto; }
+/* LIVE right under the date; the star stays at the bottom */
+.top-card.tk .tk-stub:has(.tk-live) { justify-content: flex-start; }
+.top-card.tk .tk-stub:has(.tk-live) .tk-star { margin-top: auto; }
+.top-card.tk .tk-stub .tk-live { margin-top: -2px; }
