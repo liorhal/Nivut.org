@@ -2219,3 +2219,14 @@ html, body { overflow-x: clip; }
 
 /* registering without an account: the secondary way */
 .ev-facts .fact-reg .reg-actions .btn.reg-guest, .fact-reg .reg-actions .btn.reg-guest { background: transparent; color: var(--brand); border: 2px solid var(--brand); }
+
+/* LIVE under the date in the stub; the planner's notes beside the register button */
+.tk-live { display: flex; justify-content: center; margin-top: 6px; }
+.tk-live .live-link { font-size: .72rem; padding: 2px 8px; box-shadow: 0 0 0 2px rgb(255 255 255 / .9); }
+.cta-group { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.top-foot .planner-link, .reg-cd .planner-link { flex: none; }
+.top-foot:has(> .planner-link:only-child) { justify-content: flex-end; }
+.top-foot > span.cta-group, .top-card .top-foot > span.cta-group { display: inline-flex; }
+.top-foot:has(> .cta-group:only-child) { justify-content: flex-end; }
+@media (max-width: 640px) { .tk-live .live-link { font-size: .62rem; padding: 1px 6px; gap: 4px; letter-spacing: .04em; } .tk-live .live-link i { width: 6px; height: 6px; } }
+.top-foot > .cta-group, .top-foot > .planner-link:only-child { margin-inline-start: auto; }

@@ -1132,16 +1132,20 @@
     const live = liveLink(e, now);
     const tlMini = e.details && e.source !== 'closed-area' ? timelineHtml(e.details, e, { mini: true }) : '';
     const left = daysBetween(now, d);
-    const where = `${live} ${distParen(e).trim()} ${wazeLink(e)} ${plannerLink(e)}`.trim();
-    const cta = `<a class="top-cta" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד"><span class="cta-tx">הרשמה </span>↗</a>`;
+    const where = `${distParen(e).trim()} ${wazeLink(e)}`.trim();
+    // bottom left: the planner's notes beside the register button
+    const planner = plannerLink(e);
+    const ctaLink = `<a class="top-cta" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד"><span class="cta-tx">הרשמה </span>↗</a>`;
+    const cta = planner ? `<span class="cta-group">${planner}${ctaLink}</span>` : ctaLink;
     const counting = regDeadline(e) && regDeadline(e) > now;
     const reg = counting ? regBlock(e, 'cd-card', cta)
-      : `${regBlock(e, 'cd-card')}${regOpen(e) ? `<p class="top-foot">${regDeadline(e) ? `<span>${inDays(left)}</span>` : ''}${cta}</p>` : ''}`;
+      : `${regBlock(e, 'cd-card')}${regOpen(e) ? `<p class="top-foot">${regDeadline(e) ? `<span>${inDays(left)}</span>` : ''}${cta}</p>`
+        : planner ? `<p class="top-foot">${planner}</p>` : ''}`;
     // A card rises in the first time it appears (load, "show more", a new filter result), not on redraws.
     const fresh = !seenCards.has(e.id);
     const enter = fresh ? ' is-new' : '';
     return `<li class="top-card tk${enter}${today ? ' is-today' : ''}${lead ? ' lead' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}">
-        <div class="tk-stub"><div class="top-date" aria-hidden="true"><span class="dow">${today ? 'היום' : DAYS[d.getDay()]}</span><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span></div><div class="tk-star"></div></div>
+        <div class="tk-stub"><div class="top-date" aria-hidden="true"><span class="dow">${today ? 'היום' : DAYS[d.getDay()]}</span><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span></div>${live ? `<div class="tk-live">${live}</div>` : ''}<div class="tk-star"></div></div>
         <span class="tk-notch t" aria-hidden="true"></span><span class="tk-notch b" aria-hidden="true"></span>
         <div class="tk-body">
           ${watermarkHtml(e)}
