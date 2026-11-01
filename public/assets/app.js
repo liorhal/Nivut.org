@@ -655,8 +655,9 @@
     other: { label: 'קובץ', icon: '📎' },
   };
   // live results go by several names ("Live results", "קישור לתוצאות בזמן אמת"…): one row, "תוצאות חיות"
-  const isLiveFile = (f) => f.kind === 'results' && /live|זמן\s*אמת|חיות|real\s*-?\s*time/i.test(`${f.name} ${f.url}`);
+  // (Livelox is the route analysis after the event, never live results – though its name starts with "live")
   const isLivelox = (f) => /livelox/i.test(`${f.name} ${f.url}`);
+  const isLiveFile = (f) => f.kind === 'results' && !isLivelox(f) && /live(?!lox)|זמן\s*אמת|חיות|real\s*-?\s*time/i.test(`${f.name} ${f.url}`);
   const isLapCombat = (f) => /lap\s*combat/i.test(`${f.name} ${f.url}`);
   /** One live-results row; and with a LapCombat analysis, the plain split-times file adds nothing. */
   function tidyFiles(files) {
