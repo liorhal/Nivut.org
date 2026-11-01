@@ -1108,11 +1108,20 @@
       });
     });
   }
+  /** On the day: the live results – a results file that says "live" (תוצאות חיות / LIVE RESULTS), else the first results link. */
+  function liveLink(e, now = new Date()) {
+    if (daysBetween(now, evDate(e)) !== 0) return '';
+    const files = (e.details?.attachments || []).filter((f) => f.kind === 'results');
+    const f = files.find((x) => /live|חיות|חי\b/i.test(`${x.name} ${x.url}`)) || files[0];
+    return f ? `<a class="live-link" href="${esc(f.url)}" target="_blank" rel="noopener" aria-label="תוצאות חיות – ${esc(e.title)}"><i aria-hidden="true"></i>LIVE</a>` : '';
+  }
   function hudCardHtml(e, { lead = false, now = new Date(), tag = 'h2' } = {}) {
     const d = evDate(e);
+    const today = daysBetween(now, d) === 0;
+    const live = liveLink(e, now);
     const tlMini = e.details && e.source !== 'closed-area' ? timelineHtml(e.details, e, { mini: true }) : '';
     const left = daysBetween(now, d);
-    const where = `${distParen(e).trim()} ${wazeLink(e)}`.trim();
+    const where = `${live} ${distParen(e).trim()} ${wazeLink(e)}`.trim();
     const cta = `<a class="top-cta" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד"><span class="cta-tx">הרשמה </span>↗</a>`;
     const counting = regDeadline(e) && regDeadline(e) > now;
     const reg = counting ? regBlock(e, 'cd-card', cta)
@@ -1120,8 +1129,8 @@
     // A card rises in the first time it appears (load, "show more", a new filter result), not on redraws.
     const fresh = !seenCards.has(e.id);
     const enter = fresh ? ' is-new' : '';
-    return `<li class="top-card tk${enter}${lead ? ' lead' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}">
-        <div class="tk-stub"><div class="top-date" aria-hidden="true"><span class="dow">${DAYS[d.getDay()]}</span><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span></div><div class="tk-star"></div></div>
+    return `<li class="top-card tk${enter}${today ? ' is-today' : ''}${lead ? ' lead' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}">
+        <div class="tk-stub"><div class="top-date" aria-hidden="true"><span class="dow">${today ? 'היום' : DAYS[d.getDay()]}</span><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span></div><div class="tk-star"></div></div>
         <span class="tk-notch t" aria-hidden="true"></span><span class="tk-notch b" aria-hidden="true"></span>
         <div class="tk-body">
           ${watermarkHtml(e)}
@@ -1133,7 +1142,7 @@
           <p class="top-when">${[!tlMini && e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`,
             // Phones hide the diagram in the four nearest; this short line takes its place there.
             tlMini && e.details?.startFrom && `<strong class="start-time start-alt">זינוק <bdi dir="ltr">${esc(e.details.startFrom)}${e.details.startTo ? `–${esc(e.details.startTo)}` : ''}</bdi></strong>`,
-            where].filter(Boolean).join(' ')}<span class="sr-only">${e.time || where ? ', ' : ''}${fmtLong(d)}, ${esc(disc(e).label)}${e.location ? `, ${esc(e.location)}` : ''}</span></p>
+            where].filter(Boolean).join(' ')}<span class="sr-only">${e.time || where ? ', ' : ''}${today ? 'היום, ' : ''}${fmtLong(d)}, ${esc(disc(e).label)}${e.location ? `, ${esc(e.location)}` : ''}</span></p>
           ${tlMini ? `<p class="top-tl">${tlMini}</p>` : ''}
           ${lead && e.summary ? `<p class="lead-summary">${esc(e.summary)}</p>` : ''}
           ${reg}

@@ -2194,3 +2194,20 @@ html, body { overflow-x: clip; }
 .rs-so-who { font-size: 1rem; }
 .rs-so-v { font-family: var(--num, inherit); font-weight: 800; font-size: 1.1rem; }
 @media (max-width: 640px) { .rs-standouts { grid-template-columns: 1fr 1fr; } }
+
+/* today's events stand out; on the day a blinking LIVE link to the live results */
+/* the card is masked (its perforation), so its outline is drawn inside and the glow is a filter */
+.top-card.is-today { filter: drop-shadow(0 0 7px color-mix(in srgb, var(--accent) 55%, transparent)); }
+.top-card.is-today .tk-body { box-shadow: inset 0 0 0 2.5px var(--accent); }
+.top-card.is-today .tk-stub { background: var(--accent); }
+.top-card.is-today .top-date .dow { font-weight: 900; letter-spacing: .02em; }
+.live-link { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; background: #dc2626; color: #fff !important;
+  font-weight: 900; font-size: .8rem; letter-spacing: .08em; text-decoration: none; direction: ltr; vertical-align: middle; }
+.live-link i { width: 8px; height: 8px; border-radius: 50%; background: #fff; }
+.live-link:hover, .live-link:focus-visible { background: #b91c1c; }
+@media (prefers-reduced-motion: no-preference) {
+  .live-link i { animation: live-blink 1.1s ease-in-out infinite; }
+  .live-link { animation: live-pulse 2.2s ease-in-out infinite; }
+}
+@keyframes live-blink { 50% { opacity: .15; } }
+@keyframes live-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgb(220 38 38 / .5); } 60% { box-shadow: 0 0 0 7px rgb(220 38 38 / 0); } }
