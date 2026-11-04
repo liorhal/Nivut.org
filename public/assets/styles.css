@@ -2245,3 +2245,13 @@ html, body { overflow-x: clip; }
 .tip::before { content: ''; position: absolute; left: calc(var(--ax, 50%) - 9px); width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent; }
 .tip[data-side="below"]::before { top: -9px; border-bottom: 10px solid #111; }
 .tip[data-side="above"]::before { bottom: -9px; border-top: 10px solid #111; }
+
+/* a cancelled event: a red stamp over the date; no registration */
+.top-card.is-cancelled .tk-stub { position: relative; }
+.top-card.is-cancelled .tk-stub .top-date { opacity: .5; }
+.tk-cancel { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-24deg); z-index: 2;
+  font-weight: 900; font-size: 1rem; letter-spacing: .03em; color: #fff; background: #dc2626; padding: 2px 9px; border: 2px solid #fff; border-radius: 6px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / .35); white-space: nowrap; pointer-events: none; }
+@media (max-width: 640px) { .tk-cancel { font-size: .82rem; padding: 1px 6px; } }
+.dock-cancelled { background: #dc2626 !important; color: #fff !important; cursor: default; }
+.fact-reg.reg-cancelled .k, .fact-reg.reg-cancelled strong, .ev-reg-full.reg-cancelled .reg-status strong { color: #b91c1c; }

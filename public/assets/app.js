@@ -508,14 +508,17 @@
   /** Registration block for cards: countdown when open, otherwise a short status line. */
   /** Registration can still be done online: early deadline ahead, or not known (no details yet). */
   const regOpen = (e) => {
-    if (e.source === 'closed-area' || daysBetween(new Date(), evDate(e)) < 0) return false;
+    if (e.source === 'closed-area' || isCancelled(e) || daysBetween(new Date(), evDate(e)) < 0) return false;
     const dl = regDeadline(e);
     return dl ? dl > new Date() : true;
   };
 
+  /** A cancelled event, by what the association writes: "מבוטל!", "בוטל", "האירוע לא מתקיים". */
+  const isCancelled = (e) => /מבוטל|בוטל|לא\s*מתקיים|\bcancel+ed\b/i.test([e.title, e.fullTitle, e.calPlace, e.calDesc, e.homeTitle, e.details?.note].filter(Boolean).join(' '));
   /** Registration status; with a countdown, the register button (cta) sits inside it. */
   function regBlock(e, size, cta = '') {
     const dl = regDeadline(e);
+    if (isCancelled(e)) return '';
     if (e.source === 'closed-area') return '<p class="reg-line reg-soon"><span aria-hidden="true">⏳</span> הרשמה טרם נפתחה</p>';
     if (!dl) return ''; // no early-registration date: the card shows just the register button
     if (dl <= new Date()) return `<p class="reg-line reg-closed"><span aria-hidden="true">🔒</span> ההרשמה המוקדמת נסגרה${e.details.onsite ? ' · <strong>אפשר להירשם במקום</strong>' : ''}</p>`;
@@ -547,11 +550,13 @@
     return `${Math.max(1, Math.floor(ms / 6e4))} דקות`;
   }
 
+  const noReg = (reg) => reg.state === 'none' || reg.state === 'cancelled';
   /** Registration state, the single most important fact on the page. */
   function registration(e) {
     const d = e.details || {};
     const now = new Date();
     const end = evDate(e);
+    if (isCancelled(e)) return { state: 'cancelled', title: 'הניווט מבוטל', text: 'אין הרשמה – הניווט לא מתקיים.', cta: 'לדף האירוע' };
     if (daysBetween(now, end) < 0) {
       return { state: 'past', title: 'האירוע התקיים', text: d.resultsAvailable ? 'התוצאות פורסמו באתר האיגוד.' : 'התוצאות יפורסמו באתר האיגוד.', cta: d.resultsAvailable ? 'לתוצאות' : 'לדף האירוע' };
     }
@@ -750,12 +755,12 @@
   function regTopHtml(e, reg) {
     const dl = reg.deadline;
     const open = reg.state === 'open';
-    return `<li class="fact-reg reg-${reg.state}" id="ev-reg"><span class="ev-ico" aria-hidden="true">${open ? '✍️' : reg.state === 'past' ? '🏁' : reg.state === 'none' ? 'ℹ️' : '⏳'}</span><span class="k">הרשמה</span>
-      ${e.nivutId && reg.state !== 'none' ? '<div class="reg-mine" id="regMine" aria-live="polite"></div>' : ''}
+    return `<li class="fact-reg reg-${reg.state}" id="ev-reg"><span class="ev-ico" aria-hidden="true">${open ? '✍️' : reg.state === 'past' ? '🏁' : reg.state === 'cancelled' ? '🚫' : reg.state === 'none' ? 'ℹ️' : '⏳'}</span><span class="k">הרשמה</span>
+      ${e.nivutId && !noReg(reg) ? '<div class="reg-mine" id="regMine" aria-live="polite"></div>' : ''}
       ${open && dl ? `<div class="reg-when"><span class="reg-cd-label">הרשמה מוקדמת נסגרת בעוד</span>${countdownHtml(dl, 'cd-reg')}</div>` : `<strong>${esc(reg.title)}</strong>`}
       <div class="reg-actions">
         ${open ? `<a class="btn btn-xl" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(reg.cta)} ↗</a>` : ''}
-        <button type="button" class="linklike" data-scroll="ev-reg-full">${reg.state === 'none' ? 'פרטים' : 'כל פרטי ההרשמה'} ↓</button>
+        ${reg.state === 'cancelled' ? '' : `<button type="button" class="linklike" data-scroll="ev-reg-full">${reg.state === 'none' ? 'פרטים' : 'כל פרטי ההרשמה'} ↓</button>`}
       </div>
 </li>`;
   }
@@ -767,16 +772,16 @@
     const dl = reg.deadline;
     const rows = [
       reg.state === 'open' && dl && ['הרשמה מוקדמת עד', `יום ${DAYS[dl.getDay()]} ${dl.getDate()}.${dl.getMonth() + 1}${d.registrationDeadline.length > 10 ? ` בשעה ${esc(d.registrationDeadline.slice(11, 16))}` : ''}`],
-      reg.state !== 'none' && (price || d.price) && ['חברי איגוד', price ? `<b>${price} ₪</b>` : esc(d.price)],
-      reg.state !== 'none' && priceOut && ['שאינם חברי איגוד', `<b>${priceOut} ₪</b>`],
-      reg.state !== 'none' && d.onsite && ['הרשמה במקום', esc(d.onsite)],
+      !noReg(reg) && (price || d.price) && ['חברי איגוד', price ? `<b>${price} ₪</b>` : esc(d.price)],
+      !noReg(reg) && priceOut && ['שאינם חברי איגוד', `<b>${priceOut} ₪</b>`],
+      !noReg(reg) && d.onsite && ['הרשמה במקום', esc(d.onsite)],
     ].filter(Boolean);
     return `<section class="ev-card ev-reg-full reg-${reg.state}" id="ev-reg-full" aria-labelledby="rgf-h"><h2 id="rgf-h" tabindex="-1">הרשמה</h2>
       <p class="reg-status"><strong>${esc(reg.title)}</strong>${reg.text && !(reg.state === 'open' && dl) ? ` · ${esc(reg.text)}` : ''}</p>
       ${rows.length ? `<dl class="reg-rows">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>` : ''}
       ${reg.state === 'none' && moreInfo(e).length ? '<button type="button" class="btn ghost" data-scroll="ev-info">למידע הנוסף</button>' : ''}
-      ${e.nivutId && reg.state !== 'none' ? '<div class="reg-people" id="myPeople" aria-live="polite"></div>' : ''}
-      ${reg.state !== 'none' ? `<div class="ev-actions"><a class="btn${reg.state === 'open' ? '' : ' ghost'}" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(reg.cta)} ↗</a></div>` : ''}
+      ${e.nivutId && !noReg(reg) ? '<div class="reg-people" id="myPeople" aria-live="polite"></div>' : ''}
+      ${!noReg(reg) ? `<div class="ev-actions"><a class="btn${reg.state === 'open' ? '' : ' ghost'}" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(reg.cta)} ↗</a></div>` : ''}
     </section>`;
   }
 
@@ -869,7 +874,7 @@
     </div>
 
     <nav class="ev-dock" aria-label="פעולות מהירות">
-      <a class="dock-main" href="${esc(e.url)}" target="_blank" rel="noopener">${reg.state === 'open' ? 'להרשמה' : 'לאתר האיגוד'}</a>
+      ${reg.state === 'cancelled' ? '<span class="dock-main dock-cancelled">הניווט מבוטל</span>' : `<a class="dock-main" href="${esc(e.url)}" target="_blank" rel="noopener">${reg.state === 'open' ? 'להרשמה' : 'לאתר האיגוד'}</a>`}
       ${canNavigate(e) ? `<a class="dock-waze" href="${esc(wazeUrl(e))}" target="_blank" rel="noopener" aria-label="ניווט ב-Waze">${wazeIcon}</a>` : ''}
       <button type="button" data-share="${esc(e.id)}" aria-label="שיתוף">🔗</button>
     </nav>`;
@@ -1146,21 +1151,22 @@
   function hudCardHtml(e, { lead = false, now = new Date(), tag = 'h2' } = {}) {
     const d = evDate(e);
     const today = daysBetween(now, d) === 0;
-    const live = liveLink(e, now);
+    const cancelled = isCancelled(e);
+    const live = cancelled ? '' : liveLink(e, now);
     const tlMini = e.details && e.source !== 'closed-area' ? timelineHtml(e.details, e, { mini: true }) : '';
     const left = daysBetween(now, d);
     const where = `${distParen(e).trim()} ${wazeLink(e)}`.trim();
     // the planner's notes sit beside the start-times diagram (on the place line when there is none)
     const planner = plannerLink(e);
     const cta = `<a class="top-cta" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד"><span class="cta-tx">הרשמה </span>↗</a>`;
-    const counting = regDeadline(e) && regDeadline(e) > now;
+    const counting = !cancelled && regDeadline(e) && regDeadline(e) > now;
     const reg = counting ? regBlock(e, 'cd-card', cta)
-      : `${regBlock(e, 'cd-card')}${regOpen(e) ? `<p class="top-foot">${regDeadline(e) ? `<span>${inDays(left)}</span>` : ''}${cta}</p>` : ''}`;
+      : cancelled ? '' : `${regBlock(e, 'cd-card')}${regOpen(e) ? `<p class="top-foot">${regDeadline(e) ? `<span>${inDays(left)}</span>` : ''}${cta}</p>` : ''}`;
     // A card rises in the first time it appears (load, "show more", a new filter result), not on redraws.
     const fresh = !seenCards.has(e.id);
     const enter = fresh ? ' is-new' : '';
-    return `<li class="top-card tk${enter}${today ? ' is-today' : ''}${lead ? ' lead' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}">
-        <div class="tk-stub"><div class="top-date" aria-hidden="true"><span class="dow">${today ? 'היום' : DAYS[d.getDay()]}</span><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span></div>${live ? `<div class="tk-live">${live}</div>` : ''}<div class="tk-star"></div></div>
+    return `<li class="top-card tk${enter}${today && !cancelled ? ' is-today' : ''}${cancelled ? ' is-cancelled' : ''}${lead ? ' lead' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}">
+        <div class="tk-stub"><div class="top-date" aria-hidden="true"><span class="dow">${today ? 'היום' : DAYS[d.getDay()]}</span><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span></div>${cancelled ? '<span class="tk-cancel" aria-hidden="true">מבוטל</span>' : ''}${live ? `<div class="tk-live">${live}</div>` : ''}<div class="tk-star"></div></div>
         <span class="tk-notch t" aria-hidden="true"></span><span class="tk-notch b" aria-hidden="true"></span>
         <div class="tk-body">
           ${watermarkHtml(e)}
@@ -1172,7 +1178,7 @@
           <p class="top-when">${[!tlMini && e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`,
             // Phones hide the diagram in the four nearest; this short line takes its place there.
             tlMini && e.details?.startFrom && `<strong class="start-time start-alt">זינוק <bdi dir="ltr">${esc(e.details.startFrom)}${e.details.startTo ? `–${esc(e.details.startTo)}` : ''}</bdi></strong>`,
-            where, !tlMini && planner].filter(Boolean).join(' ')}<span class="sr-only">${e.time || where ? ', ' : ''}${today ? 'היום, ' : ''}${fmtLong(d)}, ${esc(disc(e).label)}${e.location ? `, ${esc(e.location)}` : ''}</span></p>
+            where, !tlMini && planner].filter(Boolean).join(' ')}<span class="sr-only">${e.time || where ? ', ' : ''}${cancelled ? 'מבוטל, ' : ''}${today ? 'היום, ' : ''}${fmtLong(d)}, ${esc(disc(e).label)}${e.location ? `, ${esc(e.location)}` : ''}</span></p>
           ${tlMini ? `<p class="top-tl${planner ? ' has-planner' : ''}">${planner}${tlMini}</p>` : ''}
           ${lead && e.summary ? `<p class="lead-summary">${esc(e.summary)}</p>` : ''}
           ${reg}
