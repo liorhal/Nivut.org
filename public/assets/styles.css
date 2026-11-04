@@ -2255,3 +2255,11 @@ html, body { overflow-x: clip; }
 @media (max-width: 640px) { .tk-cancel { font-size: .82rem; padding: 1px 6px; } }
 .dock-cancelled { background: #dc2626 !important; color: #fff !important; cursor: default; }
 .fact-reg.reg-cancelled .k, .fact-reg.reg-cancelled strong, .ev-reg-full.reg-cancelled .reg-status strong { color: #b91c1c; }
+/* league events stand out: a bright yellow card (and a thicker gold edge) */
+.top-card.tk.is-league .tk-body:not(:where(.is-mine *)) { background: linear-gradient(160deg, #fff1a8, #fff8d1 60%, #fffbe6); }
+:is(#top4, #eventList, #hhCard) > .top-card.tk.is-league {
+  filter: drop-shadow(0 0 1px #f5b301) drop-shadow(0 0 1px #f5b301) drop-shadow(0 0 1px #f5b301) drop-shadow(0 0 1px #f5b301) var(--sh);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .top-card.tk.is-league .tk-body:not(:where(.is-mine *)) { background: linear-gradient(160deg, color-mix(in srgb, #f5b301 30%, var(--surface)), color-mix(in srgb, #f5b301 14%, var(--surface))); } }
+:root[data-theme="dark"] .top-card.tk.is-league .tk-body:not(:where(.is-mine *)) { background: linear-gradient(160deg, color-mix(in srgb, #f5b301 30%, var(--surface)), color-mix(in srgb, #f5b301 14%, var(--surface))); }
+:root[data-contrast="high"] .top-card.tk.is-league .tk-body { background: var(--surface) !important; }
