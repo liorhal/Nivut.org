@@ -2263,3 +2263,28 @@ html, body { overflow-x: clip; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .top-card.tk.is-league .tk-body:not(:where(.is-mine *)) { background: linear-gradient(160deg, color-mix(in srgb, #f5b301 30%, var(--surface)), color-mix(in srgb, #f5b301 14%, var(--surface))); } }
 :root[data-theme="dark"] .top-card.tk.is-league .tk-body:not(:where(.is-mine *)) { background: linear-gradient(160deg, color-mix(in srgb, #f5b301 30%, var(--surface)), color-mix(in srgb, #f5b301 14%, var(--surface))); }
 :root[data-contrast="high"] .top-card.tk.is-league .tk-body { background: var(--surface) !important; }
+
+/* sponsor banner (terra-explore), between the nearest events and the latest results; the brand's own colours */
+.sponsor { --te-teal: #2C7A86; --te-green: #9CC46B; --te-ink: #173A30; margin-top: 18px; margin-bottom: 4px; }
+.sponsor-in { display: flex; align-items: center; gap: 14px; padding: 8px 14px; border-radius: 14px; text-decoration: none; color: var(--te-ink);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--te-green) 22%, #fff), color-mix(in srgb, var(--te-teal) 14%, #fff));
+  border: 1px solid color-mix(in srgb, var(--te-teal) 35%, #fff); box-shadow: var(--shadow); }
+.sponsor-in:hover, .sponsor-in:focus-visible { border-color: var(--te-teal); }
+.sponsor-logo { flex: none; display: inline-flex; }
+.sponsor-logo img { display: block; height: 28px; width: auto; }
+.sponsor-logo .lg-dark { display: none; }
+.sponsor-tx { flex: 1; text-align: center; font-size: .95rem; line-height: 1.35; }
+.sponsor-tx b { color: var(--te-teal); }
+.sponsor-go { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--te-teal); color: #fff; font-weight: 900; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .sponsor-in { background: linear-gradient(90deg, color-mix(in srgb, var(--te-green) 16%, #10221c), color-mix(in srgb, var(--te-teal) 26%, #10221c)); border-color: var(--te-teal); color: #e8eee9; }
+  :root:not([data-theme="light"]) .sponsor-tx b { color: var(--te-green); }
+  :root:not([data-theme="light"]) .sponsor-logo .lg-light { display: none; }
+  :root:not([data-theme="light"]) .sponsor-logo .lg-dark { display: block; }
+}
+:root[data-theme="dark"] .sponsor-in { background: linear-gradient(90deg, color-mix(in srgb, var(--te-green) 16%, #10221c), color-mix(in srgb, var(--te-teal) 26%, #10221c)); border-color: var(--te-teal); color: #e8eee9; }
+:root[data-theme="dark"] .sponsor-tx b { color: var(--te-green); }
+:root[data-theme="dark"] .sponsor-logo .lg-light { display: none; }
+:root[data-theme="dark"] .sponsor-logo .lg-dark { display: block; }
+:root[data-contrast="high"] .sponsor-in { background: var(--surface); color: var(--text); border: 2px solid var(--text); }
+@media (max-width: 640px) { .sponsor-in { padding: 8px 10px; gap: 10px; } .sponsor-logo img { height: 22px; } .sponsor-tx { font-size: .84rem; } .sponsor-go { width: 26px; height: 26px; } }
