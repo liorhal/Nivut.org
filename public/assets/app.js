@@ -607,7 +607,9 @@
     if (mini) {
       const said = `זינוקים ${t !== null ? `בין ${fromMin(s)} ל-${fromMin(t)}` : `מ-${fromMin(s)}`}${c !== null ? `, שעת גג ${fromMin(c)}` : ''}`;
       // Spans only: it sits inside the card's <p class="top-when">.
-      return `<span class="tlm" role="img" aria-label="${said}"><span class="tlm-track" aria-hidden="true">${t !== null ? `<span class="tlm-win" style="inset-inline-start:${pos(s)};width:calc(${pos(t)} - ${pos(s)})"></span>` : ''}${c !== null ? `<span class="tlm-run" style="inset-inline-start:${pos(t ?? s)};width:calc(${pos(c)} - ${pos(t ?? s)})"></span>` : ''}${points.map((p) => `<span class="tlm-tick ${p.cls}" style="inset-inline-start:${pos(p.at)}"></span>`).join('')}</span><span class="tlm-pts" aria-hidden="true">${points.map((p) => `<time class="${p.cls}" style="inset-inline-start:${pos(p.at)}">${fromMin(p.at)}</time>`).join('')}</span></span>`;
+      // hover / tap: what each mark is
+      const tip = ['זמני הזינוק:', ...points.map((p) => `${p.label}\t${fromMin(p.at)}`)].join('\n');
+      return `<span class="tlm" role="img" aria-label="${said}" data-tip="${esc(tip)}" tabindex="0"><span class="tlm-track" aria-hidden="true">${t !== null ? `<span class="tlm-win" style="inset-inline-start:${pos(s)};width:calc(${pos(t)} - ${pos(s)})"></span>` : ''}${c !== null ? `<span class="tlm-run" style="inset-inline-start:${pos(t ?? s)};width:calc(${pos(c)} - ${pos(t ?? s)})"></span>` : ''}${points.map((p) => `<span class="tlm-tick ${p.cls}" style="inset-inline-start:${pos(p.at)}"></span>`).join('')}</span><span class="tlm-pts" aria-hidden="true">${points.map((p) => `<time class="${p.cls}" style="inset-inline-start:${pos(p.at)}">${fromMin(p.at)}</time>`).join('')}</span></span>`;
     }
     return `<div class="tl" role="group" aria-label="לוח הזמנים של יום התחרות">
         <div class="tl-track" aria-hidden="true">

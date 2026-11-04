@@ -2288,3 +2288,6 @@ html, body { overflow-x: clip; }
 :root[data-theme="dark"] .sponsor-logo .lg-dark { display: block; }
 :root[data-contrast="high"] .sponsor-in { background: var(--surface); color: var(--text); border: 2px solid var(--text); }
 @media (max-width: 640px) { .sponsor-in { padding: 8px 10px; gap: 10px; } .sponsor-logo img { height: 22px; } .sponsor-tx { font-size: .84rem; } .sponsor-go { width: 26px; height: 26px; } }
+
+.tlm[data-tip] { cursor: help; }
+.tlm[data-tip]:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 6px; }
