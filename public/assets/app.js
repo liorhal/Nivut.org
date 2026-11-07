@@ -728,7 +728,7 @@
   async function renderRecentResults() {
     const box = $('#recentResults');
     const end = startOfDay(new Date()); end.setDate(end.getDate() + 1);
-    const recent = state.events.filter((e) => e.nivutId && e.source !== 'closed-area' && !isClosedEvent(e) && parseDate(e.date) < end)
+    const recent = state.events.filter((e) => e.nivutId && e.source !== 'closed-area' && !isClosedEvent(e) && !isCancelled(e) && parseDate(e.date) < end)
       .sort((a, b) => evDate(b) - evDate(a)).slice(0, 3);
     if (!recent.length) { box.hidden = true; return; }
     await Promise.all(recent.filter((e) => !e.details).map((e) => loadJson(`api/event?id=${encodeURIComponent(e.nivutId)}`)
