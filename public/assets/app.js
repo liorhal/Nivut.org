@@ -11,7 +11,8 @@
   const DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
   const DAYS_SHORT = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
 
-  const parseDate = (d, t = '00:00') => {
+  // "2026-11-10T22:00" keeps its hour (a deadline closes then, not at midnight); a date alone is the day's start
+  const parseDate = (d, t = '') => {
     const [y, m, day] = d.slice(0, 10).split('-').map(Number);
     const [hh, mm] = (t || d.slice(11, 16) || '00:00').split(':').map(Number);
     return new Date(y, m - 1, day, hh || 0, mm || 0);
