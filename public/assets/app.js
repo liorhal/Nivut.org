@@ -243,8 +243,43 @@
     fallback = fresh(fallback && fallback !== src ? club?.logo : club?.logoAlt);
     if (!primary) return '';
     const alt = fallback && fallback !== primary ? ` data-fallback="${esc(fallback)}"` : '';
-    return `<span class="club-logo ${cls}" aria-hidden="true"><img src="${esc(primary)}" alt="" loading="lazy"${alt} onerror="nivutLogoFail(this)"></span>`;
+    return `<span class="club-logo ${cls}" aria-hidden="true"><img src="${esc(primary)}" alt="" loading="lazy"${alt} onload="nivutLogoFit(this)" onerror="nivutLogoFail(this)"></span>`;
   }
+  /**
+   * Logos come with very different empty margins (white or transparent): measure the drawn part and enlarge the
+   * image so every club's mark fills about the same space. Needs the image host to allow reading its pixels (CORS);
+   * when it doesn't, the logo stays as it is.
+   */
+  const logoFill = new Map();
+  window.nivutLogoFit = (img) => {
+    const src = img.currentSrc || img.src;
+    const apply = (k) => { if (k > 1.05) img.style.scale = String(k); };
+    if (logoFill.has(src)) { apply(logoFill.get(src)); return; }
+    const probe = new Image();
+    probe.crossOrigin = 'anonymous';
+    probe.onload = () => {
+      let k = 1;
+      try {
+        const N = 64, c = document.createElement('canvas'); c.width = c.height = N;
+        const g = c.getContext('2d', { willReadFrequently: true });
+        const r = Math.min(N / probe.naturalWidth, N / probe.naturalHeight);
+        const w = probe.naturalWidth * r, h = probe.naturalHeight * r;
+        g.drawImage(probe, (N - w) / 2, (N - h) / 2, w, h);
+        const px = g.getImageData(0, 0, N, N).data;
+        let x0 = N, y0 = N, x1 = -1, y1 = -1;
+        for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+          const i = (y * N + x) * 4;
+          if (px[i + 3] > 24 && !(px[i] > 232 && px[i + 1] > 232 && px[i + 2] > 232)) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+        }
+        if (x1 >= 0) k = Math.min(1.8, 0.94 / (Math.max(x1 - x0 + 1, y1 - y0 + 1) / Math.max(w, h)));
+      } catch { /* the host doesn't allow reading the pixels */ }
+      logoFill.set(src, k);
+      apply(k);
+    };
+    probe.onerror = () => logoFill.set(src, 1);
+    // the association's images through our own address (same origin: readable); others as they are
+    probe.src = /^https?:\/\/(?:cdn\.|www\.)?nivut\.org\.il\//i.test(src) || src.startsWith(location.origin) === false && /\/(?:images\/clubs|club-logos)\//.test(src) ? `api/logo?url=${encodeURIComponent(src)}` : src;
+  };
   window.nivutLogoFail = (img) => {
     const next = img.dataset.fallback;
     // No logo at all: remove the whole logo element (no placeholder).
@@ -257,7 +292,7 @@
     const primary = fresh(e.details?.club?.pageLogo || club?.logo || '');
     if (!primary) return '';
     const alt = fresh([club?.logo, club?.logoAlt].find((x) => x && fresh(x) !== primary) || '');
-    return `<span class="hud-logo" aria-hidden="true"><img src="${esc(primary)}" alt="" loading="lazy"${alt ? ` data-fallback="${esc(alt)}"` : ''} onerror="nivutLogoFail(this)"></span>`;
+    return `<span class="hud-logo" aria-hidden="true"><img src="${esc(primary)}" alt="" loading="lazy"${alt ? ` data-fallback="${esc(alt)}"` : ''} onload="nivutLogoFit(this)" onerror="nivutLogoFail(this)"></span>`;
   }
   const eventLogo = (e, cls) => logoHtml({ id: eventClubId(e), name: e.clubName, fallback: e.details?.club?.pageLogo }, cls);
   const isMine = (e) => !!state.myClub && eventClubId(e) === state.myClub;
