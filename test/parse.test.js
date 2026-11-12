@@ -487,3 +487,12 @@ test('results file: LapCombat interactive page (windows-1255 without a charset, 
   const dnf = mid.runners[0];
   assert.deepEqual([dnf.pos, dnf.name, dnf.status, dnf.time], ['-', 'ולדימיר פדוסין', 'DNF', null]);
 });
+
+test('parseStartList: an attached start-times page (SI-Droid, a table per category)', () => {
+  const { parseStartList } = require('../lib/starts');
+  const rows = parseStartList(fs.readFileSync(path.join(__dirname, 'fixtures', 'startlist-file.html')));
+  assert.deepEqual(rows.map((r) => r.start), ['09:28', '10:15']);
+  assert.match(rows[1].text, /אילגץ' אלינה/);
+  // running times (0:43:41) are not start times
+  assert.deepEqual(parseStartList('<table><tr><td>כהן נועה</td><td>0:43:41</td></tr><tr><td>לוי דני</td><td>10:24:00</td></tr></table>'), [{ text: 'לוי דני 10:24:00', start: '10:24' }]);
+});

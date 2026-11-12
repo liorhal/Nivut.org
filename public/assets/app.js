@@ -360,10 +360,22 @@
   }
 
   /** Participants of an event, fetched once per page view. */
+  // An attached start list ("זמני זינוק", an HTML page or a PDF; the server reads only the association's own hosts)
+  const startFile = (e) => (e.details?.attachments || []).find((f) => f.kind === 'starts' && /^https?:\/\/[^?#]*\.(?:html?|pdf)(?:[?#]|$)/i.test(f.url));
   function participantsOf(e) {
     if (!e.nivutId) return Promise.resolve(null);
     if (!state.participants.has(e.nivutId)) {
-      state.participants.set(e.nivutId, loadJson(`api/participants?id=${encodeURIComponent(e.nivutId)}`).catch((err) => ({ error: err.message })));
+      const list = loadJson(`api/participants?id=${encodeURIComponent(e.nivutId)}`).catch((err) => ({ error: err.message }));
+      // once the start list is attached, its times win over the registration list's (asked-for / not yet given)
+      const f = startFile(e);
+      state.participants.set(e.nivutId, !f ? list : Promise.all([list, loadJson(`api/starts?url=${encodeURIComponent(f.url)}`).catch(() => null)])
+        .then(([data, starts]) => {
+          if (!data?.participants?.length || !starts?.rows?.length) return data;
+          return { ...data, participants: data.participants.map((p) => {
+            const row = starts.rows.find((r) => sameName(p.name, r.text));
+            return row ? { ...p, start: row.start, startFromFile: true } : p;
+          }) };
+        }));
     }
     return state.participants.get(e.nivutId);
   }
