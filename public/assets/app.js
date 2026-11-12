@@ -377,7 +377,7 @@
           if (!data?.participants?.length || !starts?.rows?.length) return data;
           return { ...data, participants: data.participants.map((p) => {
             const row = starts.rows.find((r) => sameName(p.name, r.text));
-            return row ? { ...p, start: row.start, startFromFile: true } : p;
+            return row ? { ...p, start: row.start, startFinal: true, startFromFile: true } : p;
           }) };
         }));
     }
@@ -422,13 +422,13 @@
     if (state.people.length) {
       set(mine2, yes.length
         ? `<span class="reg-mine-k"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.4l-6.1 3.4 1.4-6.8-5.1-4.7 6.9-.8z"/></svg>ההרשמות שלי</span>
-          <ul>${yes.map((p) => `<li><strong>${esc(p.name)}</strong>${p.start ? ` <span class="pstart">${esc(p.start)}</span>` : ''}</li>`).join('')}</ul>`
+          <ul>${yes.map((p) => `<li><strong>${esc(p.name)}</strong>${p.start ? ` <span class="pstart${p.startFinal === true ? ' final' : p.startFinal === false ? ' asked' : ''}">${esc(p.start)}${startTag(p)}</span>` : ''}</li>`).join('')}</ul>`
         : '');
     }
     set(box2, `${head}<p class="muted small">ברשימה כרגע ${listLink(data.count)}</p>
       ${state.people.length ? `<h4>האנשים שלי</h4>${yes.length ? `<ul class="mypl">
         ${yes.map((hit) => `<li class="in"><span class="mark" aria-hidden="true">✓</span><div>
-          <span class="mypl-line"><strong>${esc(hit.name)}</strong>${hit.start ? `<span class="pstart">זינוק ${esc(hit.start)}</span>` : ''}</span>
+          <span class="mypl-line"><strong>${esc(hit.name)}</strong>${hit.start ? `<span class="pstart${hit.startFinal === true ? ' final' : hit.startFinal === false ? ' asked' : ''}">זינוק ${esc(hit.start)}${startTag(hit, true)}</span>` : ''}</span>
           <span class="muted small">${[hit.club, hit.category, hit.course].filter(Boolean).map(esc).join(' · ')}</span></div></li>`).join('')}
       </ul>` : '<p class="muted small">אף אחד מהאנשים שלך עדיין לא רשום.</p>'}` : ''}
       <p class="muted small"><button type="button" class="linklike" data-open-people>${state.people.length ? 'עריכת האנשים שלי' : 'הוספת האנשים שלי'}</button></p>`);
@@ -436,10 +436,12 @@
 
   /** "👥 registered: …" line on the top cards. */
   /** Gold star with the number of my registered people; the tooltip lists them with start times. */
+  /** A start time is final once given (allocated, or on the attached start list); before that it is the one asked for. */
+  const startTag = (p, long = false) => (p.startFinal === true ? (long ? ' ✓ סופי' : ' ✓') : p.startFinal === false ? (long ? ' · מבוקש' : ' מבוקש') : '');
   function peopleStarHtml(hits) {
-    const lines = hits.map((p) => `${p.name}${p.start ? ` · זינוק ${p.start}` : ''}`);
+    const lines = hits.map((p) => `${p.name}${p.start ? ` · זינוק ${p.start}${p.startFinal === true ? ', סופי' : p.startFinal === false ? ', מבוקש' : ''}` : ''}`);
     const label = `${hits.length === 1 ? 'אחד מהאנשים שלך רשום' : `${hits.length} מהאנשים שלך רשומים`}: ${lines.join(', ')}`;
-    return `<button type="button" class="ppl-star" data-tip="${esc(['רשומים:', ...hits.map((p) => `${p.name}\t${(p.start || '').replace(/^0(?=\d:)/, '')}`)].join('\n'))}" aria-label="${esc(label)}">
+    return `<button type="button" class="ppl-star" data-tip="${esc(['רשומים:', ...hits.map((p) => `${p.name}\t${(p.start || '').replace(/^0(?=\d:)/, '')}${p.start ? startTag(p) : ''}`)].join('\n'))}" aria-label="${esc(label)}">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.4l-6.1 3.4 1.4-6.8-5.1-4.7 6.9-.8z"/></svg>
       <span class="n" aria-hidden="true">${hits.length}</span></button>`;
   }

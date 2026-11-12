@@ -2291,3 +2291,9 @@ html, body { overflow-x: clip; }
 
 .tlm[data-tip] { cursor: help; }
 .tlm[data-tip]:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 6px; }
+
+/* start times: final (given / on the start list) or only asked for */
+.pstart.final { color: #15803d; }
+.pstart.asked { opacity: .75; font-style: italic; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pstart.final { color: #4ade80; } }
+:root[data-theme="dark"] .pstart.final { color: #4ade80; }

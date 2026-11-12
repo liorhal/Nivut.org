@@ -168,8 +168,8 @@ test('parseParticipants reads the table by its headings, ignoring layout tables'
       <tr><td>2</td><td>יואב לוי</td><td>כרמל</td><td>M35</td><td>ארוך</td><td>09:40</td></tr></table></td></tr></table>`;
   const p = L.parseParticipants(html);
   assert.deepEqual(p, [
-    { name: 'דנה כהן', club: 'השרון', category: 'D21', course: 'בינוני (רמה 5)', start: '09:12' },
-    { name: 'יואב לוי', club: 'כרמל', category: 'M35', course: 'ארוך', start: '09:40' },
+    { name: 'דנה כהן', club: 'השרון', category: 'D21', course: 'בינוני (רמה 5)', start: '09:12', startFinal: true },
+    { name: 'יואב לוי', club: 'כרמל', category: 'M35', course: 'ארוך', start: '09:40', startFinal: true },
   ]);
   const split = '<table><tr><td>שם פרטי</td><td>שם משפחה</td><td>מועדון</td></tr><tr><td>רפי</td><td>הימן</td><td>השרון</td></tr></table>';
   assert.equal(L.parseParticipants(split)[0].name, 'רפי הימן');
@@ -465,7 +465,7 @@ test('results file: a results PDF itself (text read from the PDF, Hebrew back in
 test('parseParticipants: the requested start list (RadGrid), the asked-for time as the start', () => {
   const p = L.parseParticipants(fs.readFileSync(path.join(__dirname, 'fixtures', 'startlist-requested.html'), 'utf8'));
   assert.equal(p.length, 8);
-  assert.deepEqual(p.find((x) => x.name === 'הלחמי ליאור'), { name: 'הלחמי ליאור', club: 'חבל מודיעין', category: 'ארוך', course: '', start: '10:00' });
+  assert.deepEqual(p.find((x) => x.name === 'הלחמי ליאור'), { name: 'הלחמי ליאור', club: 'חבל מודיעין', category: 'ארוך', course: '', start: '10:00', startFinal: false }); // asked for, not given yet
   assert.equal(p[0].start, '10:30');
 });
 
