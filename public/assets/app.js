@@ -232,11 +232,15 @@
     const words = new Set(nameTokens(text));
     return state.clubs.find((c) => { const t = nameTokens(c.name); return t.length && t.every((w) => words.has(w)); });
   };
+  // Clubs replace their logos under the same address: a daily version keeps browsers from showing an old one for long
+  const LOGO_V = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const fresh = (u) => (u && /^https?:/.test(u) && !/[?&]v=/.test(u) ? `${u}${u.includes('?') ? '&' : '?'}v=${LOGO_V}` : u);
   /** Logo with a fallback image and, if both fail, the club's initial. Decorative: the name is always in text. */
   function logoHtml({ id = '', name = '', src = '', fallback = '' }, cls = '') {
     const club = clubOf(id) || (name ? clubByName(name) : null);
-    const primary = src || club?.logo || fallback;
-    fallback = fallback && fallback !== primary ? fallback : (club?.logoAlt && club.logoAlt !== primary ? club.logoAlt : '');
+    // the event page's own logo is the freshest (read every few minutes), then the club page's (daily)
+    const primary = fresh(src || fallback || club?.logo);
+    fallback = fresh(fallback && fallback !== src ? club?.logo : club?.logoAlt);
     if (!primary) return '';
     const alt = fallback && fallback !== primary ? ` data-fallback="${esc(fallback)}"` : '';
     return `<span class="club-logo ${cls}" aria-hidden="true"><img src="${esc(primary)}" alt="" loading="lazy"${alt} onerror="nivutLogoFail(this)"></span>`;
@@ -250,9 +254,9 @@
   /** Large faded club logo for the card's left edge; vanishes if no image loads. */
   function watermarkHtml(e) {
     const club = clubOf(eventClubId(e)) || clubByName(e.clubName || '');
-    const primary = club?.logo || e.details?.club?.pageLogo || '';
+    const primary = fresh(e.details?.club?.pageLogo || club?.logo || '');
     if (!primary) return '';
-    const alt = [e.details?.club?.pageLogo, club?.logoAlt].find((x) => x && x !== primary) || '';
+    const alt = fresh([club?.logo, club?.logoAlt].find((x) => x && fresh(x) !== primary) || '');
     return `<span class="hud-logo" aria-hidden="true"><img src="${esc(primary)}" alt="" loading="lazy"${alt ? ` data-fallback="${esc(alt)}"` : ''} onerror="nivutLogoFail(this)"></span>`;
   }
   const eventLogo = (e, cls) => logoHtml({ id: eventClubId(e), name: e.clubName, fallback: e.details?.club?.pageLogo }, cls);
