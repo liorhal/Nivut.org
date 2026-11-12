@@ -243,7 +243,7 @@
     fallback = fresh(fallback && fallback !== src ? club?.logo : club?.logoAlt);
     if (!primary) return '';
     const alt = fallback && fallback !== primary ? ` data-fallback="${esc(fallback)}"` : '';
-    return `<span class="club-logo ${cls}" aria-hidden="true"><img src="${esc(primary)}" alt="" loading="lazy"${alt} onload="nivutLogoFit(this)" onerror="nivutLogoFail(this)"></span>`;
+    return `<span class="club-logo ${cls}" aria-hidden="true"${club?.id ? ` data-club="${esc(club.id)}"` : ''}><img src="${esc(primary)}" alt="" loading="lazy"${alt} onload="nivutLogoFit(this)" onerror="nivutLogoFail(this)"></span>`;
   }
   /**
    * Logos come with very different empty margins (white or transparent): measure the drawn part and enlarge the
@@ -251,9 +251,12 @@
    * when it doesn't, the logo stays as it is.
    */
   const logoFill = new Map();
+  // clubs whose logo is known to sit small in its image, in case it can't be measured (Emek Hefer, Menashe)
+  const LOGO_SCALE = { 6: 1.5, 8: 1.45 };
   window.nivutLogoFit = (img) => {
     const src = img.currentSrc || img.src;
-    const apply = (k) => { if (k > 1.05) img.style.scale = String(k); };
+    const club = img.closest('[data-club]')?.dataset.club;
+    const apply = (k) => { k = Math.max(k, LOGO_SCALE[club] || 1); if (k > 1.05) img.style.scale = String(k); };
     if (logoFill.has(src)) { apply(logoFill.get(src)); return; }
     const probe = new Image();
     probe.crossOrigin = 'anonymous';
@@ -276,7 +279,7 @@
       logoFill.set(src, k);
       apply(k);
     };
-    probe.onerror = () => logoFill.set(src, 1);
+    probe.onerror = () => { logoFill.set(src, 1); apply(1); };
     // the association's images through our own address (same origin: readable); others as they are
     probe.src = /^https?:\/\/(?:cdn\.|www\.)?nivut\.org\.il\//i.test(src) || src.startsWith(location.origin) === false && /\/(?:images\/clubs|club-logos)\//.test(src) ? `api/logo?url=${encodeURIComponent(src)}` : src;
   };
@@ -292,7 +295,7 @@
     const primary = fresh(e.details?.club?.pageLogo || club?.logo || '');
     if (!primary) return '';
     const alt = fresh([club?.logo, club?.logoAlt].find((x) => x && fresh(x) !== primary) || '');
-    return `<span class="hud-logo" aria-hidden="true"><img src="${esc(primary)}" alt="" loading="lazy"${alt ? ` data-fallback="${esc(alt)}"` : ''} onload="nivutLogoFit(this)" onerror="nivutLogoFail(this)"></span>`;
+    return `<span class="hud-logo" aria-hidden="true"${club?.id ? ` data-club="${esc(club.id)}"` : ''}><img src="${esc(primary)}" alt="" loading="lazy"${alt ? ` data-fallback="${esc(alt)}"` : ''} onload="nivutLogoFit(this)" onerror="nivutLogoFail(this)"></span>`;
   }
   const eventLogo = (e, cls) => logoHtml({ id: eventClubId(e), name: e.clubName, fallback: e.details?.club?.pageLogo }, cls);
   const isMine = (e) => !!state.myClub && eventClubId(e) === state.myClub;
