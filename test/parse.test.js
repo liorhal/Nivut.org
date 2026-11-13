@@ -496,3 +496,13 @@ test('parseStartList: an attached start-times page (SI-Droid, a table per catego
   // running times (0:43:41) are not start times
   assert.deepEqual(parseStartList('<table><tr><td>כהן נועה</td><td>0:43:41</td></tr><tr><td>לוי דני</td><td>10:24:00</td></tr></table>'), [{ text: 'לוי דני 10:24:00', start: '10:24' }]);
 });
+
+test('results: a timing error (negative total, or a total shorter than the splits) is ERR, after the finishers', () => {
+  const r = (pos, name, time, splits) => ({ pos, name, club: '', time, status: 'OK', splits });
+  const [c] = R.tidy([{ name: 'Short', controls: ['1', '2', 'Finish'], runners: [
+    r('1', 'יהודה שפר', -697, [null, null, -697]), r('2', 'מיכאל לאופר', 1, [457, 601, 1]),
+    r('3', 'עידן ורבין', 1496, [139, 246, 1496]), r('4', 'עמית ורבין', 1685, [117, 188, 1685])] }]);
+  assert.deepEqual(c.runners.map((x) => [x.pos, x.name, x.status, x.time]), [
+    ['1', 'עידן ורבין', 'OK', 1496], ['2', 'עמית ורבין', 'OK', 1685], ['-', 'יהודה שפר', 'ERR', null], ['-', 'מיכאל לאופר', 'ERR', null]]);
+  assert.deepEqual(c.runners[3].splits, [457, 601, null]);
+});

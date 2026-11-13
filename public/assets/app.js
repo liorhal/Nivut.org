@@ -2253,7 +2253,7 @@
   }
 
   /* ---------- Results files: a readable table per course, and splits as a SplitsBrowser-style chart ---------- */
-  const RS_PARSER = 6; // bumped when the results parser learns a format, so cached "unknown" answers are not reused
+  const RS_PARSER = 7; // bumped when the results parser learns a format, so cached "unknown" answers are not reused
   const RS_COLORS = 6; // categorical slots (validated: light #2a78d6… / dark #3987e5…), in fixed order
   const rs = { key: '', data: null, event: null, course: 0, picked: new Map(), q: '', refMode: store.get('rsRefMode', 'fastest'), legRows: store.get('rsLegRows', ['cum', 'leg']) };
   const fmtSec = (v, plus = false) => {
@@ -2263,7 +2263,7 @@
     const body = h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`;
     return `${neg ? '−' : plus ? '+' : ''}${body}`;
   };
-  const STATUS_HE = { MP: 'פספוס נקודה', DNF: 'לא סיים', DSQ: 'נפסל', DNS: 'לא זינק', OT: 'חריגת זמן' };
+  const STATUS_HE = { MP: 'פספוס נקודה', DNF: 'לא סיים', DSQ: 'נפסל', DNS: 'לא זינק', OT: 'חריגת זמן', ERR: 'שגיאת מדידה' };
   const rsKey = (r) => `${r.name}|${r.club}|${r.pos}`;
   const isMinePerson = (name) => state.people.some((p) => sameName(p, name));
 
