@@ -2536,10 +2536,25 @@
    * steadiness against the field, where the time is lost (long legs or short ones), and what follows a big mistake.
    */
   function lapInsightsHtml(c, st) {
-    const mine = c.runners.filter((r) => isMinePerson(r.name) && r.mistake?.length);
-    const who = (mine.length ? mine : c.runners.filter((r) => rs.picked.has(rsKey(r)) && r.mistake?.length)).slice(0, 3);
-    if (!who.length) return '';
     const n = c.controls.length;
+    const lap = !!c.lap?.mistake;
+    // Without LapCombat, its two numbers are estimated from the split times: the speed index of a leg is the time
+    // against the average of the three fastest on it (×100), and the time lost is what the leg took beyond the
+    // runner's own clean pace (the lower quartile of their indices). Checked against LapCombat's own numbers on a real
+    // file: within about 3 seconds a leg on average, and the same total time lost.
+    const best3 = c.controls.map((_, i) => { const v = st.legs.map((l) => l[i]).filter((x) => x > 0).sort((a, b) => a - b).slice(0, 3); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; });
+    const est = (r) => {
+      const l = st.legs[c.runners.indexOf(r)];
+      const sp = l.map((v, i) => (v > 0 && best3[i] ? (100 * v) / best3[i] : null));
+      const o = sp.filter((x) => x !== null).sort((a, b) => a - b);
+      const pace = o.length ? o[Math.floor((o.length - 1) / 4)] : null;
+      return { sp, m: l.map((v, i) => (v > 0 && best3[i] && pace ? Math.round(v - (best3[i] * pace) / 100) : null)) };
+    };
+    const lapOf = (r) => (lap && r.mistake?.length ? { sp: (r.speed || []).map((v) => v ?? null), m: r.mistake.map((v) => v ?? null) } : est(r));
+    const hasLegs = (r) => (lap ? r.mistake?.length : r.splits?.some((v) => v > 0));
+    const mine = c.runners.filter((r) => isMinePerson(r.name) && hasLegs(r));
+    const who = (mine.length ? mine : c.runners.filter((r) => rs.picked.has(rsKey(r)) && hasLegs(r))).slice(0, 3);
+    if (!who.length) return '';
     const from = (i) => (i ? shortCtl(c.controls[i - 1]) : 'S');
     const leg = (i) => `<bdi dir="ltr">${esc(from(i))}→${esc(shortCtl(c.controls[i]))}</bdi>`;
     const span = (a, b) => `<bdi dir="ltr">${esc(from(a))}→${esc(shortCtl(c.controls[b]))}</bdi>`; // legs a..b as one stretch
@@ -2549,13 +2564,13 @@
     const sd = (a) => { const m = mean(a); return a.length > 1 ? Math.sqrt(mean(a.map((x) => (x - m) ** 2))) : null; };
     const CLEAN = 10, BIG = 30; // seconds lost: a clean leg / a real mistake
     const ok = c.runners.filter((r) => r.status === 'OK' && r.time);
-    const cv = (r) => { const v = (r.speed || []).filter((x) => x > 0); return v.length > 3 ? sd(v) / mean(v) : null; };
+    const cv = (r) => { const v = lapOf(r).sp.filter((x) => x > 0); return v.length > 3 ? sd(v) / mean(v) : null; };
     const fieldCv = ok.map(cv).filter((x) => x !== null).sort((a, b) => a - b);
     const legMed = c.controls.map((_, i) => median(st.legs.map((l) => l[i]).filter((v) => v > 0)) || 0);
     const cut = median(legMed.filter((x) => x > 0));
     const cards = who.map((r) => {
       const k = c.runners.indexOf(r);
-      const m = r.mistake.map((v) => (v ?? null)), sp = (r.speed || []).map((v) => (v ?? null));
+      const { m, sp } = lapOf(r);
       const idx = [...Array(n).keys()].filter((i) => m[i] !== null);
       if (idx.length < 3) return '';
       const rows = []; // [label, value, note?]
@@ -2565,6 +2580,16 @@
       if (cum.length) {
         const hi = cum.reduce((a, b) => (b[1] < a[1] ? b : a)), lo = cum.reduce((a, b) => (b[1] > a[1] ? b : a));
         rows.push(['מקום כללי', `הכי גבוה <b>${hi[1]}</b> (בנקודה ${at(hi[0])}) · הכי נמוך <b>${lo[1]}</b> (בנקודה ${at(lo[0])})${r.status === 'OK' ? ` · סיום <b>${esc(r.pos)}</b>` : ''}`]);
+        // the biggest fall and climb between two controls in a row
+        let fall = null, climb = null;
+        for (let q = 1; q < cum.length; q++) {
+          if (cum[q][0] !== cum[q - 1][0] + 1) continue;
+          const d = cum[q][1] - cum[q - 1][1];
+          if (d > 0 && (!fall || d > fall.d)) fall = { d, a: cum[q - 1][1], b: cum[q][1], i: cum[q][0] };
+          if (d < 0 && (!climb || -d > climb.d)) climb = { d: -d, a: cum[q - 1][1], b: cum[q][1], i: cum[q][0] };
+        }
+        if (fall && fall.d >= 3) { rows.push(['נפילה גדולה', `ממקום ${fall.a} ל-<b>${fall.b}</b> בנקודה ${at(fall.i)} (המקטע ${leg(fall.i)})`]); tips.push(`לבדוק את ${leg(fall.i)} – שם נפלת ${fall.d} מקומות`); }
+        if (climb && climb.d >= 3) rows.push(['קפיצה גדולה', `ממקום ${climb.a} ל-<b>${climb.b}</b> בנקודה ${at(climb.i)} (המקטע ${leg(climb.i)})`]);
       }
       const legPl = idx.map((i) => [i, st.rank(i, st.legs[k][i])]).filter(([, p]) => p);
       if (legPl.length) {
@@ -2634,14 +2659,14 @@
         rows.push(['אחרי טעות גדולה', chain ? `<b>טעות גוררת טעות</b> – המקטע הבא עלה בממוצע ${t(a)}` : 'התאוששות טובה – המקטע הבא חזר לשגרה']);
         if (chain) tips.push('לעצור לרגע ולהתארגן אחרי טעות');
       }
-      const strip = `<div class="lp-strip" aria-hidden="true">${[...Array(n).keys()].map((i) => `<i class="${m[i] === null ? 'none' : mistakeCls(m[i]) || 'ok'}" title="${esc(`${from(i)}→${shortCtl(c.controls[i])}: ${m[i] === null ? '–' : fmtMistake(m[i])}`)}"></i>`).join('')}</div>`;
+      const strip = `<div class="lp-strip-wrap" aria-hidden="true"><span class="lp-end">S</span><div class="lp-strip">${[...Array(n).keys()].map((i) => `<i class="${m[i] === null ? 'none' : mistakeCls(m[i]) || 'ok'}" title="${esc(`${from(i)}→${shortCtl(c.controls[i])}: ${m[i] === null ? '–' : fmtMistake(m[i])}`)}"></i>`).join('')}</div><span class="lp-end">${esc(shortCtl(c.controls[n - 1]))}</span></div>`;
       return `<li class="lp-person"><h3>${isMinePerson(r.name) ? '★ ' : ''}${esc(r.name)}<span class="muted"> · ${esc(r.status === 'OK' ? `מקום ${r.pos}` : STATUS_HE[r.status] || r.status)}</span></h3>${strip}
         <dl class="lp-rows">${rows.map(([kk, v]) => `<dt>${kk}</dt><dd>${v}</dd>`).join('')}</dl>
         ${tips.length ? `<p class="lp-tips"><b>לשיפור:</b> ${tips.join(' · ')}</p>` : ''}</li>`;
     }).filter(Boolean);
     if (!cards.length) return '';
     return `<section class="ev-card lp-card" aria-labelledby="lp-h"><h2 id="lp-h">ניתוח אישי</h2>
-      <p class="muted small">לפי זמני הביניים ונתוני LapCombat. פס המקטעים: <span class="lapk good">ירוק</span> טוב מהקצב שלך, <span class="lapk">אפור</span> נקי, <span class="lapk warn">כתום</span> טעות, <span class="lapk bad">אדום</span> טעות גדולה.</p>
+      <p class="muted small">${lap ? 'לפי זמני הביניים ונתוני LapCombat.' : 'לפי זמני הביניים. מדד המהירות (100 = ממוצע שלושת המהירים במקטע) וזמן הטעות (מעבר לקצב הרגיל של המתחרה) הם הערכה מהזמנים.'} פס המקטעים: <span class="lapk good">ירוק</span> טוב מהקצב שלך, <span class="lapk">אפור</span> נקי, <span class="lapk warn">כתום</span> טעות, <span class="lapk bad">אדום</span> טעות גדולה.</p>
       <ul class="lp-list">${cards.join('')}</ul></section>`;
   }
 
@@ -2805,7 +2830,7 @@
         <div class="rs-chart-wrap">${chartSvg(c, ref, st)}</div>
         ${picked.length ? legsTableHtml(c, st, picked) : ''}
       </section>` : ''}
-      ${hasSplits(c) && c.lap?.mistake ? lapInsightsHtml(c, st) : ''}
+      ${hasSplits(c) ? lapInsightsHtml(c, st) : ''}
       ${hasSplits(c) ? controlsHtml(c, st) : ''}
       <section class="ev-card rs-table-card" aria-labelledby="rst-h">
         <div class="rs-table-head"><h2 id="rst-h">תוצאות – ${esc(c.name)}${c.runners.some((r) => isMinePerson(r.name)) ? ' <span class="rs-star" title="האנשים שלי במסלול הזה">★</span>' : ''}</h2>

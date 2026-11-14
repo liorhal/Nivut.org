@@ -2318,3 +2318,7 @@ html, body { overflow-x: clip; }
 .lp-rows dt, .lp-rows dd { padding-bottom: 6px; border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent); }
 .lp-tips { margin: 10px 0 0; padding: 8px 10px; border-radius: 10px; font-size: .88rem; background: color-mix(in srgb, #f59e0b 12%, transparent); }
 @media (max-width: 640px) { .lp-rows { grid-template-columns: 1fr; gap: 0; } .lp-rows dt { border-bottom: 0; padding: 6px 0 0; } }
+
+.lp-strip-wrap { display: flex; align-items: center; gap: 6px; direction: ltr; }
+.lp-strip-wrap .lp-strip { flex: 1; }
+.lp-end { font-family: var(--num, inherit); font-size: .72rem; font-weight: 800; color: var(--muted); min-width: 1.2em; text-align: center; }
