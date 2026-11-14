@@ -2435,6 +2435,7 @@
    *  and only that group's buttons (the group of the shown category first) – one compact row instead of four. */
   const CAT_GROUPS = [['נשים', /^(D|W)\s?\d/i], ['גברים', /^(H|M)\s?\d/i]];
   function categoryBar(items, label, cls = '') {
+    if (items.length < 2) return ''; // one course only: nothing to choose (its name heads the results table)
     const bar = (list, aria, hidden = false) => `<div class="seg rs-courses ${cls}" role="group" aria-label="${esc(aria)}"${hidden ? ' hidden' : ''}>${list.map((x) => x.html).join('')}</div>`;
     const groups = CAT_GROUPS.map(([name, re]) => [name, items.filter((x) => re.test(x.name))]);
     if (groups.some(([, list]) => !list.length)) return bar(items, label);
