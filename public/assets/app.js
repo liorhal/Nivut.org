@@ -355,6 +355,8 @@
     return want.length > 0 && want.every((t) => p.has(t));
   };
 
+  /** An invitation to add my people (shown where they would make a page personal, while there are none). */
+  const inviteHtml = (before, after) => `<p class="invite"><span aria-hidden="true">👥</span> ${before}<button type="button" class="linklike" data-open-people>הוסיפו את האנשים שלכם</button>${after}</p>`;
   function loadPeople() {
     state.people = store.get('people', []).filter((x) => typeof x === 'string' && x.trim()).slice(0, 100);
     updateTrackButtons();
@@ -369,7 +371,7 @@
     if (state.filter.registered) findRegistered().then(() => { renderTop4(); renderList(); });
     renderTop4();
     if (location.hash.startsWith('#event/')) renderMyPeople(decodeURIComponent(location.hash.slice(7)));
-    if (location.hash.startsWith('#results') && rs.data?.courses) renderResultFile();
+    if ((location.hash.startsWith('#results') || (rs.inEvent && $('#eventPage #rsBody'))) && rs.data?.courses) renderResultFile();
   }
   function renderPeopleList() {
     $('#peopleList').innerHTML = state.people.length
@@ -470,7 +472,7 @@
           <span class="mypl-line"><strong>${esc(hit.name)}</strong>${hit.start ? `<span class="pstart${hit.startFinal === true ? ' final' : hit.startFinal === false ? ' asked' : ''}">זינוק ${esc(hit.start)}${startTag(hit, true)}</span>` : ''}</span>
           <span class="muted small">${[hit.club, hit.category, hit.course].filter(Boolean).map(esc).join(' · ')}</span></div></li>`).join('')}
       </ul>` : '<p class="muted small">אף אחד מהאנשים שלך עדיין לא רשום.</p>'}` : ''}
-      <p class="muted small"><button type="button" class="linklike" data-open-people>${state.people.length ? 'עריכת האנשים שלי' : 'הוספת האנשים שלי'}</button></p>`);
+      ${state.people.length ? '<p class="muted small"><button type="button" class="linklike" data-open-people>עריכת האנשים שלי</button></p>' : inviteHtml('', ' – ותראו כאן מי מהם רשום ואת זמני הזינוק שלהם, ואחרי התחרות את התוצאות והניתוח האישי שלהם.')}`);
   }
 
   /** "👥 registered: …" line on the top cards. */
@@ -868,6 +870,39 @@
     </section>`;
   }
 
+  /** The event is over: a past day, or today after its cut-off (שעת גג). */
+  function eventOver(e, now = new Date()) {
+    const days = daysBetween(now, evDate(e));
+    if (days < 0) return true;
+    const cut = toMin(e.details?.cutoff);
+    return days === 0 && cut !== null && now.getHours() * 60 + now.getMinutes() > cut;
+  }
+  /** What the results area of a finished event offers: our viewer for files we read, a link for the rest. */
+  function eventResultItems(e) {
+    return recentFiles(e).map((x) => (x.group ? { label: x.label, href: groupHref(x, e) } : viewable(x.f) ? { label: x.label, url: x.f.url } : { label: x.label, href: x.f.url, ext: true }));
+  }
+  /** After the event, its page leads with the results and analysis; the event details fold below. */
+  function eventResultsHtml(e) {
+    const items = eventResultItems(e);
+    const first = items.find((x) => x.url);
+    return `<section class="ev-results" aria-labelledby="evr-h">
+      <div class="ev-card ev-rs-head"><h2 id="evr-h">תוצאות וניתוח</h2>
+      ${items.length ? `<div class="ev-rs-tabs" role="group" aria-label="קובצי התוצאות">${items.map((x) => (x.url
+        ? `<button type="button" data-evfile="${esc(x.url)}" aria-pressed="${x === first}">${esc(x.label)}</button>`
+        : `<a href="${esc(x.href)}"${x.ext ? ' target="_blank" rel="noopener"' : ''}>${esc(x.label)}${x.ext ? ' ↗' : ' ←'}</a>`)).join('')}</div>` : ''}</div>
+      ${first ? '<div id="rsBody" class="ev-rs"></div>' : `<p class="muted">${items.length ? 'את הקבצים האלה פותחים באתר שלהם.' : 'התוצאות עוד לא פורסמו באתר האיגוד. כדאי לחזור מאוחר יותר.'}</p>`}
+    </section>`;
+  }
+  /** Draws the chosen results file into the event page (the results viewer, embedded). */
+  function mountEventResults(e, url) {
+    const first = url || eventResultItems(e).find((x) => x.url)?.url;
+    if (!first || !$('#eventPage #rsBody')) return;
+    rs.inGroup = true; rs.event = e; rs.inEvent = e.id;
+    $('#resultsPage').innerHTML = '';
+    $$('#eventPage [data-evfile]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.evfile === first)));
+    loadResult(first);
+  }
+
   function eventPageHtml(e) {
     const d = e.details || {};
     const date = evDate(e);
@@ -880,6 +915,7 @@
     const tl = timelineHtml(d, e);
     const hasGeo = d.lat && d.lng;
     const bbox = hasGeo ? [d.lng - 0.03, d.lat - 0.018, d.lng + 0.03, d.lat + 0.018].map((n) => n.toFixed(5)).join(',') : '';
+    const over = !loading && !isCancelled(e) && eventOver(e, now);
 
     return `
     <header class="ev-hero${isLeague(e) ? ' is-league' : ''}" style="--c:${dc.color}">
@@ -907,6 +943,7 @@
     </header>
 
     <div class="container ev-body">
+      ${over ? `${eventResultsHtml(e)}<details class="ev-past"><summary>פרטי התחרות</summary>` : ''}
       <ul class="ev-facts ev-facts3" aria-label="עיקרי האירוע">
         <li class="fact-when"><span class="ev-ico" aria-hidden="true">🕘</span><span class="k">מתי</span>
           <strong class="when-top">${DAYS[date.getDay()]} ${date.getDate()}.${date.getMonth() + 1}${left >= 0 ? ` <span class="when-in">${inDays(left)}</span>` : ''}</strong>
@@ -954,6 +991,7 @@
             ${threads.map((t) => `<li><a href="#forum/${esc(t.id)}">${esc(t.title)}</a><span class="muted small">${esc(t.author)} · ${t.replyCount} תגובות · ${relTime(t.lastActivity)}</span></li>`).join('')}</ul></section>` : ''}
         </aside>
       </div>
+      ${over ? '</details>' : ''}
     </div>
 
     <nav class="ev-dock" aria-label="פעולות מהירות">
@@ -989,13 +1027,14 @@
     box.innerHTML = eventPageHtml(e);
     tickCountdowns();
     renderMyPeople(id);
+    mountEventResults(e);
     $('#evTitle')?.focus({ preventScroll: true });
     gotoSection(goto);
     if (!e.details && e.nivutId) {
       try {
         applyDetails(e, await loadJson(`api/event?id=${encodeURIComponent(e.nivutId)}`));
       } catch { e.details = null; e.nivutId = null; }
-      if (location.hash === `#event/${id}`) { box.innerHTML = eventPageHtml(e); tickCountdowns(); renderMyPeople(id); gotoSection(goto); }
+      if (location.hash === `#event/${id}`) { box.innerHTML = eventPageHtml(e); tickCountdowns(); renderMyPeople(id); mountEventResults(e); gotoSection(goto); }
     }
   }
 
@@ -1918,7 +1957,7 @@
         ${d.diag && !d.notApplied ? `<details class="diag"><summary>פרטים טכניים</summary><pre dir="ltr">${esc(JSON.stringify(d.diag, null, 2))}</pre></details>` : ''}`;
     // My people first: place, points and the gap to the leader and to the one above.
     $('#rkMine').innerHTML = !state.people.length
-      ? '<p class="muted small">הוסיפו את <button type="button" class="linklike" data-open-people>האנשים שלכם</button> כדי לראות אותם מודגשים בדירוג.</p>'
+      ? inviteHtml('', ' – ותראו כאן את המקום, הנקודות והפער מהמוביל של כל אחד מהם, והם יודגשו בטבלאות הדירוג.')
       : mineAll.length ? `<ul class="rk-mine-list">${mineAll.map(({ r, g, n, leader, above }) => `<li>
           <span class="rk-mine-name">★ ${esc(r.name)}</span>
           <span class="rk-mine-place"><b>${r.rank}</b> מתוך ${n}${grids.length > 1 ? ` · ${esc(g.title)}` : ''}</span>
@@ -2295,13 +2334,14 @@
   const isMinePerson = (name) => state.people.some((p) => sameName(p, name));
 
   /** Where the viewer draws: inside a group page (#rsBody), else the whole results page. */
-  const rsTarget = () => (rs.inGroup && $('#rsBody')) || $('#resultsPage');
+  const rsTarget = () => (rs.inEvent && location.hash.startsWith('#event/') && $('#eventPage #rsBody')) || (rs.inGroup && $('#resultsPage #rsBody')) || $('#resultsPage');
 
   async function showResultFile(param) {
     const cut = param.indexOf('/');
     const evId = cut >= 0 ? param.slice(0, cut) : '', url = cut >= 0 ? param.slice(cut + 1) : param;
     if (url.startsWith('group:')) { showFileGroup(evId, url.slice(6)); return; }
-    rs.inGroup = false;
+    rs.inGroup = false; rs.inEvent = null;
+    $('#eventPage').innerHTML = ''; // one viewer in the document at a time (its controls are found by id)
     rs.event = state.events.find((x) => x.id === evId) || null;
     loadResult(url);
     $('#main').focus({ preventScroll: true });
@@ -2309,7 +2349,8 @@
 
   /** A group of files ("LapCombat-Long", "LapCombat-MediumA", …): a button per category, the chosen one below. */
   async function showFileGroup(evId, prefix) {
-    rs.inGroup = true;
+    rs.inGroup = true; rs.inEvent = null;
+    $('#eventPage').innerHTML = '';
     const page = $('#resultsPage');
     let e = state.events.find((x) => x.id === evId) || null;
     rs.event = e;
@@ -2734,7 +2775,7 @@
     if (!cards.length) return '';
     return `<section class="ev-card lp-card" aria-labelledby="lp-h"><h2 id="lp-h">ניתוח אישי</h2>
       <p class="muted small">${lap ? 'לפי זמני הביניים ונתוני LapCombat.' : 'לפי זמני הביניים. מדד המהירות (100 = ממוצע שלושת המהירים במקטע) וזמן הטעות (מעבר לקצב הנקי של המתחרה) הם הערכה מהזמנים.'} פס המקטעים: <span class="lapk good">ירוק</span> טוב מהקצב שלך, <span class="lapk">אפור</span> נקי, <span class="lapk warn">כתום</span> טעות, <span class="lapk bad">אדום</span> טעות גדולה.</p>
-      ${mine.length ? '' : `<p class="lp-invite"><span aria-hidden="true">👥</span> כאן מוצג ניתוח של המקום הראשון. <button type="button" class="linklike" data-open-people>הוסיפו את האנשים שלכם</button> – ובכל קובץ תוצאות יופיע הניתוח האישי שלהם (וגם הם מודגשים בטבלאות ובגרף).</p>`}
+      ${mine.length ? '' : inviteHtml('כאן מוצג ניתוח של המקום הראשון. ', ' – ובכל קובץ תוצאות יופיע הניתוח האישי שלהם (וגם הם מודגשים בטבלאות ובגרף).')}
       <ul class="lp-list">${cards.join('')}</ul></section>`;
   }
 
@@ -2928,8 +2969,22 @@
   }
 
   function initResultsView() {
-    const page = $('#resultsPage');
+    wireResults($('#resultsPage'));
+    // the same viewer embedded in a finished event's page, plus its file tabs
+    const evp = $('#eventPage');
+    evp.addEventListener('click', (ev) => {
+      const f = ev.target.closest('[data-evfile]');
+      if (!f) return;
+      const e = state.events.find((x) => x.id === rs.inEvent);
+      if (e) mountEventResults(e, f.dataset.evfile);
+    });
+    wireResults(evp, '#rsBody');
+  }
+  /** The viewer's controls, on a container (only inside `scope` there, when given). */
+  function wireResults(page, scope = '') {
+    const inScope = (ev) => !scope || ev.target.closest(scope);
     page.addEventListener('click', (ev) => {
+      if (!inScope(ev)) return;
       // "הצג עוד / הצג פחות": opens every box of that kind, and stays so across re-renders (picking runners redraws)
       const mb = ev.target.closest('[data-more]');
       if (mb) {
@@ -2965,6 +3020,7 @@
       if (u) { rs.picked.delete(u.dataset.unpick); renderResultFile(); }
     });
     page.addEventListener('change', (ev) => {
+      if (!inScope(ev)) return;
       const cb = ev.target.closest('[data-pick]');
       if (!cb) return;
       const r = course().runners.find((x) => rsKey(x) === cb.dataset.pick);
@@ -2973,7 +3029,7 @@
       $(`[data-pick="${CSS.escape(cb.dataset.pick)}"]`)?.focus();
     });
     page.addEventListener('input', (ev) => {
-      if (ev.target.id !== 'rsQ') return;
+      if (ev.target.id !== 'rsQ' || !inScope(ev)) return;
       rs.q = ev.target.value; const pos = ev.target.selectionStart;
       renderResultFile(); const i = $('#rsQ'); i.focus(); i.setSelectionRange(pos, pos);
     });
