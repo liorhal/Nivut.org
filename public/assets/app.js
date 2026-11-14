@@ -2328,6 +2328,22 @@
     rs.group = g;
     openGroupItem(sel);
     $('#main').focus({ preventScroll: true });
+    starGroupItems(g);
+  }
+  /** ★ on the categories my people ran: each file of the group is read (cached), a few at a time, in the background. */
+  async function starGroupItems(g) {
+    if (!state.people.length) return;
+    const todo = g.items.map((it, i) => [it, i]).filter(([it]) => viewable(it.f));
+    const one = async ([it, i]) => {
+      const d = await loadJson(`api/resultfile?url=${encodeURIComponent(it.f.url)}&v=${RS_PARSER}`).catch(() => null);
+      if (rs.group !== g || !d?.courses?.some((c) => c.runners.some((r) => isMinePerson(r.name)))) return;
+      const b = $(`[data-gitem="${i}"]`);
+      if (b && !b.dataset.mine) { b.dataset.mine = '1'; b.insertAdjacentText('beforeend', ' ★'); b.title = 'האנשים שלי בקטגוריה הזו'; }
+      // the group's switch (נשים / גברים / כללי) gets it too
+      const bar = b?.closest('.rs-courses'), box = bar?.closest('.rs-cgroups');
+      if (box) { const k = [...box.querySelectorAll('.rs-courses')].indexOf(bar); const t = box.querySelector(`[data-cgroup="${k}"]`); if (t && !t.dataset.mine) { t.dataset.mine = '1'; t.firstChild.textContent += ' ★'; } }
+    };
+    for (let k = 0; k < todo.length; k += 4) await Promise.all(todo.slice(k, k + 4).map(one));
   }
   function openGroupItem(i) {
     const g = rs.group, it = g.items[i];
