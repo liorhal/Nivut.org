@@ -2516,11 +2516,83 @@
         <thead><tr><th scope="col" colspan="2">מתחרה</th>${c.controls.map((ctl) => `<th scope="col">${esc(shortCtl(ctl))}</th>`).join('')}${lap ? '<th scope="col">סיכום</th>' : ''}</tr></thead>${body}</table></div>`;
   }
 
+  /**
+   * Without LapCombat, its numbers are estimated from the split times and stored on the runners the way a LapCombat
+   * file would (c.lap.est marks it): the speed index of a leg is the time against the average of the three fastest on
+   * it (×100); the time lost is what the leg took beyond the runner's own clean pace (the lower quartile of their
+   * indices) – checked against LapCombat's own numbers on a real file: within about 3 seconds a leg on average, the same
+   * total. Then its summaries: total mistakes, ideal time (the time without the losses), mistake ratio (the share of the
+   * time lost) and the course speed index (ideal time against the average of the three best ideal times, ×100).
+   */
+  function estimateLap(c, st) {
+    if (!st || c.lap?.mistake) return;
+    const best3 = c.controls.map((_, i) => { const v = st.legs.map((l) => l[i]).filter((x) => x > 0).sort((a, b) => a - b).slice(0, 3); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; });
+    c.runners.forEach((r, k) => {
+      const l = st.legs[k] || [];
+      const sp = c.controls.map((_, i) => (l[i] > 0 && best3[i] ? Math.round((1000 * l[i]) / best3[i]) / 10 : null));
+      const o = sp.filter((x) => x !== null).sort((a, b) => a - b);
+      const pace = o.length ? o[Math.floor((o.length - 1) / 4)] : null;
+      r.speed = sp;
+      r.mistake = c.controls.map((_, i) => (l[i] > 0 && best3[i] && pace ? Math.round(l[i] - (best3[i] * pace) / 100) : null));
+      const ms = r.mistake.filter((x) => x !== null);
+      if (r.status === 'OK' && r.time > 0 && ms.length === c.controls.length) {
+        r.mistakeTotal = ms.reduce((a, b) => a + b, 0);
+        r.ideal = r.time - ms.filter((x) => x > 0).reduce((a, b) => a + b, 0);
+        r.mistakeRatio = Math.round((10000 * (r.time - r.ideal)) / r.time) / 100;
+      }
+    });
+    const ideals = c.runners.map((r) => r.ideal).filter((x) => x > 0).sort((a, b) => a - b).slice(0, 3);
+    const top = ideals.length ? ideals.reduce((a, b) => a + b, 0) / ideals.length : null;
+    if (top) c.runners.forEach((r) => { if (r.ideal > 0) r.speedAvg = Math.round((1000 * r.ideal) / top) / 10; });
+    c.lap = { speed: true, mistake: true, est: true };
+  }
+
+  /** LapCombat's five standouts, worked out from the course's numbers (the file's own, or the estimate) by its rules. */
+  const SO_INFO = {
+    swiss: ['The Swiss Clock', 'השעון השווייצרי', 'הנווט הדייקן ביותר – זה שאחוז הטעויות שלו במסלול היה הנמוך ביותר. המספר: האחוז מזמן הניווט הכולל שהתבזבז על טעויות ניווט'],
+    gain: ['The Biggest Gain', 'המרוויח הגדול', 'הנווט שהצליח לעקוף הכי הרבה נווטים למרות שהיה איטי מהם, הודות לניווט מדויק. המספר: הדירוג לפי מהירות הניווט ← המקום במסלול'],
+    miss: ['The Biggest Miss', 'המחמיץ הגדול', 'נווט טוב שנדחק לאחור באופן משמעותי עקב טעויות ניווט – זה שהיחס בין הדירוג לפי מהירות הניווט שלו לבין המקום במסלול הוא הגדול ביותר'],
+    runner: ['The Road Runner', 'האצן', 'הנווט בעל מהירות הניווט הטובה ביותר במסלול (מדד המהירות בלי הטעויות; 100 = ממוצע שלושת הטובים, נמוך = מהיר)'],
+    obstacle: ['The Obstacle', 'המוקש', 'הנקודה עם זמן הטעויות הגדול ביותר במסלול – קושי ניווטי או מיקום בעייתי. המספר: זמן הטעות הממוצע בנקודה'],
+  };
+  function deriveStandouts(c) {
+    // navigation speed = the "nominal" one: the cruising speed index where the file has it, else the course speed index
+    const nom = (r) => r.cruise ?? r.speedAvg;
+    const ok = c.runners.filter((r) => r.status === 'OK' && r.time > 0 && r.mistakeRatio != null && nom(r) != null);
+    if (ok.length < 3) return [];
+    const so = (k, who, val) => ({ en: SO_INFO[k][0], he: SO_INFO[k][1], info: SO_INFO[k][2], values: [who, val] });
+    const minBy = (f) => ok.reduce((a, b) => (f(b) < f(a) ? b : a));
+    const place = (r) => 1 + ok.filter((x) => x.time < r.time).length;
+    const spRank = (r) => 1 + ok.filter((x) => nom(x) < nom(r)).length;
+    const SHIFT = 3; // places, for a gain or a miss to count
+    const out = [];
+    const sw = minBy((r) => r.mistakeRatio);
+    out.push(so('swiss', sw.name, `${sw.mistakeRatio.toFixed(2)}%`));
+    const g = minBy((r) => place(r) - spRank(r));
+    if (spRank(g) - place(g) >= SHIFT) out.push(so('gain', g.name, `${spRank(g)} --> ${place(g)}`));
+    const m = minBy((r) => spRank(r) / place(r));
+    if (place(m) - spRank(m) >= SHIFT) out.push(so('miss', m.name, `${spRank(m)} --> ${place(m)}`));
+    const rr = minBy(nom);
+    out.push(so('runner', rr.name, fmtSpeed(nom(rr))));
+    const avg = c.controls.map((_, i) => { const v = c.runners.map((r) => r.mistake?.[i]).filter((x) => x !== null && x !== undefined); return v.length >= 3 ? v.reduce((a, b) => a + b, 0) / v.length : null; });
+    const top = avg.reduce((b, v, i) => (v !== null && (b < 0 || v > avg[b]) ? i : b), -1);
+    if (top >= 0 && avg[top] > 0) out.push(so('obstacle', `נקודה ${shortCtl(c.controls[top])}`, fmtMistake(Math.round(avg[top]))));
+    return out;
+  }
+
   /** LapCombat's "standouts" of a course: a small card each (the Hebrew title, who, the number, and what it means). */
   const STANDOUT_ICON = { 'the swiss clock': '⏱', 'the biggest gain': '📈', 'the biggest miss': '📉', 'the road runner': '🏃', 'the obstacle': '⚠' };
+  const LAPC_TIP = {
+    ideal: 'זמן אידיאלי: הזמן בלי הטעויות – הזמן הכולל פחות הזמן שאבד בכל מקטע מעבר לקצב הנקי',
+    ratio: 'סה״כ זמן טעויות ויחס הטעויות – האחוז מהזמן הכולל שאבד בטעויות',
+    speed: 'מדד מהירות: הזמן האידיאלי מול ממוצע שלושת הטובים (100). נמוך = מהיר',
+  };
   function standoutsHtml(c) {
-    if (!c.standouts?.length) return '';
-    return `<section class="rs-standouts" aria-label="בולטים במסלול (LapCombat)">${c.standouts.map((x) => {
+    const own = !!c.standouts?.length;
+    const list = own ? c.standouts : deriveStandouts(c);
+    if (!list.length) return '';
+    const note = own ? '' : `<p class="muted small rs-so-note">${c.lap?.est ? 'בולטים במסלול לפי ההגדרות של LapCombat – מחושב מזמני הביניים (הערכה)' : 'בולטים במסלול לפי ההגדרות של LapCombat'}</p>`;
+    return `${note}<section class="rs-standouts" aria-label="בולטים במסלול${c.lap?.est ? ' (הערכה)' : ' (LapCombat)'}">${list.map((x) => {
       const [who, val] = x.values;
       const mine = who && isMinePerson(who);
       return `<div class="rs-so${mine ? ' mine' : ''}"${x.info ? ` data-tip="${esc(`${x.he || x.en}:\n${x.info}`)}" tabindex="0"` : ''}>
@@ -2537,21 +2609,9 @@
    */
   function lapInsightsHtml(c, st) {
     const n = c.controls.length;
-    const lap = !!c.lap?.mistake;
-    // Without LapCombat, its two numbers are estimated from the split times: the speed index of a leg is the time
-    // against the average of the three fastest on it (×100), and the time lost is what the leg took beyond the
-    // runner's own clean pace (the lower quartile of their indices). Checked against LapCombat's own numbers on a real
-    // file: within about 3 seconds a leg on average, and the same total time lost.
-    const best3 = c.controls.map((_, i) => { const v = st.legs.map((l) => l[i]).filter((x) => x > 0).sort((a, b) => a - b).slice(0, 3); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; });
-    const est = (r) => {
-      const l = st.legs[c.runners.indexOf(r)];
-      const sp = l.map((v, i) => (v > 0 && best3[i] ? (100 * v) / best3[i] : null));
-      const o = sp.filter((x) => x !== null).sort((a, b) => a - b);
-      const pace = o.length ? o[Math.floor((o.length - 1) / 4)] : null;
-      return { sp, m: l.map((v, i) => (v > 0 && best3[i] && pace ? Math.round(v - (best3[i] * pace) / 100) : null)) };
-    };
-    const lapOf = (r) => (lap && r.mistake?.length ? { sp: (r.speed || []).map((v) => v ?? null), m: r.mistake.map((v) => v ?? null) } : est(r));
-    const hasLegs = (r) => (lap ? r.mistake?.length : r.splits?.some((v) => v > 0));
+    const lap = !!c.lap?.mistake && !c.lap.est; // the file's own numbers, not the estimate
+    const lapOf = (r) => ({ sp: (r.speed || []).map((v) => v ?? null), m: (r.mistake || []).map((v) => v ?? null) });
+    const hasLegs = (r) => r.mistake?.some((v) => v !== null && v !== undefined);
     const mine = c.runners.filter((r) => isMinePerson(r.name) && hasLegs(r));
     const who = (mine.length ? mine : c.runners.filter((r) => rs.picked.has(rsKey(r)) && hasLegs(r))).slice(0, 3);
     if (!who.length) return '';
@@ -2666,7 +2726,7 @@
     }).filter(Boolean);
     if (!cards.length) return '';
     return `<section class="ev-card lp-card" aria-labelledby="lp-h"><h2 id="lp-h">ניתוח אישי</h2>
-      <p class="muted small">${lap ? 'לפי זמני הביניים ונתוני LapCombat.' : 'לפי זמני הביניים. מדד המהירות (100 = ממוצע שלושת המהירים במקטע) וזמן הטעות (מעבר לקצב הרגיל של המתחרה) הם הערכה מהזמנים.'} פס המקטעים: <span class="lapk good">ירוק</span> טוב מהקצב שלך, <span class="lapk">אפור</span> נקי, <span class="lapk warn">כתום</span> טעות, <span class="lapk bad">אדום</span> טעות גדולה.</p>
+      <p class="muted small">${lap ? 'לפי זמני הביניים ונתוני LapCombat.' : 'לפי זמני הביניים. מדד המהירות (100 = ממוצע שלושת המהירים במקטע) וזמן הטעות (מעבר לקצב הנקי של המתחרה) הם הערכה מהזמנים.'} פס המקטעים: <span class="lapk good">ירוק</span> טוב מהקצב שלך, <span class="lapk">אפור</span> נקי, <span class="lapk warn">כתום</span> טעות, <span class="lapk bad">אדום</span> טעות גדולה.</p>
       <ul class="lp-list">${cards.join('')}</ul></section>`;
   }
 
@@ -2782,7 +2842,7 @@
       const gap = (v) => (v === null ? '–' : v === 0 ? '<span class="tt-top">ראשון</span>' : `<bdi dir="ltr">${fmtSec(v, true)}</bdi>`);
       const ctl = c.controls[j];
       const html = `<div class="tt-head">נקודה ${esc(shortCtl(ctl))}${/\((\d+)\)/.test(ctl) ? ` <span>(${esc(/\((\d+)\)/.exec(ctl)[1])})</span>` : ''}</div>
-        <table class="tt"><thead><tr><th></th><th colspan="3">כללי</th><th colspan="3">מקטע</th>${c.lap ? '<th colspan="2">LapCombat</th>' : ''}</tr>
+        <table class="tt"><thead><tr><th></th><th colspan="3">כללי</th><th colspan="3">מקטע</th>${c.lap ? `<th colspan="2">${c.lap.est ? 'הערכה' : 'LapCombat'}</th>` : ''}</tr>
         <tr class="sub"><th></th><th>זמן</th><th>מקום</th><th>פער</th><th>זמן</th><th>מקום</th><th>פער</th>${c.lap ? '<th title="Leg speed index">מהירות</th><th title="Leg mistake time">טעות</th>' : ''}</tr></thead><tbody>${rows.map((x) => `<tr>
           <th><i class="tt-sw s${x.slot}"></i>${esc(x.r.name)}</th>
           <td class="n">${x.at === null || x.at === undefined ? '–' : `<bdi dir="ltr">${fmtSec(x.at)}</bdi>`}</td><td class="n">${x.cr ?? '–'}</td><td class="n">${gap(x.cg)}</td>
@@ -2808,11 +2868,13 @@
     }
     const c = course();
     const st = hasSplits(c) ? legStats(c) : null;
+    estimateLap(c, st);
     const ref = st ? referenceOf(c, st, rs.refMode) : null;
     const lead = c.runners.find((r) => r.status === 'OK' && r.time);
     const q = rs.q.trim().toLowerCase();
     const shown = c.runners.filter((r) => !q || `${r.name} ${r.club}`.toLowerCase().includes(q));
     const picked = c.runners.filter((r) => rs.picked.has(rsKey(r)));
+    const lapCols = c.runners.some((r) => r.ideal || r.speedAvg != null);
     const legend = picked.map((r) => `<button type="button" class="rs-chip s${rs.picked.get(rsKey(r))}" data-unpick="${esc(rsKey(r))}" aria-label="${esc(`הסרת ${r.name} מהגרף`)}"><i aria-hidden="true"></i>${esc(r.name)} <span aria-hidden="true">×</span></button>`).join('');
     page.innerHTML = `
       ${rs.inGroup ? `<p class="rs-orig"><a href="${esc(rs.key)}" target="_blank" rel="noopener">הקובץ המקורי ↗</a></p>` : `<div class="section-head"><div><h1 id="rsTitle">${esc(title)}</h1><p class="muted">${esc(date || '')}</p></div>
@@ -2836,7 +2898,7 @@
         <div class="rs-table-head"><h2 id="rst-h">תוצאות – ${esc(c.name)}${c.runners.some((r) => isMinePerson(r.name)) ? ' <span class="rs-star" title="האנשים שלי במסלול הזה">★</span>' : ''}</h2>
           <label class="rs-search"><span class="sr-only">חיפוש מתחרה או מועדון</span><input type="search" id="rsQ" placeholder="חיפוש שם או מועדון" value="${esc(rs.q)}"></label></div>
         <div class="rs-table-wrap"><table class="rs-table">
-          <thead><tr>${hasSplits(c) ? '<th scope="col"><span class="sr-only">בגרף</span></th>' : ''}<th scope="col">מקום</th><th scope="col">שם</th><th scope="col">מועדון</th><th scope="col">זמן</th><th scope="col">פער</th></tr></thead>
+          <thead><tr>${hasSplits(c) ? '<th scope="col"><span class="sr-only">בגרף</span></th>' : ''}<th scope="col">מקום</th><th scope="col">שם</th><th scope="col">מועדון</th><th scope="col">זמן</th><th scope="col">פער</th>${lapCols ? `<th scope="col" class="lapc" data-tip="${esc(LAPC_TIP.ideal)}">אידיאלי</th><th scope="col" class="lapc" data-tip="${esc(LAPC_TIP.ratio)}">טעויות</th><th scope="col" class="lapc" data-tip="${esc(LAPC_TIP.speed)}">מדד מהירות</th>` : ''}</tr></thead>
           <tbody>${shown.map((r) => {
             const mine = isMinePerson(r.name);
             const k = rsKey(r);
@@ -2847,8 +2909,11 @@
               <td>${mine ? '<span class="rs-star" aria-label="מהאנשים שלי">★</span> ' : ''}${esc(r.name)}</td>
               <td class="muted club">${esc(r.club)}</td>
               <td class="num"><bdi>${r.status === 'OK' ? fmtSec(r.time) : `<span class="rs-status" title="${esc(STATUS_HE[r.status] || r.status)}">${esc(r.status)}</span>`}</bdi></td>
-              <td class="num muted"><bdi>${r.status === 'OK' && lead && r !== lead ? fmtSec(r.time - lead.time, true) : ''}</bdi></td></tr>`;
-          }).join('') || '<tr><td colspan="6" class="muted">אין תוצאות לחיפוש.</td></tr>'}</tbody></table></div>
+              <td class="num muted"><bdi>${r.status === 'OK' && lead && r !== lead ? fmtSec(r.time - lead.time, true) : ''}</bdi></td>${lapCols ? `
+              <td class="num lapc"><bdi>${r.ideal ? fmtSec(r.ideal) : ''}</bdi></td>
+              <td class="num lapc"><bdi dir="ltr">${r.mistakeTotal != null ? fmtMistake(r.mistakeTotal) : ''}</bdi>${r.mistakeRatio != null ? `<small> · ${r.mistakeRatio.toFixed(1)}%</small>` : ''}</td>
+              <td class="num lapc ${speedCls(r.speedAvg)}">${r.speedAvg != null ? fmtSpeed(r.speedAvg) : ''}</td>` : ''}</tr>`;
+          }).join('') || `<tr><td colspan="${lapCols ? 9 : 6}" class="muted">אין תוצאות לחיפוש.</td></tr>`}</tbody></table></div>
       </section>`;
   }
 

@@ -2322,3 +2322,11 @@ html, body { overflow-x: clip; }
 .lp-strip-wrap { display: flex; align-items: center; gap: 6px; direction: ltr; }
 .lp-strip-wrap .lp-strip { flex: 1; }
 .lp-end { font-family: var(--num, inherit); font-size: .72rem; font-weight: 800; color: var(--muted); min-width: 1.2em; text-align: center; }
+
+/* LapCombat-style metrics in the results table (file values or the estimate) */
+.rs-table td.lapc small { color: var(--muted); font-size: .78em; }
+.rs-table td.lapc.good { color: var(--ok, #1e7b4a); font-weight: 700; }
+.rs-table td.lapc.warn { color: #a86400; }
+.rs-table td.lapc.bad { color: #b3261e; }
+.rs-so-note { margin: 10px 0 -6px; }
+@media (max-width: 640px) { .rs-table .lapc { display: none; } }
