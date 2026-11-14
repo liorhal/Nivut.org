@@ -2355,5 +2355,9 @@ html, body { overflow-x: clip; }
 .ev-rs-tabs > * { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-size: .9rem; font-weight: 700; cursor: pointer; text-decoration: none; }
 .ev-rs-tabs button[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
 .ev-rs > .ev-card, .ev-rs > section { margin-bottom: 14px; }
-.ev-past > summary { cursor: pointer; font-weight: 800; font-size: 1.05rem; padding: 10px 0; color: var(--brand); }
-.ev-past > summary::marker { color: var(--brand); }
+
+/* a finished event's card: its results and analysis instead of place, start times, planner and registration */
+.tk-results { margin: 6px 0 0; display: grid; gap: 6px; }
+.tk-results-k { font-size: .78rem; font-weight: 800; color: var(--muted); }
+.tk-files { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.tk-files .ev-file { padding: 5px 12px; font-size: .86rem; border-radius: 999px; }

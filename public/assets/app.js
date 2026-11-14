@@ -536,7 +536,7 @@
       participantsOf(e).then((data) => {
         const hits = registeredPeople(data?.participants);
         if (!hits.length) return;
-        cards.filter(([c, cid]) => cid === id && c.isConnected && !c.querySelector('.ppl-star')).forEach(([c]) => {
+        cards.filter(([c, cid]) => cid === id && c.isConnected && !c.classList.contains('is-over') && !c.querySelector('.ppl-star')).forEach(([c]) => {
           c.classList.add('has-people', 'is-registered');
           (c.querySelector('.tk-star') || c.querySelector('.top-bar'))?.insertAdjacentHTML('afterbegin', peopleStarHtml(hits));
         });
@@ -813,6 +813,8 @@
     }
     return out;
   }
+  /** The results and analysis of an event as short links: ours open in our viewer, the rest on their site. */
+  const resultLinksHtml = (e, files = recentFiles(e), cls = 'rr-files') => `<ul class="${cls}">${files.map((x) => `<li>${x.group ? `<a class="ev-file file-group kind-${x.kind} key" href="${esc(groupHref(x, e))}"><span class="fi" aria-hidden="true">${FILE_KINDS[x.kind].icon}</span><span class="fn">${esc(x.label)}</span></a>` : fileLink({ ...x.f, name: x.label, plain: true }, true, e)}</li>`).join('')}</ul>`;
   async function renderRecentResults() {
     const box = $('#recentResults');
     const end = startOfDay(new Date()); end.setDate(end.getDate() + 1);
@@ -830,7 +832,7 @@
         <div class="rr-main">
           <h3><a href="#event/${encodeURIComponent(e.id)}" title="${esc(e.title)}">${esc(e.title)}</a></h3>
           <p class="sr-only">${fmtLong(d)}</p>
-          ${files.length ? `<ul class="rr-files">${files.map((x) => `<li>${x.group ? `<a class="ev-file file-group kind-${x.kind} key" href="${esc(groupHref(x, e))}"><span class="fi" aria-hidden="true">${FILE_KINDS[x.kind].icon}</span><span class="fn">${esc(x.label)}</span></a>` : fileLink({ ...x.f, name: x.label, plain: true }, true, e)}</li>`).join('')}</ul>`
+          ${files.length ? resultLinksHtml(e, files)
             : `<p class="muted small">${daysBetween(new Date(), d) === 0 ? 'האירוע מתקיים היום – התוצאות יופיעו כאן' : 'התוצאות טרם פורסמו'}</p>`}
         </div></li>`;
     }).join('');
@@ -943,7 +945,7 @@
     </header>
 
     <div class="container ev-body">
-      ${over ? `${eventResultsHtml(e)}<details class="ev-past"><summary>פרטי התחרות</summary>` : ''}
+      ${over ? eventResultsHtml(e) : ''}
       <ul class="ev-facts ev-facts3" aria-label="עיקרי האירוע">
         <li class="fact-when"><span class="ev-ico" aria-hidden="true">🕘</span><span class="k">מתי</span>
           <strong class="when-top">${DAYS[date.getDay()]} ${date.getDate()}.${date.getMonth() + 1}${left >= 0 ? ` <span class="when-in">${inDays(left)}</span>` : ''}</strong>
@@ -991,7 +993,6 @@
             ${threads.map((t) => `<li><a href="#forum/${esc(t.id)}">${esc(t.title)}</a><span class="muted small">${esc(t.author)} · ${t.replyCount} תגובות · ${relTime(t.lastActivity)}</span></li>`).join('')}</ul></section>` : ''}
         </aside>
       </div>
-      ${over ? '</details>' : ''}
     </div>
 
     <nav class="ev-dock" aria-label="פעולות מהירות">
@@ -1277,6 +1278,8 @@
     const d = evDate(e);
     const today = daysBetween(now, d) === 0;
     const cancelled = isCancelled(e);
+    // after the cut-off the card shows the results and analysis instead of place, start times, planner and registration
+    const over = !cancelled && eventOver(e, now);
     const live = cancelled ? '' : liveLink(e, now);
     const tlMini = e.details && e.source !== 'closed-area' ? timelineHtml(e.details, e, { mini: true }) : '';
     const left = daysBetween(now, d);
@@ -1285,12 +1288,14 @@
     const planner = plannerLink(e);
     const cta = `<a class="top-cta" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="הרשמה ל${esc(e.title)} באתר האיגוד"><span class="cta-tx">הרשמה </span>↗</a>`;
     const counting = !cancelled && regDeadline(e) && regDeadline(e) > now;
+    const results = over ? (recentFiles(e).length ? `<div class="tk-results"><span class="tk-results-k">תוצאות וניתוח</span>${resultLinksHtml(e, recentFiles(e), 'rr-files tk-files')}</div>`
+      : '<p class="tk-results tk-results-wait muted small">התוצאות עוד לא פורסמו</p>') : '';
     const reg = counting ? regBlock(e, 'cd-card', cta)
       : cancelled ? '' : `${regBlock(e, 'cd-card')}${regOpen(e) ? `<p class="top-foot">${regDeadline(e) ? `<span>${inDays(left)}</span>` : ''}${cta}</p>` : ''}`;
     // A card rises in the first time it appears (load, "show more", a new filter result), not on redraws.
     const fresh = !seenCards.has(e.id);
     const enter = fresh ? ' is-new' : '';
-    return `<li class="top-card tk${enter}${today && !cancelled ? ' is-today' : ''}${cancelled ? ' is-cancelled' : ''}${lead ? ' lead' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}">
+    return `<li class="top-card tk${enter}${today && !cancelled ? ' is-today' : ''}${cancelled ? ' is-cancelled' : ''}${over ? ' is-over' : ''}${lead ? ' lead' : ''}${isLeague(e) ? ' is-league' : ''}${isMine(e) ? ' is-mine' : ''}" style="--c:${disc(e).color}">
         <div class="tk-stub"><div class="top-date" aria-hidden="true"><span class="dow">${today ? 'היום' : DAYS[d.getDay()]}</span><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span></div>${cancelled ? '<span class="tk-cancel" aria-hidden="true">מבוטל</span>' : ''}${live ? `<div class="tk-live">${live}</div>` : ''}<div class="tk-star"></div></div>
         <span class="tk-notch t" aria-hidden="true"></span><span class="tk-notch b" aria-hidden="true"></span>
         <div class="tk-body">
@@ -1300,13 +1305,13 @@
             e.calPlace && e.calDesc ? `<span class="tk-place">${esc(e.calPlace)}</span><span class="sr-only"> – </span><span class="tk-desc">${esc(e.calDesc)}</span>` : esc(e.title)}</a></${tag}></div>
           ${e.clubName || isMine(e) ? `<div class="tk-club">${e.clubName ? `<span class="tk-club-name">${esc(e.clubName)}</span>` : ''}${mineBadge(e)}</div>` : ''}
           <hr class="tk-sep" aria-hidden="true">
-          <p class="top-when">${[!tlMini && e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`,
+          ${over ? results : `<p class="top-when">${[!tlMini && e.time && `<strong class="start-time">זינוק ${esc(e.time)}</strong>`,
             // Phones hide the diagram in the four nearest; this short line takes its place there.
             tlMini && e.details?.startFrom && `<strong class="start-time start-alt">זינוק <bdi dir="ltr">${esc(e.details.startFrom)}${e.details.startTo ? `–${esc(e.details.startTo)}` : ''}</bdi></strong>`,
             where, !tlMini && planner].filter(Boolean).join(' ')}<span class="sr-only">${e.time || where ? ', ' : ''}${cancelled ? 'מבוטל, ' : ''}${today ? 'היום, ' : ''}${fmtLong(d)}, ${esc(disc(e).label)}${e.location ? `, ${esc(e.location)}` : ''}</span></p>
-          ${tlMini ? `<p class="top-tl${planner ? ' has-planner' : ''}">${planner}${tlMini}</p>` : ''}
+          ${tlMini ? `<p class="top-tl${planner ? ' has-planner' : ''}">${planner}${tlMini}</p>` : ''}`}
           ${lead && e.summary ? `<p class="lead-summary">${esc(e.summary)}</p>` : ''}
-          ${reg}
+          ${over ? '' : reg}
         </div>
       </li>`;
   }
