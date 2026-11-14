@@ -746,7 +746,7 @@
   const viewable = (f) => (f.kind === 'results' || f.kind === 'analysis') && /^https?:\/\/(?:cdn\.|www\.)?nivut\.org\.il\/[^?#]*\.(?:html?|pdf)(?:[?#]|$)/i.test(f.url);
   const fileHref = (f, e) => (e && viewable(f) ? `#results/${encodeURIComponent(e.id)}/${encodeURIComponent(f.url)}` : f.url);
   const fileLink = (f, key = false, e = null) => `<a class="ev-file kind-${f.kind}${key ? ' key' : ''}" href="${esc(fileHref(f, e))}"${fileHref(f, e) === f.url ? ' target="_blank" rel="noopener"' : ''}${isImageUrl(f.url) ? ` data-lightbox="${esc(f.name)}"` : ''}>
-      <span class="fi" aria-hidden="true">${fileMeta(f).icon}</span><span class="fn">${esc(f.name)}</span>${f.kind !== 'other' && f.name !== fileMeta(f).label ? `<span class="fk${f.live ? ' fk-live' : ''}">${fileMeta(f).label}</span>` : ''}</a>`;
+      <span class="fi" aria-hidden="true">${fileMeta(f).icon}</span><span class="fn">${esc(f.name)}</span>${!f.plain && f.kind !== 'other' && f.name !== fileMeta(f).label ? `<span class="fk${f.live ? ' fk-live' : ''}">${fileMeta(f).label}</span>` : ''}</a>`;
   /**
    * A run of files named "<prefix>-<category>" (LapCombat-Long, LapCombat-MediumA, …) is one row with a category picker.
    * The last category picked for that prefix is remembered.
@@ -782,6 +782,31 @@
   }
 
   /** Home page: the three latest events (today included), with only their results and results analysis. */
+  /**
+   * At most three plain rows per event: the results ("תוצאות", or "תוצאות זמניות" while only provisional or live
+   * ones are out), Livelox, and the splits ("LapCombat" when there is one, else "זמני ביניים").
+   */
+  function recentFiles(e) {
+    const files = (e.details?.attachments || []).filter((f) => f.kind === 'results' || f.kind === 'analysis');
+    const prefer = (list) => list.find(viewable) || list[0];
+    const results = files.filter((f) => f.kind === 'results' && !isLiveFile(f) && !isLivelox(f));
+    const provisional = (f) => /זמני|provisional|unofficial/i.test(f.name);
+    const final = results.filter((f) => !provisional(f));
+    const out = [];
+    const res = prefer(final) || prefer(results) || files.find(isLiveFile);
+    if (res) out.push({ f: res, label: final.length ? 'תוצאות' : 'תוצאות זמניות' });
+    const lox = files.find(isLivelox);
+    if (lox) out.push({ f: lox, label: 'Livelox' });
+    const lap = files.filter(isLapCombat);
+    const lapGroup = groupFiles(lap).find((x) => x.group);
+    if (lapGroup) out.push({ ...lapGroup, label: 'LapCombat' });
+    else if (lap.length) out.push({ f: prefer(lap), label: 'LapCombat' });
+    else {
+      const splits = files.filter((f) => f.kind === 'analysis' && !isLivelox(f));
+      if (splits.length) out.push({ f: prefer(splits), label: 'זמני ביניים' });
+    }
+    return out;
+  }
   async function renderRecentResults() {
     const box = $('#recentResults');
     const end = startOfDay(new Date()); end.setDate(end.getDate() + 1);
@@ -793,18 +818,13 @@
     box.hidden = false;
     $('#rrList').innerHTML = recent.map((e) => {
       const d = evDate(e);
-      // the live link stands in for the results until they are out – then it is left out – and is just "תוצאות"
-      // (LapCombat doesn't replace them: it goes by course, results by category)
-      const all = tidyFiles((e.details?.attachments || []).filter((f) => f.kind === 'results' || f.kind === 'analysis'));
-      const settled = all.some((f) => !f.live && f.kind === 'results');
-      const files = all.filter((f) => !(f.live && settled)).map((f) => (f.live ? { ...f, name: 'תוצאות', live: false } : f))
-        .sort((a, b) => (a.kind === 'results' ? 0 : 1) - (b.kind === 'results' ? 0 : 1));
+      const files = recentFiles(e);
       return `<li class="rr-card" style="--c:${disc(e).color}">
         <div class="rr-date" aria-hidden="true"><span class="day">${d.getDate()}</span><span class="mon">${MONTHS[d.getMonth()]}</span></div>
         <div class="rr-main">
           <h3><a href="#event/${encodeURIComponent(e.id)}" title="${esc(e.title)}">${esc(e.title)}</a></h3>
           <p class="sr-only">${fmtLong(d)}</p>
-          ${files.length ? `<ul class="rr-files">${filesListHtml(files, () => true, e)}</ul>`
+          ${files.length ? `<ul class="rr-files">${files.map((x) => `<li>${x.group ? `<a class="ev-file file-group kind-${x.kind} key" href="${esc(groupHref(x, e))}"><span class="fi" aria-hidden="true">${FILE_KINDS[x.kind].icon}</span><span class="fn">${esc(x.label)}</span></a>` : fileLink({ ...x.f, name: x.label, plain: true }, true, e)}</li>`).join('')}</ul>`
             : `<p class="muted small">${daysBetween(new Date(), d) === 0 ? 'האירוע מתקיים היום – התוצאות יופיעו כאן' : 'התוצאות טרם פורסמו'}</p>`}
         </div></li>`;
     }).join('');
@@ -1200,7 +1220,10 @@
     if (daysBetween(now, evDate(e)) !== 0) return '';
     const files = (e.details?.attachments || []).filter((f) => f.kind === 'results');
     const f = files.find(isLiveFile) || files[0];
-    return f ? `<a class="live-link" href="${esc(f.url)}" target="_blank" rel="noopener" aria-label="תוצאות חיות – ${esc(e.title)}"><i aria-hidden="true"></i>LIVE</a>` : '';
+    // after the cut-off (שעת גג) the event is over: the tag stays, grey and still
+    const cut = toMin(e.details?.cutoff);
+    const over = cut !== null && now.getHours() * 60 + now.getMinutes() > cut;
+    return f ? `<a class="live-link${over ? ' over' : ''}" href="${esc(f.url)}" target="_blank" rel="noopener" aria-label="תוצאות חיות – ${esc(e.title)}"><i aria-hidden="true"></i>LIVE</a>` : '';
   }
   /** The planner's latest notes (the last one attached – they are added as the event nears). */
   function plannerLink(e) {

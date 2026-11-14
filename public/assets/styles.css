@@ -2297,3 +2297,7 @@ html, body { overflow-x: clip; }
 .pstart.asked { opacity: .75; font-style: italic; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pstart.final { color: #4ade80; } }
 :root[data-theme="dark"] .pstart.final { color: #4ade80; }
+
+/* after the cut-off: LIVE turns grey and stops blinking */
+.live-link.over, .tk-live .live-link.over { background: #9ca3af; animation: none; box-shadow: none; }
+.live-link.over i { animation: none; opacity: .7; }
