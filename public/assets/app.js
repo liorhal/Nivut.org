@@ -2281,7 +2281,7 @@
   /* ---------- Results files: a readable table per course, and splits as a SplitsBrowser-style chart ---------- */
   const RS_PARSER = 7; // bumped when the results parser learns a format, so cached "unknown" answers are not reused
   const RS_COLORS = 6; // categorical slots (validated: light #2a78d6… / dark #3987e5…), in fixed order
-  const rs = { key: '', data: null, event: null, course: 0, picked: new Map(), q: '', refMode: store.get('rsRefMode', 'fastest'), legRows: store.get('rsLegRows', ['cum', 'leg']) };
+  const rs = { key: '', data: null, event: null, course: 0, picked: new Map(), q: '', refMode: store.get('rsRefMode', 'fastest'), legRows: store.get('rsLegRows', ['cum', 'leg']), more: {} };
   const fmtSec = (v, plus = false) => {
     if (v === null || v === undefined || Number.isNaN(v)) return '–';
     const neg = v < 0, a = Math.abs(Math.round(v));
@@ -2608,7 +2608,9 @@
    * steadiness against the field, where the time is lost (long legs or short ones), and what follows a big mistake.
    */
   const LP_FIRST = 4; // rows of the personal analysis shown before "הצג עוד"
-  const dl = (rows) => `<dl class="lp-rows">${rows.map(([kk, v]) => `<dt>${kk}</dt><dd>${v}</dd>`).join('')}</dl>`;
+  /** "Show more" at the bottom of a box: the first rows show (the last of them fading out), the rest have class x. */
+  const moreBtn = (key, n) => (n > 0 ? `<button type="button" class="more-btn" data-more="${key}" aria-expanded="${!!rs.more[key]}"><span class="more">הצג עוד (${n}) <span aria-hidden="true">▾</span></span><span class="less">הצג פחות <span aria-hidden="true">▴</span></span></button>` : '');
+    const dl = (rows) => `<dl class="lp-rows${rows.length > LP_FIRST ? ' has-more' : ''}">${rows.map(([kk, v], i) => `<dt${i >= LP_FIRST ? ' class="x"' : ''}>${kk}</dt><dd${i >= LP_FIRST ? ' class="x"' : ''}>${v}</dd>`).join('')}</dl>`;
   function lapInsightsHtml(c, st) {
     const n = c.controls.length;
     const lap = !!c.lap?.mistake && !c.lap.est; // the file's own numbers, not the estimate
@@ -2722,9 +2724,9 @@
         if (chain) tips.push('לעצור לרגע ולהתארגן אחרי טעות');
       }
       const strip = `<div class="lp-strip-wrap" aria-hidden="true"><span class="lp-end">S</span><div class="lp-strip">${[...Array(n).keys()].map((i) => `<i class="${m[i] === null ? 'none' : mistakeCls(m[i]) || 'ok'}" title="${esc(`${from(i)}→${shortCtl(c.controls[i])}: ${m[i] === null ? '–' : fmtMistake(m[i])}`)}"></i>`).join('')}</div><span class="lp-end">${esc(shortCtl(c.controls[n - 1]))}</span></div>`;
-      return `<li class="lp-person"><h3>${isMinePerson(r.name) ? '★ ' : ''}${esc(r.name)}<span class="muted"> · ${esc(r.status === 'OK' ? `מקום ${r.pos}` : STATUS_HE[r.status] || r.status)}</span></h3>${strip}
-        ${dl(rows.slice(0, LP_FIRST))}${rows.length > LP_FIRST ? `<details class="lp-more"${rs.lpMore ? ' open' : ''}><summary><span class="more">הצג עוד (${rows.length - LP_FIRST})</span><span class="less">הצג פחות</span></summary>${dl(rows.slice(LP_FIRST))}</details>` : ''}
-        ${tips.length ? `<p class="lp-tips"><b>לשיפור:</b> ${tips.join(' · ')}</p>` : ''}</li>`;
+      return `<li class="lp-person${rs.more.lp ? ' open' : ''}" data-more-box="lp"><h3>${isMinePerson(r.name) ? '★ ' : ''}${esc(r.name)}<span class="muted"> · ${esc(r.status === 'OK' ? `מקום ${r.pos}` : STATUS_HE[r.status] || r.status)}</span></h3>${strip}
+        ${dl(rows)}
+        ${tips.length ? `<p class="lp-tips"><b>לשיפור:</b> ${tips.join(' · ')}</p>` : ''}${moreBtn('lp', rows.length - LP_FIRST)}</li>`;
     }).filter(Boolean);
     if (!cards.length) return '';
     return `<section class="ev-card lp-card" aria-labelledby="lp-h"><h2 id="lp-h">ניתוח אישי</h2>
@@ -2736,6 +2738,7 @@
    * Every leg of the course: the three fastest, the average and median leg time, how far the fastest was ahead of the
    * median, and how many missed that control's punch; from a LapCombat analysis also the average time lost to mistakes.
    */
+  const CTL_FIRST = 4; // legs shown before "הצג עוד"
   function controlsHtml(c, st) {
     const n = c.controls.length;
     if (!n) return '';
@@ -2780,12 +2783,12 @@
     const gist = [hard.size ? `הקשים ביותר: ${[...hard].sort((a, b) => a - b).map(legName).join(', ')}` : '',
       topN > 1 ? `הכי הרבה מקטעים מהירים: ${esc(topName)} (${topN} מתוך ${n})` : '',
       ...[...myWins].map(([name, l]) => `★ ${esc(name)} הכי מהיר ב-${l.map(legName).join(', ')}`)].filter(Boolean);
-    return `<details class="ev-card rs-ctl-card">
-      <summary><h2 id="rsc-h">ניתוח מקטעים</h2>${gist.length ? `<span class="rs-gist">${gist.join(' · ')}</span>` : ''}</summary>
+    return `<section class="ev-card rs-ctl-card${rs.more.ctl ? ' open' : ''}" data-more-box="ctl" aria-labelledby="rsc-h">
+      <h2 id="rsc-h">ניתוח מקטעים</h2>${gist.length ? `<p class="rs-gist">${gist.join(' · ')}</p>` : ''}
       <p class="muted small">${c.runners.length} מתחרים · סיימו ${statuses.OK || 0}${out.length ? ` · ${out.join(' · ')}` : ''}. <span class="rs-hard-k">⚠</span> המקטעים הקשים ביותר – ${byMistake ? 'זמן הטעות הממוצע הגבוה ביותר (LapCombat)' : 'הפער היחסי הגדול ביותר בין החציון לזמן המהיר'}.${odd ? ` ${odd === 1 ? 'זמן חריג אחד (טעות מדידה) לא נכלל' : `${odd} זמנים חריגים (טעות מדידה) לא נכללו`} בממוצע.` : ''}</p>
       <div class="rs-table-wrap"><table class="rs-table rs-ctl">
         <thead><tr><th scope="col">מקטע</th><th scope="col">המהירים ביותר</th><th scope="col">ממוצע</th><th scope="col">חציון</th><th scope="col" title="החציון פחות הזמן המהיר">המהיר לפני החציון</th><th scope="col">עם זמן</th><th scope="col" title="ניקוב חסר בנקודה הזו (עם זמן בנקודה מאוחרת יותר)">פספסו</th>${c.lap?.mistake ? '<th scope="col" title="Leg mistake time – ממוצע">טעות ממוצעת</th>' : ''}</tr></thead>
-        <tbody>${rows.map((x) => `<tr${hard.has(x.i) ? ' class="hard"' : ''}>
+        <tbody>${rows.map((x, ri) => `<tr class="${[hard.has(x.i) && 'hard', ri >= CTL_FIRST && 'x'].filter(Boolean).join(' ')}">
           <th scope="row"><bdi dir="ltr">${esc(from(x.i))}→${esc(shortCtl(x.ctl))}</bdi>${hard.has(x.i) ? ` <span class="rs-hard-k" aria-hidden="true">⚠</span><span class="rs-why">${esc(why(x))}</span>` : ''}</th>
           <td><ol class="rs-top3">${x.top}</ol></td>
           <td class="num"><bdi dir="ltr">${fmtSec(x.avg)}</bdi></td><td class="num"><bdi dir="ltr">${fmtSec(x.m)}</bdi></td>
@@ -2793,7 +2796,8 @@
           <td class="num">${x.count}</td><td class="num${x.missed ? ' warn' : ''}">${x.missed || '–'}</td>
           ${c.lap?.mistake ? `<td class="num ${mistakeCls(x.mAvg)}"><bdi dir="ltr">${x.mAvg === null ? '–' : fmtMistake(Math.round(x.mAvg))}</bdi></td>` : ''}</tr>`).join('')}</tbody>
       </table></div>
-    </details>`;
+      ${moreBtn('ctl', rows.length - CTL_FIRST)}
+    </section>`;
   }
 
   function chartSvg(c, ref, st) {
@@ -2921,9 +2925,17 @@
 
   function initResultsView() {
     const page = $('#resultsPage');
-    // keep "הצג עוד" of the personal analysis open across re-renders (picking runners redraws the page)
-    page.addEventListener('toggle', (ev) => { if (ev.target.matches?.('.lp-more')) rs.lpMore = ev.target.open; }, true);
     page.addEventListener('click', (ev) => {
+      // "הצג עוד / הצג פחות": opens every box of that kind, and stays so across re-renders (picking runners redraws)
+      const mb = ev.target.closest('[data-more]');
+      if (mb) {
+        const k = mb.dataset.more;
+        rs.more[k] = !rs.more[k];
+        page.querySelectorAll(`[data-more-box="${k}"]`).forEach((b) => b.classList.toggle('open', rs.more[k]));
+        page.querySelectorAll(`[data-more="${k}"]`).forEach((b) => b.setAttribute('aria-expanded', String(rs.more[k])));
+        if (!rs.more[k]) mb.closest('[data-more-box]')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        return;
+      }
       const cg = ev.target.closest('[data-cgroup]');
       if (cg) { // switch the shown group of category buttons (no reload)
         const box = cg.closest('.rs-cgroups');

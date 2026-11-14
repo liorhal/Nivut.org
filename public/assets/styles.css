@@ -2173,13 +2173,7 @@ html, body { overflow-x: clip; }
 .rs-top3 li.mine { font-weight: 800; }
 .rs-top3 .rs-pl { margin-inline-end: 6px; }
 
-.rs-ctl-card > summary { cursor: pointer; list-style: none; display: grid; gap: 4px; }
-.rs-ctl-card > summary::-webkit-details-marker { display: none; }
-.rs-ctl-card > summary h2 { display: inline; }
-.rs-ctl-card > summary h2::before { content: '▸ '; color: var(--brand); }
-.rs-ctl-card[open] > summary h2::before { content: '▾ '; }
 .rs-gist { font-size: .88rem; color: var(--muted); line-height: 1.5; }
-.rs-ctl-card[open] > summary { margin-bottom: 6px; }
 .rs-top3 { gap: 0; line-height: 1.35; }
 
 .rs-why { display: block; font-family: inherit; font-weight: 600; font-size: .72rem; color: #b45309; white-space: normal; max-width: 15em; line-height: 1.3; margin-top: 2px; }
@@ -2331,9 +2325,13 @@ html, body { overflow-x: clip; }
 .rs-so-note { margin: 10px 0 -6px; }
 @media (max-width: 640px) { .rs-table .lapc { display: none; } }
 
-/* personal analysis: the first rows, the rest behind "הצג עוד" */
-.lp-more > summary { list-style: none; cursor: pointer; margin-top: 6px; font-size: .85rem; font-weight: 700; color: var(--brand); }
-.lp-more > summary::-webkit-details-marker { display: none; }
-.lp-more > summary .less, .lp-more[open] > summary .more { display: none; }
-.lp-more[open] > summary .less { display: inline; }
-.lp-more .lp-rows { margin-top: 0; }
+/* "הצג עוד" at the bottom of a box: the first rows show, the last of them fading out; the button stays at the end */
+[data-more-box]:not(.open) .x { display: none; }
+[data-more-box]:not(.open) .lp-rows.has-more,
+[data-more-box]:not(.open) .rs-ctl tbody { -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent); mask-image: linear-gradient(to bottom, #000 55%, transparent); }
+.more-btn { display: flex; margin: 10px auto 0; align-items: center; gap: 6px; padding: 5px 16px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--brand); font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; }
+.more-btn:hover { background: color-mix(in srgb, var(--brand) 8%, var(--surface)); }
+.more-btn .less, .open > .more-btn .more { display: none; }
+.open > .more-btn .less { display: inline; }
+.rs-ctl-card h2 { margin: 0 0 4px; }
+.rs-ctl-card .rs-gist { margin: 0 0 6px; }
