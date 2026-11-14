@@ -725,7 +725,10 @@
   // (Livelox is the route analysis after the event, never live results – though its name starts with "live")
   const isLivelox = (f) => /livelox/i.test(`${f.name} ${f.url}`);
   const isLiveFile = (f) => f.kind === 'results' && !isLivelox(f) && /live(?!lox)|זמן\s*אמת|חיות|real\s*-?\s*time/i.test(`${f.name} ${f.url}`);
-  const isLapCombat = (f) => /lap\s*combat/i.test(`${f.name} ${f.url}`);
+  // (typed "LabCombat" now and then)
+  const isLapCombat = (f) => /la[pb]\s*combat/i.test(`${f.name} ${f.url}`);
+  /** A group's key: the prefix, case and the LapCombat typo aside. */
+  const groupKey = (prefix) => prefix.toLowerCase().replace(/la[pb]\s*combat/, 'lapcombat');
   /** One live-results row; and with a LapCombat analysis, the plain split-times file adds nothing. */
   function tidyFiles(files) {
     const live = files.find(isLiveFile);
@@ -754,12 +757,12 @@
   function groupFiles(files) {
     const prefixOf = (f) => /^(.{2,40}?)\s*[-–_:]\s*(\S.{0,40})$/.exec(f.name.trim());
     const count = new Map();
-    files.forEach((f) => { const m = prefixOf(f); if (m) count.set(`${f.kind}|${m[1].toLowerCase()}`, (count.get(`${f.kind}|${m[1].toLowerCase()}`) || 0) + 1); });
+    files.forEach((f) => { const m = prefixOf(f); if (m) count.set(`${f.kind}|${groupKey(m[1])}`, (count.get(`${f.kind}|${groupKey(m[1])}`) || 0) + 1); });
     const out = [], seen = new Map();
     for (const f of files) {
-      const m = prefixOf(f), key = m && `${f.kind}|${m[1].toLowerCase()}`;
+      const m = prefixOf(f), key = m && `${f.kind}|${groupKey(m[1])}`;
       if (!m || count.get(key) < 3) { out.push(f); continue; }
-      if (!seen.has(key)) { const g = { group: true, kind: f.kind, prefix: m[1], items: [] }; seen.set(key, g); out.push(g); }
+      if (!seen.has(key)) { const g = { group: true, kind: f.kind, prefix: groupKey(m[1]) === 'lapcombat' ? 'LapCombat' : m[1], items: [] }; seen.set(key, g); out.push(g); }
       seen.get(key).items.push({ label: m[2], f });
     }
     return out;
@@ -2314,7 +2317,7 @@
       page.innerHTML = '<p class="live-status" role="status">טוען…</p>';
       await loadJson(`api/event?id=${encodeURIComponent(e.nivutId)}`).then((d) => applyDetails(e, d)).catch(() => {});
     }
-    const g = groupFiles(e?.details?.attachments || []).find((x) => x.group && x.prefix.toLowerCase() === prefix.toLowerCase());
+    const g = groupFiles(e?.details?.attachments || []).find((x) => x.group && groupKey(x.prefix) === groupKey(prefix));
     if (!g) {
       page.innerHTML = `<div class="section-head"><h1 id="rsTitle">${esc(prefix)}</h1>${back}</div><p class="empty">לא מצאנו את הקבצים. ${e ? `<a href="#event/${encodeURIComponent(e.id)}">לעמוד התחרות</a>` : ''}</p>`;
       return;
