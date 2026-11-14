@@ -2335,3 +2335,10 @@ html, body { overflow-x: clip; }
 .open > .more-btn .less { display: inline; }
 .rs-ctl-card h2 { margin: 0 0 4px; }
 .rs-ctl-card .rs-gist { margin: 0 0 6px; }
+
+/* the mistakes strip reads right to left like the page (S on the right), each leg labelled with its control */
+.lp-strip-wrap, .lp-strip { direction: rtl; }
+.lp-strip i { height: 20px; display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden;
+  font-style: normal; font-family: var(--num, inherit); font-size: .66rem; font-weight: 800; line-height: 1; color: color-mix(in srgb, var(--text) 70%, transparent); }
+.lp-strip i.good, .lp-strip i.warn, .lp-strip i.bad { color: #fff; }
+@media (max-width: 640px) { .lp-strip { gap: 1px; } .lp-strip i { font-size: .56rem; letter-spacing: -.03em; } }

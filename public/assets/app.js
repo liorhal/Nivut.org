@@ -2723,7 +2723,7 @@
         rows.push(['אחרי טעות גדולה', chain ? `<b>טעות גוררת טעות</b> – המקטע הבא עלה בממוצע ${t(a)}` : 'התאוששות טובה – המקטע הבא חזר לשגרה']);
         if (chain) tips.push('לעצור לרגע ולהתארגן אחרי טעות');
       }
-      const strip = `<div class="lp-strip-wrap" aria-hidden="true"><span class="lp-end">S</span><div class="lp-strip">${[...Array(n).keys()].map((i) => `<i class="${m[i] === null ? 'none' : mistakeCls(m[i]) || 'ok'}" title="${esc(`${from(i)}→${shortCtl(c.controls[i])}: ${m[i] === null ? '–' : fmtMistake(m[i])}`)}"></i>`).join('')}</div><span class="lp-end">${esc(shortCtl(c.controls[n - 1]))}</span></div>`;
+      const strip = `<div class="lp-strip-wrap" aria-hidden="true"><span class="lp-end">S</span><div class="lp-strip">${[...Array(n).keys()].map((i) => `<i class="${m[i] === null ? 'none' : mistakeCls(m[i]) || 'ok'}" title="${esc(`${from(i)}→${shortCtl(c.controls[i])}: ${m[i] === null ? '–' : fmtMistake(m[i])}`)}">${esc(shortCtl(c.controls[i]))}</i>`).join('')}</div></div>`;
       return `<li class="lp-person${rs.more.lp ? ' open' : ''}" data-more-box="lp"><h3>${isMinePerson(r.name) ? '★ ' : ''}${esc(r.name)}<span class="muted"> · ${esc(r.status === 'OK' ? `מקום ${r.pos}` : STATUS_HE[r.status] || r.status)}</span></h3>${strip}
         ${dl(rows)}
         ${tips.length ? `<p class="lp-tips"><b>לשיפור:</b> ${tips.join(' · ')}</p>` : ''}${moreBtn('lp', rows.length - LP_FIRST)}</li>`;
