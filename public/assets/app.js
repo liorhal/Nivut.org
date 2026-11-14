@@ -369,6 +369,7 @@
     if (state.filter.registered) findRegistered().then(() => { renderTop4(); renderList(); });
     renderTop4();
     if (location.hash.startsWith('#event/')) renderMyPeople(decodeURIComponent(location.hash.slice(7)));
+    if (location.hash.startsWith('#results') && rs.data?.courses) renderResultFile();
   }
   function renderPeopleList() {
     $('#peopleList').innerHTML = state.people.length
@@ -2617,7 +2618,9 @@
     const lapOf = (r) => ({ sp: (r.speed || []).map((v) => v ?? null), m: (r.mistake || []).map((v) => v ?? null) });
     const hasLegs = (r) => r.mistake?.some((v) => v !== null && v !== undefined);
     const mine = c.runners.filter((r) => isMinePerson(r.name) && hasLegs(r));
-    const who = (mine.length ? mine : c.runners.filter((r) => rs.picked.has(rsKey(r)) && hasLegs(r))).slice(0, 3);
+    // my people on this course; without them, the winner only (and an invitation to add my people)
+    const winner = c.runners.filter((r) => r.status === 'OK' && r.time > 0 && hasLegs(r)).sort((a, b) => a.time - b.time)[0];
+    const who = mine.length ? mine.slice(0, 3) : winner ? [winner] : [];
     if (!who.length) return '';
     const from = (i) => (i ? shortCtl(c.controls[i - 1]) : 'S');
     const leg = (i) => `<bdi dir="ltr">${esc(from(i))}→${esc(shortCtl(c.controls[i]))}</bdi>`;
@@ -2731,6 +2734,7 @@
     if (!cards.length) return '';
     return `<section class="ev-card lp-card" aria-labelledby="lp-h"><h2 id="lp-h">ניתוח אישי</h2>
       <p class="muted small">${lap ? 'לפי זמני הביניים ונתוני LapCombat.' : 'לפי זמני הביניים. מדד המהירות (100 = ממוצע שלושת המהירים במקטע) וזמן הטעות (מעבר לקצב הנקי של המתחרה) הם הערכה מהזמנים.'} פס המקטעים: <span class="lapk good">ירוק</span> טוב מהקצב שלך, <span class="lapk">אפור</span> נקי, <span class="lapk warn">כתום</span> טעות, <span class="lapk bad">אדום</span> טעות גדולה.</p>
+      ${mine.length ? '' : `<p class="lp-invite"><span aria-hidden="true">👥</span> כאן מוצג ניתוח של המקום הראשון. <button type="button" class="linklike" data-open-people>הוסיפו את האנשים שלכם</button> – ובכל קובץ תוצאות יופיע הניתוח האישי שלהם (וגם הם מודגשים בטבלאות ובגרף).</p>`}
       <ul class="lp-list">${cards.join('')}</ul></section>`;
   }
 

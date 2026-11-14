@@ -2342,3 +2342,6 @@ html, body { overflow-x: clip; }
   font-style: normal; font-family: var(--num, inherit); font-size: .66rem; font-weight: 800; line-height: 1; color: color-mix(in srgb, var(--text) 70%, transparent); }
 .lp-strip i.good, .lp-strip i.warn, .lp-strip i.bad { color: #fff; }
 @media (max-width: 640px) { .lp-strip { gap: 1px; } .lp-strip i { font-size: .56rem; letter-spacing: -.03em; } }
+
+.lp-invite { margin: 8px 0 0; padding: 8px 12px; border-radius: 10px; font-size: .9rem; background: color-mix(in srgb, var(--brand) 9%, transparent); border: 1px dashed color-mix(in srgb, var(--brand) 40%, transparent); }
+.lp-invite .linklike { font-weight: 800; }
