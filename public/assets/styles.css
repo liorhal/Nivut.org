@@ -2346,15 +2346,9 @@ html, body { overflow-x: clip; }
 .invite { margin: 8px 0 0; padding: 8px 12px; border-radius: 10px; font-size: .9rem; background: color-mix(in srgb, var(--brand) 9%, transparent); border: 1px dashed color-mix(in srgb, var(--brand) 40%, transparent); }
 .invite .linklike { font-weight: 800; }
 
-/* a finished event: results and analysis first, the details folded below */
-.ev-results { margin-bottom: 14px; }
-.ev-rs-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
-.ev-rs-head h2 { margin: 0; font-size: 1.3rem; }
-.ev-rs-head .ev-rs-tabs { margin: 0; }
-.ev-rs-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.ev-rs-tabs > * { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-size: .9rem; font-weight: 700; cursor: pointer; text-decoration: none; }
-.ev-rs-tabs button[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
-.ev-rs > .ev-card, .ev-rs > section { margin-bottom: 14px; }
+/* a finished event: the top row's third box holds the results and analysis */
+.fact-results .fact-files { margin-top: 4px; }
+.fact-results .fact-files .ev-file { padding: 6px 10px; font-size: .9rem; }
 
 /* a finished event's card: its results and analysis instead of place, start times, planner and registration */
 .tk-results { margin: 6px 0 0; display: grid; gap: 6px; }

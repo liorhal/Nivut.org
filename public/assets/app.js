@@ -371,7 +371,7 @@
     if (state.filter.registered) findRegistered().then(() => { renderTop4(); renderList(); });
     renderTop4();
     if (location.hash.startsWith('#event/')) renderMyPeople(decodeURIComponent(location.hash.slice(7)));
-    if ((location.hash.startsWith('#results') || (rs.inEvent && $('#eventPage #rsBody'))) && rs.data?.courses) renderResultFile();
+    if (location.hash.startsWith('#results') && rs.data?.courses) renderResultFile();
   }
   function renderPeopleList() {
     $('#peopleList').innerHTML = state.people.length
@@ -879,30 +879,11 @@
     const cut = toMin(e.details?.cutoff);
     return days === 0 && cut !== null && now.getHours() * 60 + now.getMinutes() > cut;
   }
-  /** What the results area of a finished event offers: our viewer for files we read, a link for the rest. */
-  function eventResultItems(e) {
-    return recentFiles(e).map((x) => (x.group ? { label: x.label, href: groupHref(x, e) } : viewable(x.f) ? { label: x.label, url: x.f.url } : { label: x.label, href: x.f.url, ext: true }));
-  }
-  /** After the event, its page leads with the results and analysis; the event details fold below. */
-  function eventResultsHtml(e) {
-    const items = eventResultItems(e);
-    const first = items.find((x) => x.url);
-    return `<section class="ev-results" aria-labelledby="evr-h">
-      <div class="ev-card ev-rs-head"><h2 id="evr-h">תוצאות וניתוח</h2>
-      ${items.length ? `<div class="ev-rs-tabs" role="group" aria-label="קובצי התוצאות">${items.map((x) => (x.url
-        ? `<button type="button" data-evfile="${esc(x.url)}" aria-pressed="${x === first}">${esc(x.label)}</button>`
-        : `<a href="${esc(x.href)}"${x.ext ? ' target="_blank" rel="noopener"' : ''}>${esc(x.label)}${x.ext ? ' ↗' : ' ←'}</a>`)).join('')}</div>` : ''}</div>
-      ${first ? '<div id="rsBody" class="ev-rs"></div>' : `<p class="muted">${items.length ? 'את הקבצים האלה פותחים באתר שלהם.' : 'התוצאות עוד לא פורסמו באתר האיגוד. כדאי לחזור מאוחר יותר.'}</p>`}
-    </section>`;
-  }
-  /** Draws the chosen results file into the event page (the results viewer, embedded). */
-  function mountEventResults(e, url) {
-    const first = url || eventResultItems(e).find((x) => x.url)?.url;
-    if (!first || !$('#eventPage #rsBody')) return;
-    rs.inGroup = true; rs.event = e; rs.inEvent = e.id;
-    $('#resultsPage').innerHTML = '';
-    $$('#eventPage [data-evfile]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.evfile === first)));
-    loadResult(first);
+  /** After the event the top row's third box holds its results and analysis instead of the registration. */
+  function resultsTopHtml(e) {
+    const files = recentFiles(e);
+    return `<li class="fact-results" id="ev-results"><span class="ev-ico" aria-hidden="true">🏁</span><span class="k">תוצאות וניתוח</span>
+      ${files.length ? resultLinksHtml(e, files, 'rr-files fact-files') : '<strong>התוצאות עוד לא פורסמו</strong><span class="muted small">הן יופיעו כאן כשיעלו לאתר האיגוד</span>'}</li>`;
   }
 
   function eventPageHtml(e) {
@@ -945,7 +926,6 @@
     </header>
 
     <div class="container ev-body">
-      ${over ? eventResultsHtml(e) : ''}
       <ul class="ev-facts ev-facts3" aria-label="עיקרי האירוע">
         <li class="fact-when"><span class="ev-ico" aria-hidden="true">🕘</span><span class="k">מתי</span>
           <strong class="when-top">${DAYS[date.getDay()]} ${date.getDate()}.${date.getMonth() + 1}${left >= 0 ? ` <span class="when-in">${inDays(left)}</span>` : ''}</strong>
@@ -954,7 +934,7 @@
           <strong>${esc(e.location || d.name || 'יפורסם')}${distParen(e)}</strong>
           ${!state.home && d.lat ? '<button type="button" class="linklike dist-set" data-open-people>📍 קבעו מיקום כדי לראות מרחק</button>' : ''}
           ${wazeLink(e, 'ניווט לכינוס ב-Waze', 'waze-lg') || '<span>&nbsp;</span>'}</li>
-        ${regTopHtml(e, reg)}
+        ${over ? resultsTopHtml(e) : regTopHtml(e, reg)}
       </ul>
 
       <div class="ev-grid">
@@ -1028,14 +1008,13 @@
     box.innerHTML = eventPageHtml(e);
     tickCountdowns();
     renderMyPeople(id);
-    mountEventResults(e);
     $('#evTitle')?.focus({ preventScroll: true });
     gotoSection(goto);
     if (!e.details && e.nivutId) {
       try {
         applyDetails(e, await loadJson(`api/event?id=${encodeURIComponent(e.nivutId)}`));
       } catch { e.details = null; e.nivutId = null; }
-      if (location.hash === `#event/${id}`) { box.innerHTML = eventPageHtml(e); tickCountdowns(); renderMyPeople(id); mountEventResults(e); gotoSection(goto); }
+      if (location.hash === `#event/${id}`) { box.innerHTML = eventPageHtml(e); tickCountdowns(); renderMyPeople(id); gotoSection(goto); }
     }
   }
 
@@ -2339,14 +2318,13 @@
   const isMinePerson = (name) => state.people.some((p) => sameName(p, name));
 
   /** Where the viewer draws: inside a group page (#rsBody), else the whole results page. */
-  const rsTarget = () => (rs.inEvent && location.hash.startsWith('#event/') && $('#eventPage #rsBody')) || (rs.inGroup && $('#resultsPage #rsBody')) || $('#resultsPage');
+  const rsTarget = () => (rs.inGroup && $('#rsBody')) || $('#resultsPage');
 
   async function showResultFile(param) {
     const cut = param.indexOf('/');
     const evId = cut >= 0 ? param.slice(0, cut) : '', url = cut >= 0 ? param.slice(cut + 1) : param;
     if (url.startsWith('group:')) { showFileGroup(evId, url.slice(6)); return; }
-    rs.inGroup = false; rs.inEvent = null;
-    $('#eventPage').innerHTML = ''; // one viewer in the document at a time (its controls are found by id)
+    rs.inGroup = false;
     rs.event = state.events.find((x) => x.id === evId) || null;
     loadResult(url);
     $('#main').focus({ preventScroll: true });
@@ -2354,8 +2332,7 @@
 
   /** A group of files ("LapCombat-Long", "LapCombat-MediumA", …): a button per category, the chosen one below. */
   async function showFileGroup(evId, prefix) {
-    rs.inGroup = true; rs.inEvent = null;
-    $('#eventPage').innerHTML = '';
+    rs.inGroup = true;
     const page = $('#resultsPage');
     let e = state.events.find((x) => x.id === evId) || null;
     rs.event = e;
@@ -2975,15 +2952,6 @@
 
   function initResultsView() {
     wireResults($('#resultsPage'));
-    // the same viewer embedded in a finished event's page, plus its file tabs
-    const evp = $('#eventPage');
-    evp.addEventListener('click', (ev) => {
-      const f = ev.target.closest('[data-evfile]');
-      if (!f) return;
-      const e = state.events.find((x) => x.id === rs.inEvent);
-      if (e) mountEventResults(e, f.dataset.evfile);
-    });
-    wireResults(evp, '#rsBody');
   }
   /** The viewer's controls, on a container (only inside `scope` there, when given). */
   function wireResults(page, scope = '') {
