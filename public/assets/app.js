@@ -2607,6 +2607,8 @@
    * worst legs, streaks of clean and costly legs, what the biggest mistakes cost in places, pace early vs late,
    * steadiness against the field, where the time is lost (long legs or short ones), and what follows a big mistake.
    */
+  const LP_FIRST = 4; // rows of the personal analysis shown before "הצג עוד"
+  const dl = (rows) => `<dl class="lp-rows">${rows.map(([kk, v]) => `<dt>${kk}</dt><dd>${v}</dd>`).join('')}</dl>`;
   function lapInsightsHtml(c, st) {
     const n = c.controls.length;
     const lap = !!c.lap?.mistake && !c.lap.est; // the file's own numbers, not the estimate
@@ -2721,7 +2723,7 @@
       }
       const strip = `<div class="lp-strip-wrap" aria-hidden="true"><span class="lp-end">S</span><div class="lp-strip">${[...Array(n).keys()].map((i) => `<i class="${m[i] === null ? 'none' : mistakeCls(m[i]) || 'ok'}" title="${esc(`${from(i)}→${shortCtl(c.controls[i])}: ${m[i] === null ? '–' : fmtMistake(m[i])}`)}"></i>`).join('')}</div><span class="lp-end">${esc(shortCtl(c.controls[n - 1]))}</span></div>`;
       return `<li class="lp-person"><h3>${isMinePerson(r.name) ? '★ ' : ''}${esc(r.name)}<span class="muted"> · ${esc(r.status === 'OK' ? `מקום ${r.pos}` : STATUS_HE[r.status] || r.status)}</span></h3>${strip}
-        <dl class="lp-rows">${rows.map(([kk, v]) => `<dt>${kk}</dt><dd>${v}</dd>`).join('')}</dl>
+        ${dl(rows.slice(0, LP_FIRST))}${rows.length > LP_FIRST ? `<details class="lp-more"${rs.lpMore ? ' open' : ''}><summary><span class="more">הצג עוד (${rows.length - LP_FIRST})</span><span class="less">הצג פחות</span></summary>${dl(rows.slice(LP_FIRST))}</details>` : ''}
         ${tips.length ? `<p class="lp-tips"><b>לשיפור:</b> ${tips.join(' · ')}</p>` : ''}</li>`;
     }).filter(Boolean);
     if (!cards.length) return '';
@@ -2882,8 +2884,10 @@
       ${categoryBar(d.courses.map((x, i) => ({ name: x.name, html: `<button type="button" data-course="${i}" aria-pressed="${i === rs.course}">${esc(x.name)}${x.runners.some((r) => isMinePerson(r.name)) ? ' ★' : ''}</button>` })), 'מסלול / קטגוריה')}
       <p class="muted small rs-info">${[c.info && `<bdi dir="ltr">${esc(c.info)}</bdi>`, `סיימו ${c.runners.filter((r) => r.status === 'OK').length} מתוך ${c.runners.length}`].filter(Boolean).join(' · ')}</p>
       ${standoutsHtml(c)}
+      ${hasSplits(c) ? lapInsightsHtml(c, st) : ''}
+      ${hasSplits(c) ? controlsHtml(c, st) : ''}
       ${hasSplits(c) && ref ? `<section class="ev-card rs-graph" aria-labelledby="rsg-h">
-        <div class="rs-graph-head"><h2 id="rsg-h">${ref.mode === 'winner' ? 'פער מהמנצח בכל נקודה' : 'פער מהמהיר ביותר בכל מקטע'}</h2>
+        <div class="rs-graph-head"><h2 id="rsg-h">גרף פערים</h2>
           <div class="seg rs-refmode" role="group" aria-label="קו הייחוס של הגרף">${[['fastest', 'מול המהיר בכל מקטע'], ['winner', 'מול המנצח']].map(([m, t]) => `<button type="button" data-refmode="${m}" aria-pressed="${ref.mode === m}">${t}</button>`).join('')}</div></div>
         <p class="muted small">${ref.mode === 'winner'
           ? `קו הייחוס (0) – ${esc(ref.name)}. קו שטוח – אותו קצב כמוהו; קו שיורד – הפסד זמן מולו באותו מקטע; קו שעולה – רווח.`
@@ -2892,8 +2896,6 @@
         <div class="rs-chart-wrap">${chartSvg(c, ref, st)}</div>
         ${picked.length ? legsTableHtml(c, st, picked) : ''}
       </section>` : ''}
-      ${hasSplits(c) ? lapInsightsHtml(c, st) : ''}
-      ${hasSplits(c) ? controlsHtml(c, st) : ''}
       <section class="ev-card rs-table-card" aria-labelledby="rst-h">
         <div class="rs-table-head"><h2 id="rst-h">תוצאות – ${esc(c.name)}${c.runners.some((r) => isMinePerson(r.name)) ? ' <span class="rs-star" title="האנשים שלי במסלול הזה">★</span>' : ''}</h2>
           <label class="rs-search"><span class="sr-only">חיפוש מתחרה או מועדון</span><input type="search" id="rsQ" placeholder="חיפוש שם או מועדון" value="${esc(rs.q)}"></label></div>
@@ -2919,6 +2921,8 @@
 
   function initResultsView() {
     const page = $('#resultsPage');
+    // keep "הצג עוד" of the personal analysis open across re-renders (picking runners redraws the page)
+    page.addEventListener('toggle', (ev) => { if (ev.target.matches?.('.lp-more')) rs.lpMore = ev.target.open; }, true);
     page.addEventListener('click', (ev) => {
       const cg = ev.target.closest('[data-cgroup]');
       if (cg) { // switch the shown group of category buttons (no reload)

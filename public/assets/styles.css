@@ -2330,3 +2330,10 @@ html, body { overflow-x: clip; }
 .rs-table td.lapc.bad { color: #b3261e; }
 .rs-so-note { margin: 10px 0 -6px; }
 @media (max-width: 640px) { .rs-table .lapc { display: none; } }
+
+/* personal analysis: the first rows, the rest behind "הצג עוד" */
+.lp-more > summary { list-style: none; cursor: pointer; margin-top: 6px; font-size: .85rem; font-weight: 700; color: var(--brand); }
+.lp-more > summary::-webkit-details-marker { display: none; }
+.lp-more > summary .less, .lp-more[open] > summary .more { display: none; }
+.lp-more[open] > summary .less { display: inline; }
+.lp-more .lp-rows { margin-top: 0; }
