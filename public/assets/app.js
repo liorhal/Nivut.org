@@ -2543,98 +2543,105 @@
     const from = (i) => (i ? shortCtl(c.controls[i - 1]) : 'S');
     const leg = (i) => `<bdi dir="ltr">${esc(from(i))}→${esc(shortCtl(c.controls[i]))}</bdi>`;
     const span = (a, b) => `<bdi dir="ltr">${esc(from(a))}→${esc(shortCtl(c.controls[b]))}</bdi>`; // legs a..b as one stretch
+    const at = (i) => `<bdi dir="ltr">${esc(shortCtl(c.controls[i]))}</bdi>`;
     const t = (v) => `<b><bdi dir="ltr">${fmtSec(Math.round(v))}</bdi></b>`;
     const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
     const sd = (a) => { const m = mean(a); return a.length > 1 ? Math.sqrt(mean(a.map((x) => (x - m) ** 2))) : null; };
     const CLEAN = 10, BIG = 30; // seconds lost: a clean leg / a real mistake
     const ok = c.runners.filter((r) => r.status === 'OK' && r.time);
-    // the field's steadiness: spread of each finisher's speed index (relative), for a percentile
     const cv = (r) => { const v = (r.speed || []).filter((x) => x > 0); return v.length > 3 ? sd(v) / mean(v) : null; };
     const fieldCv = ok.map(cv).filter((x) => x !== null).sort((a, b) => a - b);
-    // long legs vs short ones, by the field's median time on each leg
     const legMed = c.controls.map((_, i) => median(st.legs.map((l) => l[i]).filter((v) => v > 0)) || 0);
     const cut = median(legMed.filter((x) => x > 0));
     const cards = who.map((r) => {
+      const k = c.runners.indexOf(r);
       const m = r.mistake.map((v) => (v ?? null)), sp = (r.speed || []).map((v) => (v ?? null));
       const idx = [...Array(n).keys()].filter((i) => m[i] !== null);
       if (idx.length < 3) return '';
-      const lines = [];
-      // best and worst legs (speed index: lower is faster)
+      const rows = []; // [label, value, note?]
+      const tips = []; // what to work on
+      // places: overall at each control, and on each leg
+      const cum = [...Array(n).keys()].map((i) => [i, st.cumRank(i, r.splits[i])]).filter(([, p]) => p);
+      if (cum.length) {
+        const hi = cum.reduce((a, b) => (b[1] < a[1] ? b : a)), lo = cum.reduce((a, b) => (b[1] > a[1] ? b : a));
+        rows.push(['מקום כללי', `הכי גבוה <b>${hi[1]}</b> (בנקודה ${at(hi[0])}) · הכי נמוך <b>${lo[1]}</b> (בנקודה ${at(lo[0])})${r.status === 'OK' ? ` · סיום <b>${esc(r.pos)}</b>` : ''}`]);
+      }
+      const legPl = idx.map((i) => [i, st.rank(i, st.legs[k][i])]).filter(([, p]) => p);
+      if (legPl.length) {
+        const hi = legPl.reduce((a, b) => (b[1] < a[1] ? b : a)), lo = legPl.reduce((a, b) => (b[1] > a[1] ? b : a));
+        const top3 = legPl.filter(([, p]) => p <= 3).length;
+        rows.push(['מקום במקטע', `הכי טוב <b>${hi[1]}</b> (${leg(hi[0])}) · הכי חלש <b>${lo[1]}</b> (${leg(lo[0])})${top3 ? ` · ${top3} מקטעים בשלושת הראשונים` : ''}`]);
+      }
       const spIdx = idx.filter((i) => sp[i] > 0);
       if (spIdx.length) {
         const best = spIdx.reduce((a, b) => (sp[b] < sp[a] ? b : a)), worst = spIdx.reduce((a, b) => (sp[b] > sp[a] ? b : a));
-        lines.push(`השיא: ${leg(best)} – מדד מהירות <b>${sp[best].toFixed(1)}</b>; השפל: ${leg(worst)} – <b>${sp[worst].toFixed(1)}</b> (${m[worst] > 0 ? `${t(m[worst])} בטעות` : 'בלי טעות – קצב איטי'}).`);
+        rows.push(['מדד מהירות', `שיא <b>${sp[best].toFixed(1)}</b> (${leg(best)}) · שפל <b>${sp[worst].toFixed(1)}</b> (${leg(worst)}, ${m[worst] > 0 ? `${t(m[worst])} בטעות` : 'בלי טעות'})`]);
       }
-      // what the mistakes cost, in time and in places
+      // mistakes and what they cost
       const lost = idx.reduce((a, i) => a + Math.max(0, m[i]), 0);
       const bigs = idx.filter((i) => m[i] >= BIG).sort((a, b) => m[b] - m[a]);
-      if (lost > 0) {
-        let line = `סה״כ ${t(lost)} בטעויות${r.time ? ` (${Math.round((lost / r.time) * 100)}% מהזמן)` : ''}; ${bigs.length ? `${bigs.length} טעויות של חצי דקה ומעלה, הגדולה ב-${leg(bigs[0])} (${t(m[bigs[0]])})` : 'אף טעות של חצי דקה ומעלה'}.`;
-        if (r.status === 'OK' && r.time && bigs.length) {
-          const save = bigs.slice(0, 2).reduce((a, i) => a + m[i], 0);
-          const place = 1 + ok.filter((x) => x !== r && x.time < r.time - save).length;
-          const now = 1 + ok.filter((x) => x !== r && x.time < r.time).length;
-          if (place < now) line += ` בלי ${bigs.length > 1 ? 'שתי הגדולות' : 'הטעות הזו'} – מקום <b>${place}</b> במקום ${now}.`;
-        }
-        lines.push(line);
+      rows.push(['טעויות', `${t(lost)}${r.time ? ` (${Math.round((lost / r.time) * 100)}% מהזמן)` : ''} · ${bigs.length ? `${bigs.length} גדולות (חצי דקה+), הגדולה ${t(m[bigs[0]])} ב-${leg(bigs[0])}` : 'אף טעות גדולה'}`]);
+      if (r.status === 'OK' && r.time && bigs.length) {
+        const save = bigs.slice(0, 2).reduce((a, i) => a + m[i], 0);
+        const place = 1 + ok.filter((x) => x !== r && x.time < r.time - save).length;
+        const now = 1 + ok.filter((x) => x !== r && x.time < r.time).length;
+        if (place < now) rows.push([`בלי ${bigs.length > 1 ? '2 הגדולות' : 'הגדולה'}`, `מקום <b>${place}</b> במקום ${now} (חיסכון של ${t(save)})`]);
       }
-      // streaks: the longest run of clean legs, and of legs losing time
+      // streaks
       const runOf = (test) => { let best = [0, -1], cur = 0; for (let i = 0; i < n; i++) { cur = m[i] !== null && test(m[i]) ? cur + 1 : 0; if (cur > best[0]) best = [cur, i]; } return best; };
       const [cleanN, cleanEnd] = runOf((v) => v <= CLEAN);
       const [badN, badEnd] = runOf((v) => v > 15);
-      if (cleanN >= 3) lines.push(`הרצף הנקי הארוך: <b>${cleanN}</b> מקטעים ברצף בלי טעות (${span(cleanEnd - cleanN + 1, cleanEnd)}).`);
-      if (badN >= 2) lines.push(`רצף של <b>${badN}</b> מקטעים עם טעות (${span(badEnd - badN + 1, badEnd)}) – כדאי לבדוק מה קרה שם: עייפות, אזור קשה או אובדן ריכוז.`);
-      // pace early vs late (clean legs only, so mistakes don't hide it)
+      if (cleanN >= 2) rows.push(['רצף נקי', `<b>${cleanN}</b> מקטעים (${span(cleanEnd - cleanN + 1, cleanEnd)})`]);
+      if (badN >= 2) { rows.push(['רצף טעויות', `<b>${badN}</b> מקטעים (${span(badEnd - badN + 1, badEnd)})`]); tips.push(`לבדוק מה קרה ב-${span(badEnd - badN + 1, badEnd)}: עייפות, אזור קשה או אובדן ריכוז`); }
+      // pace early vs late, on clean legs
       const pure = spIdx.filter((i) => m[i] <= CLEAN);
       const h1 = mean(pure.filter((i) => i < n / 2).map((i) => sp[i])), h2 = mean(pure.filter((i) => i >= n / 2).map((i) => sp[i]));
       if (h1 && h2) {
         const d = (h2 / h1 - 1) * 100;
-        lines.push(Math.abs(d) < 3 ? `קצב אחיד: במקטעים הנקיים מדד המהירות בחצי השני כמו בראשון (${h1.toFixed(0)} מול ${h2.toFixed(0)}).`
-          : d > 0 ? `האטה בחצי השני: במקטעים הנקיים המדד עלה מ-${h1.toFixed(0)} ל-<b>${h2.toFixed(0)}</b> (${Math.round(d)}% איטי יותר) – סימן לעייפות או לשמירת כוח.`
-            : `סיום חזק: במקטעים הנקיים המדד ירד מ-${h1.toFixed(0)} ל-<b>${h2.toFixed(0)}</b> (${Math.round(-d)}% מהר יותר).`);
+        rows.push(['קצב לאורך המסלול', `חצי ראשון ${h1.toFixed(0)} · חצי שני ${h2.toFixed(0)} – ${Math.abs(d) < 3 ? 'אחיד' : d > 0 ? `<b>האטה של ${Math.round(d)}%</b>` : `<b>סיום חזק</b> (${Math.round(-d)}% מהר יותר)`}`]);
+        if (d >= 5) tips.push('לשמור כוח לחצי השני (האטה גם במקטעים הנקיים)');
       }
-      // the clean pace itself: running vs navigating
-      // 100 = the average of the best three on each leg: the clean pace's distance from 100 is running, the rest navigating
+      // running vs navigating
       const purePace = mean(pure.map((i) => sp[i]));
       if (purePace && spIdx.length) {
         const all = mean(spIdx.map((i) => sp[i]));
         const run = purePace - 100, nav = all - purePace;
-        lines.push(`קצב נקי (במקטעים בלי טעות): <b>${purePace.toFixed(0)}</b>, ובכל המסלול ${all.toFixed(0)} (100 = שלושת הטובים) – ${run <= 3 ? 'הריצה כמו של הטובים; הפער כולו בטעויות' : nav > run ? 'רוב הפער מהטובים בא מהטעויות, פחות מהריצה' : 'רוב הפער מהטובים בא מקצב הריצה, פחות מהטעויות'}.`);
+        rows.push(['ריצה מול ניווט', `קצב נקי ${purePace.toFixed(0)} · כולל ${all.toFixed(0)} (100 = שלושת הטובים) – ${run <= 3 ? 'הריצה כמו של הטובים, <b>הפער בטעויות</b>' : nav > run ? '<b>הפער בעיקר מהטעויות</b>' : '<b>הפער בעיקר מקצב הריצה</b>'}`]);
+        if (run > 3 && run >= nav) tips.push('כושר ריצה – שם רוב הפער מהטובים');
       }
       // steadiness against the field
       const myCv = cv(r);
       if (myCv !== null && fieldCv.length > 4) {
         const others = fieldCv.length - 1, steadier = fieldCv.filter((x) => x < myCv).length, share = steadier / others;
-        lines.push(steadier === 0 ? 'יציבות: הקצב האחיד ביותר במסלול – אף מתחרה לא שמר על קצב אחיד יותר בין המקטעים.'
-          : share <= 1 / 3 ? `יציבות: מהיציבים במסלול – רק ${steadier} מתוך ${others} מתחרים שמרו על קצב אחיד יותר בין המקטעים.`
-          : share >= 2 / 3 ? `יציבות: קצב משתנה מאוד בין מקטעים (${steadier} מתוך ${others} מתחרים אחידים יותר) – מקטעים טובים לצד מקטעים יקרים.` : 'יציבות: באמצע השדה.');
+        rows.push(['יציבות', steadier === 0 ? '<b>הכי אחיד במסלול</b>' : share <= 1 / 3 ? `<b>גבוהה</b> – רק ${steadier} מתוך ${others} אחידים יותר` : share >= 2 / 3 ? `<b>נמוכה</b> – ${steadier} מתוך ${others} אחידים יותר` : `בינונית (${steadier} מתוך ${others} אחידים יותר)`]);
       }
-      // where the time goes: long legs (route choice) or short ones (finding the control)
+      // where the time goes
       if (cut > 0) {
         const longLost = idx.filter((i) => legMed[i] > cut).reduce((a, i) => a + Math.max(0, m[i]), 0);
         const shortLost = idx.filter((i) => legMed[i] <= cut).reduce((a, i) => a + Math.max(0, m[i]), 0);
         if (longLost + shortLost >= 30) {
           const share = longLost / (longLost + shortLost);
-          lines.push(share >= 0.65 ? `${Math.round(share * 100)}% מהטעויות במקטעים הארוכים – כדאי לתרגל בחירת מסלול ותכנון מראש.`
-            : share <= 0.35 ? `${Math.round((1 - share) * 100)}% מהטעויות במקטעים הקצרים – כדאי לתרגל כניסה לנקודה (נקודת התקפה, האטה לפני הנקודה).`
-              : 'הטעויות מתחלקות בין מקטעים ארוכים לקצרים.');
+          rows.push(['איפה הטעויות', `${Math.round(share * 100)}% במקטעים ארוכים · ${Math.round((1 - share) * 100)}% בקצרים`]);
+          if (share >= 0.65) tips.push('בחירת מסלול ותכנון מראש (רוב הטעויות במקטעים הארוכים)');
+          if (share <= 0.35) tips.push('כניסה לנקודה – נקודת התקפה והאטה לפני הנקודה (רוב הטעויות במקטעים הקצרים)');
         }
       }
       // after a big mistake
       const after = bigs.filter((i) => i + 1 < n && m[i + 1] !== null).map((i) => m[i + 1]);
       if (after.length) {
-        const avg = mean(idx.map((i) => Math.max(0, m[i])));
-        const a = mean(after.map((v) => Math.max(0, v)));
-        lines.push(a > avg * 1.5 && a > 10 ? `אחרי טעות גדולה המקטע הבא עלה בממוצע ${t(a)} – טעות גוררת טעות; כדאי לעצור לרגע ולהתארגן אחרי טעות.`
-          : 'אחרי טעות גדולה המקטע הבא חזר לשגרה – התאוששות טובה.');
+        const avg = mean(idx.map((i) => Math.max(0, m[i]))), a = mean(after.map((v) => Math.max(0, v)));
+        const chain = a > avg * 1.5 && a > 10;
+        rows.push(['אחרי טעות גדולה', chain ? `<b>טעות גוררת טעות</b> – המקטע הבא עלה בממוצע ${t(a)}` : 'התאוששות טובה – המקטע הבא חזר לשגרה']);
+        if (chain) tips.push('לעצור לרגע ולהתארגן אחרי טעות');
       }
-      // a strip: one cell per leg, by its mistake
       const strip = `<div class="lp-strip" aria-hidden="true">${[...Array(n).keys()].map((i) => `<i class="${m[i] === null ? 'none' : mistakeCls(m[i]) || 'ok'}" title="${esc(`${from(i)}→${shortCtl(c.controls[i])}: ${m[i] === null ? '–' : fmtMistake(m[i])}`)}"></i>`).join('')}</div>`;
-      return `<li class="lp-person"><h3>${isMinePerson(r.name) ? '★ ' : ''}${esc(r.name)}<span class="muted"> · ${esc(r.status === 'OK' ? `מקום ${r.pos}` : STATUS_HE[r.status] || r.status)}</span></h3>${strip}<ul>${lines.map((l) => `<li>${l}</li>`).join('')}</ul></li>`;
+      return `<li class="lp-person"><h3>${isMinePerson(r.name) ? '★ ' : ''}${esc(r.name)}<span class="muted"> · ${esc(r.status === 'OK' ? `מקום ${r.pos}` : STATUS_HE[r.status] || r.status)}</span></h3>${strip}
+        <dl class="lp-rows">${rows.map(([kk, v]) => `<dt>${kk}</dt><dd>${v}</dd>`).join('')}</dl>
+        ${tips.length ? `<p class="lp-tips"><b>לשיפור:</b> ${tips.join(' · ')}</p>` : ''}</li>`;
     }).filter(Boolean);
     if (!cards.length) return '';
-    return `<section class="ev-card lp-card" aria-labelledby="lp-h"><h2 id="lp-h">ניתוח אישי – מהירות וטעויות</h2>
-      <p class="muted small">לפי נתוני LapCombat. פס המקטעים: <span class="lapk good">ירוק</span> טוב מהקצב שלך, <span class="lapk">אפור</span> נקי, <span class="lapk warn">כתום</span> טעות, <span class="lapk bad">אדום</span> טעות גדולה.</p>
+    return `<section class="ev-card lp-card" aria-labelledby="lp-h"><h2 id="lp-h">ניתוח אישי</h2>
+      <p class="muted small">לפי זמני הביניים ונתוני LapCombat. פס המקטעים: <span class="lapk good">ירוק</span> טוב מהקצב שלך, <span class="lapk">אפור</span> נקי, <span class="lapk warn">כתום</span> טעות, <span class="lapk bad">אדום</span> טעות גדולה.</p>
       <ul class="lp-list">${cards.join('')}</ul></section>`;
   }
 
