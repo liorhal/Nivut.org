@@ -88,3 +88,7 @@ npm test             # בדיקות יחידה למפענחים
 ## בדיקות
 
 קבצי `test/fixtures` משחזרים את מבנה ה-HTML האמיתי של דף הבית, דף אירוע והפורום, עם שמות לדוגמה.
+
+## אנליטיקס
+
+האתר טוען את Vercel Web Analytics (`/_vercel/insights/script.js`, בלי עוגיות). כדי שיתחיל לספור צריך להפעיל Analytics בפרויקט ב-Vercel (Project → Analytics → Enable); עד אז, ובשרת המקומי, הסקריפט פשוט לא נטען.
