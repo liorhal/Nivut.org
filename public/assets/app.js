@@ -2539,6 +2539,7 @@
     const n = c.controls.length;
     const from = (i) => (i ? shortCtl(c.controls[i - 1]) : 'S');
     const leg = (i) => `<bdi dir="ltr">${esc(from(i))}→${esc(shortCtl(c.controls[i]))}</bdi>`;
+    const span = (a, b) => `<bdi dir="ltr">${esc(from(a))}→${esc(shortCtl(c.controls[b]))}</bdi>`; // legs a..b as one stretch
     const t = (v) => `<b><bdi dir="ltr">${fmtSec(Math.round(v))}</bdi></b>`;
     const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
     const sd = (a) => { const m = mean(a); return a.length > 1 ? Math.sqrt(mean(a.map((x) => (x - m) ** 2))) : null; };
@@ -2578,8 +2579,8 @@
       const runOf = (test) => { let best = [0, -1], cur = 0; for (let i = 0; i < n; i++) { cur = m[i] !== null && test(m[i]) ? cur + 1 : 0; if (cur > best[0]) best = [cur, i]; } return best; };
       const [cleanN, cleanEnd] = runOf((v) => v <= CLEAN);
       const [badN, badEnd] = runOf((v) => v > 15);
-      if (cleanN >= 3) lines.push(`הרצף הנקי הארוך: <b>${cleanN}</b> מקטעים ברצף בלי טעות (${leg(cleanEnd - cleanN + 1)} עד ${leg(cleanEnd)}).`);
-      if (badN >= 2) lines.push(`רצף של <b>${badN}</b> מקטעים עם טעות (${leg(badEnd - badN + 1)} עד ${leg(badEnd)}) – כדאי לבדוק מה קרה שם: עייפות, אזור קשה או אובדן ריכוז.`);
+      if (cleanN >= 3) lines.push(`הרצף הנקי הארוך: <b>${cleanN}</b> מקטעים ברצף בלי טעות (${span(cleanEnd - cleanN + 1, cleanEnd)}).`);
+      if (badN >= 2) lines.push(`רצף של <b>${badN}</b> מקטעים עם טעות (${span(badEnd - badN + 1, badEnd)}) – כדאי לבדוק מה קרה שם: עייפות, אזור קשה או אובדן ריכוז.`);
       // pace early vs late (clean legs only, so mistakes don't hide it)
       const pure = spIdx.filter((i) => m[i] <= CLEAN);
       const h1 = mean(pure.filter((i) => i < n / 2).map((i) => sp[i])), h2 = mean(pure.filter((i) => i >= n / 2).map((i) => sp[i]));
