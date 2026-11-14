@@ -2673,7 +2673,7 @@
       </section>` : ''}
       ${hasSplits(c) ? controlsHtml(c, st) : ''}
       <section class="ev-card rs-table-card" aria-labelledby="rst-h">
-        <div class="rs-table-head"><h2 id="rst-h">תוצאות – ${esc(c.name)}</h2>
+        <div class="rs-table-head"><h2 id="rst-h">תוצאות – ${esc(c.name)}${c.runners.some((r) => isMinePerson(r.name)) ? ' <span class="rs-star" title="האנשים שלי במסלול הזה">★</span>' : ''}</h2>
           <label class="rs-search"><span class="sr-only">חיפוש מתחרה או מועדון</span><input type="search" id="rsQ" placeholder="חיפוש שם או מועדון" value="${esc(rs.q)}"></label></div>
         <div class="rs-table-wrap"><table class="rs-table">
           <thead><tr>${hasSplits(c) ? '<th scope="col"><span class="sr-only">בגרף</span></th>' : ''}<th scope="col">מקום</th><th scope="col">שם</th><th scope="col">מועדון</th><th scope="col">זמן</th><th scope="col">פער</th></tr></thead>
