@@ -227,17 +227,37 @@
   <dialog id="peopleDialog" class="people-dialog" aria-labelledby="peopleTitle">
     <form method="dialog" class="dlg-x"><button class="icon-btn" aria-label="סגירה">✕</button></form>
     <h2 id="peopleTitle">ההגדרות שלי</h2>
-    <section class="pref" aria-labelledby="myClubTitle">
-      <h3 id="myClubTitle">המועדון שלי</h3>
+    <p class="muted small set-intro">שלוש הגדרות שהופכות את האתר לשלכם. הכול נשמר רק בדפדפן הזה.</p>
+
+    <section class="set-card" aria-labelledby="pplTitle">
+      <div class="set-head"><span class="set-ico" aria-hidden="true">👥</span><div>
+        <h3 id="pplTitle">האנשים שלי</h3>
+        <p class="muted small">נווטים שחשוב לכם לעקוב אחריהם – הרשמות וזמני זינוק בכל אירוע, ואחרי התחרות התוצאות והניתוח האישי שלהם.</p></div></div>
+      <ul class="people-list" id="peopleList" aria-label="האנשים שלי"></ul>
+      <form id="peopleForm" class="people-form">
+        <label for="personName">הוספת נווט – שם מלא, כפי שהוא מופיע ברשימות האיגוד</label>
+        <div class="people-row">
+          <input id="personName" autocomplete="off" required maxlength="60" placeholder="למשל: ישראל ישראלי">
+          <button type="submit" class="btn">הוספה</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="set-card" aria-labelledby="myClubTitle">
+      <div class="set-head"><span class="set-ico" aria-hidden="true">⚑</span><div>
+        <h3 id="myClubTitle">המועדון שלי</h3>
+        <p class="muted small">אירועים שהמועדון מארגן יסומנו.</p></div></div>
       <div class="myclub-pick">
         <span id="myClubPreview"></span>
         <label for="myClubSel" class="sr-only">המועדון שלי</label>
         <select id="myClubSel"><option value="">ללא</option></select>
       </div>
-      <p class="muted small">אירועים שהמועדון מארגן יסומנו. הבחירה נשמרת בעוגייה.</p>
     </section>
-    <section class="pref" aria-labelledby="homeTitle">
-      <h3 id="homeTitle">המיקום שלי</h3>
+
+    <section class="set-card" aria-labelledby="homeTitle">
+      <div class="set-head"><span class="set-ico" aria-hidden="true">📍</span><div>
+        <h3 id="homeTitle">המיקום שלי</h3>
+        <p class="muted small">להצגת המרחק לכל אירוע ולסינון לפי מרחק. מעוגל לכקילומטר ולא נשלח לשרת.</p></div></div>
       <p class="muted small" id="homeNow" aria-live="polite"></p>
       <div class="home-pick">
         <label for="homeCity" class="sr-only">יישוב</label>
@@ -245,19 +265,9 @@
         <button type="button" class="btn ghost" id="homeGeo">📍 לפי המיקום הנוכחי</button>
         <button type="button" class="btn ghost" id="homeClear" hidden>מחיקה</button>
       </div>
-      <p class="muted small">משמש להצגת מרחק לכל אירוע ולסינון לפי מרחק. נשמר רק בדפדפן הזה, מעוגל לכקילומטר, ולא נשלח לשרת.</p>
     </section>
-    <h3>האנשים שלי</h3>
-    <p class="muted small">הוסיפו נווטים שחשוב לכם לדעת אם הם רשומים לאירועים. נציג אותם בכל אירוע, לפי רשימת המשתתפים באתר האיגוד.
-      הרשימה נשמרת רק בדפדפן הזה ולא נשלחת לשום מקום.</p>
-    <form id="peopleForm" class="people-form">
-      <label for="personName">שם מלא, כפי שהוא מופיע ברשימות האיגוד</label>
-      <div class="people-row">
-        <input id="personName" autocomplete="off" required maxlength="60">
-        <button type="submit" class="btn">הוספה</button>
-      </div>
-    </form>
-    <ul class="people-list" id="peopleList" aria-label="האנשים שלי"></ul>
+
+    <form method="dialog" class="set-done"><button class="btn">סיום</button></form>
   </dialog>
 
   <footer class="site-footer">

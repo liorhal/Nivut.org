@@ -2356,3 +2356,18 @@ html, body { overflow-x: clip; }
 .tk-files { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .tk-files .ev-file { padding: 5px 12px; font-size: .86rem; border-radius: 999px; }
 .lp-person, .lp-rows dd, .lp-tips { min-width: 0; overflow-wrap: anywhere; }
+
+/* "ההגדרות שלי": three cards – my people, my club, my location */
+.set-intro { margin: 0 0 12px; }
+.set-card { border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 12px; background: var(--surface); }
+.set-head { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+.set-head h3 { margin: 0 0 2px; font-size: 1.08rem; }
+.set-head p { margin: 0; line-height: 1.45; }
+.set-ico { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 1.05rem; background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--brand); }
+.set-card .people-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.set-card .people-list:has(li.muted) { margin-bottom: 4px; }
+.set-card .people-list li { padding: 4px 4px 4px 12px; border-radius: 999px; font-weight: 700; }
+.set-card .people-list .icon-btn { min-width: 28px; min-height: 28px; border-radius: 50%; font-size: .8rem; }
+.set-card .people-form { margin: 0; }
+.set-card #homeNow:empty { display: none; }
+.set-done { display: flex; justify-content: flex-end; margin: 4px 0 0; }

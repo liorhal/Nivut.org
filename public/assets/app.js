@@ -382,7 +382,8 @@
     loadPeople();
     const dlg = $('#peopleDialog');
     let opener = null;
-    const open = (btn) => { opener = btn; renderPeopleList(); dlg.showModal(); $('#personName').focus(); };
+    // "קבעו מיקום" opens on the location card; everything else on my people
+    const open = (btn) => { opener = btn; renderPeopleList(); dlg.showModal(); const loc = btn?.classList?.contains('dist-set'); (loc ? $('#homeCity') : $('#personName')).focus(); if (loc) $('#homeTitle').scrollIntoView({ block: 'center' }); };
     $('#peopleBtn').addEventListener('click', (e) => open(e.currentTarget));
     document.addEventListener('click', (e) => { const b = e.target.closest('[data-open-people]'); if (b) open(b); });
     dlg.addEventListener('close', () => opener?.isConnected && opener.focus());
