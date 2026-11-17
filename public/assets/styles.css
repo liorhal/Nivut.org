@@ -2371,3 +2371,11 @@ html, body { overflow-x: clip; }
 .set-card .people-form { margin: 0; }
 .set-card #homeNow:empty { display: none; }
 .set-done { display: flex; justify-content: flex-end; margin: 4px 0 0; }
+
+/* help card on phones: a wider dialog, and the start-times diagram gets a full row (the planner's link below it) */
+@media (max-width: 560px) {
+  .help-dialog { padding: 16px 12px; width: calc(100% - 16px); }
+  #hhCard .top-tl.has-planner { flex-wrap: wrap; row-gap: 8px; }
+  #hhCard .top-tl.has-planner > :not(.planner-link) { flex: 1 1 100%; }
+  #hhCard .top-card.tk .top-tl .tlm { width: 100%; }
+}
